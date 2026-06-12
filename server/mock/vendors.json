@@ -1,0 +1,56 @@
+[
+  {
+    "id": "V001",
+    "name": "Seating Solutions India",
+    "city": "Pune",
+    "gstin": "27AABCS1429B1ZX",
+    "mseCategory": "MSE",
+    "mseWomen": "NA",
+    "mseScSt": "NA"
+  },
+  {
+    "id": "V002",
+    "name": "Pune Forge & Engineering Works",
+    "city": "Pune",
+    "gstin": "27AAACP8821F1Z2",
+    "mseCategory": "MSE",
+    "mseWomen": "NA",
+    "mseScSt": "SC-ST"
+  },
+  {
+    "id": "V003",
+    "name": "Bharat Avionics Components Pvt Ltd",
+    "city": "Bengaluru",
+    "gstin": "29AACCB4407J1ZD",
+    "mseCategory": "Non-MSE",
+    "mseWomen": "NA",
+    "mseScSt": "NA"
+  },
+  {
+    "id": "V004",
+    "name": "Nashik Industrial Fasteners",
+    "city": "Nashik",
+    "gstin": "27AAFCN2310K1Z9",
+    "mseCategory": "MSE",
+    "mseWomen": "Women",
+    "mseScSt": "NA"
+  },
+  {
+    "id": "V005",
+    "name": "Hindalco Industries Ltd",
+    "city": "Mumbai",
+    "gstin": "27AAACH1201R1ZM",
+    "mseCategory": "Non-MSE",
+    "mseWomen": "NA",
+    "mseScSt": "NA"
+  },
+  {
+    "id": "V006",
+    "name": "Deccan Tools & Abrasives",
+    "city": "Nashik",
+    "gstin": "27AADFD5512Q1Z4",
+    "mseCategory": "MSE",
+    "mseWomen": "NA",
+    "mseScSt": "NA"
+  }
+]

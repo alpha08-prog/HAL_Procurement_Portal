@@ -1,0 +1,113 @@
+[
+  {
+    "paNo": "PA/26/063",
+    "rvNo": "ELE/26/097",
+    "poNo": "IMM/PO/25-26/0389",
+    "vendorId": "V003",
+    "status": "pa_created",
+    "createdDate": "2026-05-20",
+    "createdBy": "purchase_maker",
+    "rvValue": 23567200,
+    "ldWeeks": 1,
+    "ldSupplyAmount": 117836,
+    "ldIcAmount": 0,
+    "ldCap": 4713440,
+    "ldAmount": 117836,
+    "finalPayment": 23449364,
+    "invoiceNo": null,
+    "invoiceDate": null,
+    "makerRemark": "",
+    "remarks": [],
+    "pprNo": null,
+    "pprDate": null
+  },
+  {
+    "paNo": "PA/26/058",
+    "rvNo": "COM/26/144",
+    "poNo": "IMM/PO/25-26/0463",
+    "vendorId": "V004",
+    "status": "at_payment_desk",
+    "createdDate": "2026-05-08",
+    "createdBy": "purchase_maker",
+    "rvValue": 482160,
+    "ldWeeks": 0,
+    "ldSupplyAmount": 0,
+    "ldIcAmount": 0,
+    "ldCap": 48216,
+    "ldAmount": 0,
+    "finalPayment": 482160,
+    "invoiceNo": "NIF/INV/26/118",
+    "invoiceDate": "2026-05-02",
+    "makerRemark": "Invoice verified against RV and PO terms.",
+    "remarks": [
+      {
+        "by": "purchase_officer",
+        "date": "2026-05-14",
+        "text": "Verified against PO terms. Forwarded to payment desk."
+      }
+    ],
+    "pprNo": null,
+    "pprDate": null
+  },
+  {
+    "paNo": "PA/26/051",
+    "rvNo": "RAW/26/210",
+    "poNo": "IMM/PO/25-26/0341",
+    "vendorId": "V005",
+    "status": "sent_to_cppc",
+    "createdDate": "2026-04-28",
+    "createdBy": "purchase_maker",
+    "rvValue": 7812945,
+    "ldWeeks": 2,
+    "ldSupplyAmount": 78129,
+    "ldIcAmount": 0,
+    "ldCap": 1562589,
+    "ldAmount": 78129,
+    "finalPayment": 7734816,
+    "invoiceNo": "HIL/MUM/26/2210",
+    "invoiceDate": "2026-04-25",
+    "makerRemark": "Delivery 2 weeks beyond PO schedule — LD applied.",
+    "remarks": [
+      {
+        "by": "purchase_officer",
+        "date": "2026-05-02",
+        "text": "LD applicable — delivery 2 weeks late per PO schedule."
+      },
+      {
+        "by": "hod_imm",
+        "date": "2026-05-11",
+        "text": "Approved. Forward to CPPC."
+      }
+    ],
+    "pprNo": "PPR/26/0214",
+    "pprDate": "2026-05-12"
+  },
+  {
+    "paNo": "PA/26/044",
+    "rvNo": "COM/26/139",
+    "poNo": "IMM/PO/25-26/0428",
+    "vendorId": "V006",
+    "status": "paid",
+    "createdDate": "2026-04-15",
+    "createdBy": "purchase_maker",
+    "rvValue": 195300,
+    "ldWeeks": 0,
+    "ldSupplyAmount": 0,
+    "ldIcAmount": 0,
+    "ldCap": 19530,
+    "ldAmount": 0,
+    "finalPayment": 195300,
+    "invoiceNo": "DTA/26/0312",
+    "invoiceDate": "2026-04-12",
+    "makerRemark": "Verified. No deductions.",
+    "remarks": [
+      {
+        "by": "hod_imm",
+        "date": "2026-04-24",
+        "text": "Approved."
+      }
+    ],
+    "pprNo": "PPR/26/0187",
+    "pprDate": "2026-04-27"
+  }
+]

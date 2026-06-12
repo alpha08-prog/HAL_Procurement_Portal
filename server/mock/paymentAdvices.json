@@ -17,9 +17,18 @@
     "invoiceNo": null,
     "invoiceDate": null,
     "makerRemark": "",
-    "remarks": [],
     "pprNo": null,
-    "pprDate": null
+    "pprDate": null,
+    "history": [
+      {
+        "action": "pa_created",
+        "from": "rv_pending",
+        "to": "pa_created",
+        "by": "purchase_maker",
+        "date": "2026-05-20",
+        "remark": "Payment advice generated from RV."
+      }
+    ]
   },
   {
     "paNo": "PA/26/058",
@@ -39,15 +48,34 @@
     "invoiceNo": "NIF/INV/26/118",
     "invoiceDate": "2026-05-02",
     "makerRemark": "Invoice verified against RV and PO terms.",
-    "remarks": [
+    "pprNo": null,
+    "pprDate": null,
+    "history": [
       {
+        "action": "pa_created",
+        "from": "rv_pending",
+        "to": "pa_created",
+        "by": "purchase_maker",
+        "date": "2026-05-08",
+        "remark": "Payment advice generated from RV."
+      },
+      {
+        "action": "forward_to_officer",
+        "from": "pa_created",
+        "to": "forwarded_to_officer",
+        "by": "purchase_maker",
+        "date": "2026-05-12",
+        "remark": "Invoice verified against RV and PO terms."
+      },
+      {
+        "action": "officer_forward",
+        "from": "forwarded_to_officer",
+        "to": "at_payment_desk",
         "by": "purchase_officer",
         "date": "2026-05-14",
-        "text": "Verified against PO terms. Forwarded to payment desk."
+        "remark": "Verified against PO terms. Forwarded to payment desk."
       }
-    ],
-    "pprNo": null,
-    "pprDate": null
+    ]
   },
   {
     "paNo": "PA/26/051",
@@ -67,20 +95,52 @@
     "invoiceNo": "HIL/MUM/26/2210",
     "invoiceDate": "2026-04-25",
     "makerRemark": "Delivery 2 weeks beyond PO schedule — LD applied.",
-    "remarks": [
+    "pprNo": "PPR/26/0214",
+    "pprDate": "2026-05-12",
+    "history": [
       {
-        "by": "purchase_officer",
-        "date": "2026-05-02",
-        "text": "LD applicable — delivery 2 weeks late per PO schedule."
+        "action": "pa_created",
+        "from": "rv_pending",
+        "to": "pa_created",
+        "by": "purchase_maker",
+        "date": "2026-04-28",
+        "remark": "Payment advice generated from RV."
       },
       {
+        "action": "forward_to_officer",
+        "from": "pa_created",
+        "to": "forwarded_to_officer",
+        "by": "purchase_maker",
+        "date": "2026-05-01",
+        "remark": "Delivery 2 weeks beyond PO schedule — LD applied."
+      },
+      {
+        "action": "officer_forward",
+        "from": "forwarded_to_officer",
+        "to": "at_payment_desk",
+        "by": "purchase_officer",
+        "date": "2026-05-02",
+        "remark": "LD applicable — delivery 2 weeks late per PO schedule."
+      },
+      {
+        "action": "hod_approve",
+        "from": "at_payment_desk",
+        "to": "hod_approved",
         "by": "hod_imm",
         "date": "2026-05-11",
-        "text": "Approved. Forward to CPPC."
+        "remark": "Approved. Forward to CPPC."
+      },
+      {
+        "action": "desk_to_cppc",
+        "from": "hod_approved",
+        "to": "sent_to_cppc",
+        "by": "payment_desk",
+        "date": "2026-05-12",
+        "remark": "Payment proposal sent to CPPC.",
+        "pprNo": "PPR/26/0214",
+        "pprDate": "2026-05-12"
       }
-    ],
-    "pprNo": "PPR/26/0214",
-    "pprDate": "2026-05-12"
+    ]
   },
   {
     "paNo": "PA/26/044",
@@ -100,14 +160,59 @@
     "invoiceNo": "DTA/26/0312",
     "invoiceDate": "2026-04-12",
     "makerRemark": "Verified. No deductions.",
-    "remarks": [
+    "pprNo": "PPR/26/0187",
+    "pprDate": "2026-04-27",
+    "history": [
       {
+        "action": "pa_created",
+        "from": "rv_pending",
+        "to": "pa_created",
+        "by": "purchase_maker",
+        "date": "2026-04-15",
+        "remark": "Payment advice generated from RV."
+      },
+      {
+        "action": "forward_to_officer",
+        "from": "pa_created",
+        "to": "forwarded_to_officer",
+        "by": "purchase_maker",
+        "date": "2026-04-18",
+        "remark": "Verified. No deductions."
+      },
+      {
+        "action": "officer_forward",
+        "from": "forwarded_to_officer",
+        "to": "at_payment_desk",
+        "by": "purchase_officer",
+        "date": "2026-04-21",
+        "remark": "In order."
+      },
+      {
+        "action": "hod_approve",
+        "from": "at_payment_desk",
+        "to": "hod_approved",
         "by": "hod_imm",
         "date": "2026-04-24",
-        "text": "Approved."
+        "remark": "Approved."
+      },
+      {
+        "action": "desk_to_cppc",
+        "from": "hod_approved",
+        "to": "sent_to_cppc",
+        "by": "payment_desk",
+        "date": "2026-04-27",
+        "remark": "Payment proposal sent to CPPC.",
+        "pprNo": "PPR/26/0187",
+        "pprDate": "2026-04-27"
+      },
+      {
+        "action": "paid",
+        "from": "sent_to_cppc",
+        "to": "paid",
+        "by": "cppc",
+        "date": "2026-05-06",
+        "remark": "Payment released by CPPC."
       }
-    ],
-    "pprNo": "PPR/26/0187",
-    "pprDate": "2026-04-27"
+    ]
   }
 ]

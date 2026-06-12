@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import StatusPill from '../../components/StatusPill.jsx';
 import { PA_FORM_SECTIONS, PA_MAKER_FIELDS, PA_REQUIRED_FIELDS } from '../../config/paFormFields.jsx';
 import { formatINR } from '../../lib/currency.js';
@@ -72,6 +72,8 @@ function Field({ field, pa, draft, onChange, editable }) {
 
 export default function PaForm({ paNo }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const backPath = searchParams.get('back');
   const [pa, setPa] = useState(null);
   const [draft, setDraft] = useState(null);
   const [error, setError] = useState(null);
@@ -154,7 +156,11 @@ export default function PaForm({ paNo }) {
     setBusy(true);
     try {
       await post('/api/payment-advices/update', { paNo: pa.paNo, ...draft });
-      await post('/api/payment-advices/forward', { paNo: pa.paNo });
+      await post('/api/payment-advices/transition', {
+        paNo: pa.paNo,
+        action: 'forward_to_officer',
+        remark: draft.makerRemark
+      });
       navigate('/rv-inbox');
     } catch (err) {
       window.alert(err.message);
@@ -164,8 +170,8 @@ export default function PaForm({ paNo }) {
 
   return (
     <section className="screen">
-      <Link className="back-link" to="/payment-advice">
-        ← All drafts
+      <Link className="back-link" to={backPath ?? '/payment-advice'}>
+        {backPath ? '← Back to queue' : '← All drafts'}
       </Link>
       <div className="pa-header">
         <h1 className="screen-title">Payment Advice {pa.paNo}</h1>

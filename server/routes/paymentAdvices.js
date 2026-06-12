@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { computeLd } from '../ld.js';
-import { db, paByNo, rvByNo, todayISO, vendorById } from '../store.js';
+import { applyTransition } from '../stateMachine.js';
+import { daysSince, db, paByNo, rvByNo, todayISO, vendorById } from '../store.js';
 
 function nextPaNo() {
   const max = db.paymentAdvices
@@ -27,18 +28,22 @@ function joinPa(pa) {
     description: rv.description,
     vendorName: vendor.name ?? 'Unknown vendor',
     gstin: vendor.gstin ?? '—',
-    mseCategory: vendor.mseCategory ?? 'Non-MSE'
+    mseCategory: vendor.mseCategory ?? 'Non-MSE',
+    pendingDaysGate: rv.gateEntryDate ? daysSince(rv.gateEntryDate) : null,
+    pendingDaysPa: daysSince(pa.createdDate)
   };
 }
 
 const router = Router();
 
-// List / filter. ?status=pa_created filters by state; ?pa=<paNo> fetches one (as a
-// single-element array — paNo contains slashes, so it travels as a query param).
+// List / filter. ?state= (alias ?status=) filters by lifecycle state; ?pa=<paNo>
+// fetches one (as a single-element array — paNo contains slashes, so it travels
+// as a query param).
 router.get('/', (req, res) => {
   let rows = db.paymentAdvices;
   if (req.query.pa) rows = rows.filter((p) => p.paNo === req.query.pa);
-  if (req.query.status) rows = rows.filter((p) => p.status === req.query.status);
+  const state = req.query.state ?? req.query.status;
+  if (state) rows = rows.filter((p) => p.status === state);
   res.json(rows.map(joinPa));
 });
 
@@ -63,9 +68,18 @@ router.post('/', (req, res) => {
     invoiceNo: null,
     invoiceDate: null,
     makerRemark: '',
-    remarks: [],
     pprNo: null,
-    pprDate: null
+    pprDate: null,
+    history: [
+      {
+        action: 'pa_created',
+        from: 'rv_pending',
+        to: 'pa_created',
+        by: 'purchase_maker',
+        date: todayISO(),
+        remark: 'Payment advice generated from RV.'
+      }
+    ]
   };
   db.paymentAdvices.push(pa);
   rv.paStatus = 'pa_created';
@@ -98,26 +112,16 @@ router.post('/update', (req, res) => {
   res.json(joinPa(pa));
 });
 
-// Maker forwards to purchase officer: pa_created -> forwarded_to_officer.
-router.post('/forward', (req, res) => {
+// All lifecycle moves go through the state machine: {paNo, action, remark?, pprNo?, pprDate?}.
+router.post('/transition', (req, res) => {
   const pa = paByNo(req.body?.paNo);
   if (!pa) return res.status(404).json({ error: `Unknown PA ${req.body?.paNo}` });
-  if (pa.status !== 'pa_created') {
-    return res.status(409).json({ error: `${pa.paNo} is ${pa.status} — cannot forward` });
+  try {
+    applyTransition(pa, req.body?.action, req.body);
+    res.json(joinPa(pa));
+  } catch (err) {
+    res.status(err.status ?? 500).json({ error: err.message });
   }
-  if (!pa.invoiceNo || !pa.invoiceDate) {
-    return res.status(422).json({ error: 'Invoice no and invoice date are required before forwarding' });
-  }
-
-  pa.status = 'forwarded_to_officer';
-  pa.remarks.push({
-    by: 'purchase_maker',
-    date: todayISO(),
-    text: pa.makerRemark || 'Verified and forwarded to purchase officer.'
-  });
-  const rv = rvByNo(pa.rvNo);
-  if (rv) rv.paStatus = 'forwarded_to_officer';
-  res.json(joinPa(pa));
 });
 
 export default router;

@@ -1,10 +1,6 @@
-import ScreenStub from '../../components/ScreenStub.jsx';
+import ApprovalQueue from '../../components/ApprovalQueue.jsx';
+import { officerQueueConfig } from '../../config/officerQueue.jsx';
 
 export default function ForwardAdvice() {
-  return (
-    <ScreenStub
-      title="Forward Payment Advice"
-      note="Officer queue — verify & preview, add remark, stamp & forward. Coming next."
-    />
-  );
+  return <ApprovalQueue config={officerQueueConfig} />;
 }

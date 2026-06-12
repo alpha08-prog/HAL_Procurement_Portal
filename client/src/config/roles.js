@@ -12,6 +12,8 @@ export const ROLES = [
 
 export const DEFAULT_ROLE = 'purchase_maker';
 
+export const roleLabel = (id) => ROLES.find((r) => r.id === id)?.label ?? id;
+
 const ALL_ROLES = ROLES.map((r) => r.id);
 
 // The six payment-module screens. `visibleTo` drives both nav and route guards.

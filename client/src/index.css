@@ -407,3 +407,32 @@ body {
   font-size: 12px;
   color: var(--muted);
 }
+
+/* ApprovalQueue */
+.queue-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 260px;
+}
+
+.queue-input {
+  font-size: 12px;
+  padding: var(--space-1) var(--space-2);
+}
+
+.queue-buttons {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.cell-two-line {
+  display: flex;
+  flex-direction: column;
+}
+
+.cell-two-line span:last-child {
+  color: var(--muted);
+  font-size: 12px;
+}

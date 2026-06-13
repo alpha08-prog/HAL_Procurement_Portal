@@ -7,6 +7,7 @@
     "status": "pa_created",
     "createdDate": "2026-05-20",
     "createdBy": "purchase_maker",
+    "officer": "R. Deshpande",
     "rvValue": 23567200,
     "ldWeeks": 1,
     "ldSupplyAmount": 117836,
@@ -38,6 +39,7 @@
     "status": "cleared_by_desk",
     "createdDate": "2026-05-06",
     "createdBy": "purchase_maker",
+    "officer": "S. Kulkarni",
     "rvValue": 3548000,
     "ldWeeks": 2,
     "ldSupplyAmount": 35480,
@@ -93,6 +95,7 @@
     "status": "at_payment_desk",
     "createdDate": "2026-05-08",
     "createdBy": "purchase_maker",
+    "officer": "R. Deshpande",
     "rvValue": 482160,
     "ldWeeks": 0,
     "ldSupplyAmount": 0,
@@ -140,6 +143,7 @@
     "status": "sent_to_cppc",
     "createdDate": "2026-04-28",
     "createdBy": "purchase_maker",
+    "officer": "S. Kulkarni",
     "rvValue": 7812945,
     "ldWeeks": 2,
     "ldSupplyAmount": 78129,
@@ -205,6 +209,7 @@
     "status": "paid",
     "createdDate": "2026-04-15",
     "createdBy": "purchase_maker",
+    "officer": "A. Menon",
     "rvValue": 195300,
     "ldWeeks": 0,
     "ldSupplyAmount": 0,
@@ -267,6 +272,146 @@
         "by": "cppc",
         "date": "2026-05-06",
         "remark": "Payment released by CPPC."
+      }
+    ]
+  },
+  {
+    "paNo": "PA/26/021",
+    "rvNo": "COM/26/072",
+    "poNo": "IMM/PO/25-26/0188",
+    "vendorId": "V001",
+    "status": "paid",
+    "createdDate": "2026-01-22",
+    "createdBy": "purchase_maker",
+    "officer": "A. Menon",
+    "rvValue": 1860000,
+    "ldWeeks": 0,
+    "ldSupplyAmount": 0,
+    "ldIcAmount": 0,
+    "ldCap": 186000,
+    "ldAmount": 0,
+    "finalPayment": 1860000,
+    "invoiceNo": "SSI/INV/25/0884",
+    "invoiceDate": "2026-01-18",
+    "makerRemark": "Delivered on schedule. No deductions.",
+    "pprNo": "PPR/26/0061",
+    "pprDate": "2026-01-29",
+    "history": [
+      {
+        "action": "pa_created",
+        "from": "rv_pending",
+        "to": "pa_created",
+        "by": "purchase_maker",
+        "date": "2026-01-22",
+        "remark": "Payment advice generated from RV."
+      },
+      {
+        "action": "forward_to_officer",
+        "from": "pa_created",
+        "to": "forwarded_to_officer",
+        "by": "purchase_maker",
+        "date": "2026-01-23",
+        "remark": "Delivered on schedule. No deductions."
+      },
+      {
+        "action": "officer_forward",
+        "from": "forwarded_to_officer",
+        "to": "at_payment_desk",
+        "by": "purchase_officer",
+        "date": "2026-01-25",
+        "remark": "In order. Forwarded to payment desk."
+      },
+      {
+        "action": "desk_clear",
+        "from": "at_payment_desk",
+        "to": "cleared_by_desk",
+        "by": "payment_desk",
+        "date": "2026-01-27",
+        "remark": "Cleared by payment desk — forwarded for HOD approval."
+      },
+      {
+        "action": "hod_approve",
+        "from": "cleared_by_desk",
+        "to": "sent_to_cppc",
+        "by": "hod_imm",
+        "date": "2026-01-29",
+        "remark": "Approved — payment proposal forwarded to CPPC.",
+        "pprNo": "PPR/26/0061",
+        "pprDate": "2026-01-29"
+      },
+      {
+        "action": "paid",
+        "from": "sent_to_cppc",
+        "to": "paid",
+        "by": "cppc",
+        "date": "2026-02-05",
+        "remark": "Payment released by CPPC."
+      }
+    ]
+  },
+  {
+    "paNo": "PA/26/018",
+    "rvNo": "RAW/26/065",
+    "poNo": "IMM/PO/25-26/0151",
+    "vendorId": "V003",
+    "status": "sent_to_cppc",
+    "createdDate": "2026-02-10",
+    "createdBy": "purchase_maker",
+    "officer": "S. Kulkarni",
+    "rvValue": 5400000,
+    "ldWeeks": 2,
+    "ldSupplyAmount": 54000,
+    "ldIcAmount": 0,
+    "ldCap": 1100000,
+    "ldAmount": 54000,
+    "finalPayment": 5346000,
+    "invoiceNo": "BAC/INV/26/0203",
+    "invoiceDate": "2026-02-06",
+    "makerRemark": "Delivery 13 days late — LD applied for 2 weeks.",
+    "pprNo": "PPR/26/0079",
+    "pprDate": "2026-02-18",
+    "history": [
+      {
+        "action": "pa_created",
+        "from": "rv_pending",
+        "to": "pa_created",
+        "by": "purchase_maker",
+        "date": "2026-02-10",
+        "remark": "Payment advice generated from RV."
+      },
+      {
+        "action": "forward_to_officer",
+        "from": "pa_created",
+        "to": "forwarded_to_officer",
+        "by": "purchase_maker",
+        "date": "2026-02-12",
+        "remark": "Delivery 13 days late — LD applied for 2 weeks."
+      },
+      {
+        "action": "officer_forward",
+        "from": "forwarded_to_officer",
+        "to": "at_payment_desk",
+        "by": "purchase_officer",
+        "date": "2026-02-13",
+        "remark": "LD applicable — verified against PO schedule."
+      },
+      {
+        "action": "desk_clear",
+        "from": "at_payment_desk",
+        "to": "cleared_by_desk",
+        "by": "payment_desk",
+        "date": "2026-02-16",
+        "remark": "Cleared by payment desk — forwarded for HOD approval."
+      },
+      {
+        "action": "hod_approve",
+        "from": "cleared_by_desk",
+        "to": "sent_to_cppc",
+        "by": "hod_imm",
+        "date": "2026-02-18",
+        "remark": "Approved — payment proposal forwarded to CPPC.",
+        "pprNo": "PPR/26/0079",
+        "pprDate": "2026-02-18"
       }
     ]
   }

@@ -110,5 +110,37 @@
     "description": "Forged undercarriage fittings — machine shop jigs",
     "rvValue": 3548000,
     "paStatus": "cleared_by_desk"
+  },
+  {
+    "rvNo": "COM/26/072",
+    "rvDate": "2026-01-20",
+    "gateEntryNo": "GE/26/0712",
+    "gateEntryDate": "2026-01-12",
+    "qcDate": "2026-01-16",
+    "ftrDate": "2026-01-16",
+    "poNo": "IMM/PO/25-26/0188",
+    "poDate": "2025-08-22",
+    "poValue": 1860000,
+    "deliveryDueDate": "2026-01-15",
+    "vendorId": "V001",
+    "description": "Ergonomic seating — design office (phase 1)",
+    "rvValue": 1860000,
+    "paStatus": "paid"
+  },
+  {
+    "rvNo": "RAW/26/065",
+    "rvDate": "2026-02-04",
+    "gateEntryNo": "GE/26/0689",
+    "gateEntryDate": "2026-02-02",
+    "qcDate": "2026-02-03",
+    "ftrDate": "2026-02-03",
+    "poNo": "IMM/PO/25-26/0151",
+    "poDate": "2025-07-30",
+    "poValue": 11000000,
+    "deliveryDueDate": "2026-01-20",
+    "vendorId": "V003",
+    "description": "Avionics-grade aluminium billets — raw material stores",
+    "rvValue": 5400000,
+    "paStatus": "sent_to_cppc"
   }
 ]

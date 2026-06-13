@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import StatusPill from '../../components/StatusPill.jsx';
+import Timeline from '../../components/Timeline.jsx';
 import { PA_FORM_SECTIONS, PA_MAKER_FIELDS, PA_REQUIRED_FIELDS } from '../../config/paFormFields.jsx';
 import { formatINR } from '../../lib/currency.js';
 import { formatDate } from '../../lib/date.js';
@@ -74,6 +75,9 @@ export default function PaForm({ paNo }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const backPath = searchParams.get('back');
+  // Register detail view (Screen 6): force read-only regardless of state and append
+  // the history timeline. Without this a pa_created row would render editable.
+  const recordView = searchParams.get('view') === '1';
   const [pa, setPa] = useState(null);
   const [draft, setDraft] = useState(null);
   const [error, setError] = useState(null);
@@ -119,7 +123,7 @@ export default function PaForm({ paNo }) {
     );
   }
 
-  const editable = pa.status === 'pa_created';
+  const editable = pa.status === 'pa_created' && !recordView;
   const missingRequired = PA_REQUIRED_FIELDS.filter((key) => !draft[key]);
 
   const onChange = (key, value) => {
@@ -183,7 +187,9 @@ export default function PaForm({ paNo }) {
 
       {!editable && (
         <div className="banner banner-info">
-          This payment advice has moved on from maker verification — fields are read-only.
+          {recordView
+            ? 'Read-only record — opened from the payment register.'
+            : 'This payment advice has moved on from maker verification — fields are read-only.'}
         </div>
       )}
 
@@ -204,6 +210,13 @@ export default function PaForm({ paNo }) {
           </div>
         </div>
       ))}
+
+      {recordView && (
+        <div className="form-section">
+          <div className="form-section-title">History</div>
+          <Timeline paNo={pa.paNo} />
+        </div>
+      )}
 
       {editable && (
         <div className="form-actions">

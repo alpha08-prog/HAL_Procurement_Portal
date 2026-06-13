@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { computeLd } from '../ld.js';
 import { applyTransition } from '../stateMachine.js';
-import { daysSince, db, paByNo, rvByNo, todayISO, vendorById } from '../store.js';
+import { daysBetween, daysSince, db, paByNo, rvByNo, todayISO, vendorById } from '../store.js';
 
 function nextPaNo() {
   const max = db.paymentAdvices
@@ -34,7 +34,101 @@ function joinPa(pa) {
   };
 }
 
+// Indian financial year (Apr–Mar) for a YYYY-MM-DD date: 2026-04-15 → "2026-27",
+// 2026-01-22 → "2025-26".
+function financialYear(iso) {
+  if (!iso) return null;
+  const [y, m] = iso.split('-').map(Number);
+  const start = m >= 4 ? y : y - 1;
+  return `${start}-${String((start + 1) % 100).padStart(2, '0')}`;
+}
+
+// Date a PA first reached a given lifecycle state, read from its history.
+const dateReached = (pa, toState) => pa.history?.find((h) => h.to === toState)?.date ?? null;
+
+const TERMINAL_STATES = new Set(['sent_to_cppc', 'paid']);
+
+// Flattened audit row for the register. Cycle-times are derived here (server-side)
+// from the fixture/history dates — never stored or computed in the UI.
+function registerRow(pa) {
+  const rv = rvByNo(pa.rvNo) ?? {};
+  const vendor = vendorById(pa.vendorId);
+  const sentDate = dateReached(pa, 'sent_to_cppc');
+  const clearedDate = dateReached(pa, 'cleared_by_desk');
+  return {
+    paNo: pa.paNo,
+    status: pa.status,
+    vendorName: vendor.name ?? 'Unknown vendor',
+    mseCategory: vendor.mseCategory ?? 'Non-MSE',
+    officer: pa.officer ?? '—',
+    fy: financialYear(pa.createdDate),
+    createdDate: pa.createdDate,
+    rvNo: pa.rvNo,
+    rvDate: rv.rvDate ?? null,
+    rvValue: pa.rvValue,
+    poNo: pa.poNo,
+    ldAmount: pa.ldAmount,
+    finalPayment: pa.finalPayment,
+    pprNo: pa.pprNo ?? null,
+    pprDate: pa.pprDate ?? null,
+    rvToPaymentDays: sentDate && rv.rvDate ? daysBetween(rv.rvDate, sentDate) : null,
+    geToClearedDays: clearedDate && rv.gateEntryDate ? daysBetween(rv.gateEntryDate, clearedDate) : null,
+    pendingDays: TERMINAL_STATES.has(pa.status) ? null : daysSince(pa.createdDate)
+  };
+}
+
+// Summary metrics over a given (already-filtered) set of rows, so the cards always
+// reflect the active filters.
+function summarise(rows) {
+  const withCycle = rows.filter((r) => r.rvToPaymentDays != null);
+  const mseCount = rows.filter((r) => r.mseCategory === 'MSE').length;
+  return {
+    processed: rows.filter((r) => TERMINAL_STATES.has(r.status)).length,
+    avgRvToPaymentDays: withCycle.length
+      ? Math.round(withCycle.reduce((sum, r) => sum + r.rvToPaymentDays, 0) / withCycle.length)
+      : null,
+    mseSharePct: rows.length ? Math.round((mseCount / rows.length) * 100) : 0,
+    atCppc: rows.filter((r) => r.status === 'sent_to_cppc').length
+  };
+}
+
 const router = Router();
+
+// Read-only register (Screen 6): every PA flattened, with server-side cycle-times,
+// a summary block, and the distinct filter options. ?fy ?status ?officer narrow the
+// rows; ?q is a free-text search across PA / PO / RV / vendor. Summary + sl re-derive
+// from the filtered set; options are computed from ALL PAs so the selects stay full.
+router.get('/register', (req, res) => {
+  const all = db.paymentAdvices.map(registerRow);
+  const options = {
+    fys: [...new Set(all.map((r) => r.fy).filter(Boolean))].sort().reverse(),
+    statuses: [...new Set(all.map((r) => r.status))],
+    officers: [...new Set(all.map((r) => r.officer).filter((o) => o && o !== '—'))].sort()
+  };
+
+  const { fy, status, officer, q } = req.query;
+  let rows = all;
+  if (fy) rows = rows.filter((r) => r.fy === fy);
+  if (status) rows = rows.filter((r) => r.status === status);
+  if (officer) rows = rows.filter((r) => r.officer === officer);
+  if (q) {
+    const needle = String(q).toLowerCase();
+    rows = rows.filter((r) =>
+      [r.paNo, r.poNo, r.rvNo, r.vendorName].some((v) => String(v).toLowerCase().includes(needle))
+    );
+  }
+  rows = rows.map((r, i) => ({ sl: i + 1, ...r }));
+
+  res.json({ rows, summary: summarise(rows), options });
+});
+
+// Ordered history for one PA (Screen 6 detail timeline). paNo contains slashes, so
+// it travels as a query param — same convention as the list endpoint's ?pa=.
+router.get('/history', (req, res) => {
+  const pa = paByNo(req.query.pa);
+  if (!pa) return res.status(404).json({ error: `Unknown PA ${req.query.pa}` });
+  res.json(pa.history ?? []);
+});
 
 // List / filter. ?state= (alias ?status=) filters by lifecycle state — accepts a
 // single value or a comma-separated set (e.g. the payment desk watches

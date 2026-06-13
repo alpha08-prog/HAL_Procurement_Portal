@@ -36,14 +36,18 @@ function joinPa(pa) {
 
 const router = Router();
 
-// List / filter. ?state= (alias ?status=) filters by lifecycle state; ?pa=<paNo>
-// fetches one (as a single-element array — paNo contains slashes, so it travels
-// as a query param).
+// List / filter. ?state= (alias ?status=) filters by lifecycle state — accepts a
+// single value or a comma-separated set (e.g. the payment desk watches
+// at_payment_desk,cleared_by_desk,sent_to_cppc in one queue). ?pa=<paNo> fetches one
+// (as a single-element array — paNo contains slashes, so it travels as a query param).
 router.get('/', (req, res) => {
   let rows = db.paymentAdvices;
   if (req.query.pa) rows = rows.filter((p) => p.paNo === req.query.pa);
   const state = req.query.state ?? req.query.status;
-  if (state) rows = rows.filter((p) => p.status === state);
+  if (state) {
+    const wanted = new Set(String(state).split(',').map((s) => s.trim()).filter(Boolean));
+    rows = rows.filter((p) => wanted.has(p.status));
+  }
   res.json(rows.map(joinPa));
 });
 

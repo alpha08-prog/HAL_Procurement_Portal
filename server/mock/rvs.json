@@ -94,5 +94,21 @@
     "description": "Carbide tooling & abrasive consumables",
     "rvValue": 195300,
     "paStatus": "paid"
+  },
+  {
+    "rvNo": "ELE/26/092",
+    "rvDate": "2026-05-02",
+    "gateEntryNo": "GE/26/0968",
+    "gateEntryDate": "2026-04-30",
+    "qcDate": "2026-05-01",
+    "ftrDate": "2026-05-01",
+    "poNo": "IMM/PO/25-26/0402",
+    "poDate": "2025-10-18",
+    "poValue": 3548000,
+    "deliveryDueDate": "2026-04-20",
+    "vendorId": "V002",
+    "description": "Forged undercarriage fittings — machine shop jigs",
+    "rvValue": 3548000,
+    "paStatus": "cleared_by_desk"
   }
 ]

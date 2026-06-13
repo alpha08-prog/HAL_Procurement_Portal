@@ -5,7 +5,7 @@ export const STATUS_META = {
   pa_created: { label: 'PA Created', tone: 'info' },
   forwarded_to_officer: { label: 'With Officer', tone: 'info' },
   at_payment_desk: { label: 'At Payment Desk', tone: 'info' },
-  hod_approved: { label: 'HOD Approved', tone: 'success' },
+  cleared_by_desk: { label: 'Cleared — At HOD', tone: 'info' },
   sent_to_cppc: { label: 'Sent to CPPC', tone: 'success' },
   paid: { label: 'Paid', tone: 'success' },
   returned: { label: 'Returned', tone: 'danger' },

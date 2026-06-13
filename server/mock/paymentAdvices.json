@@ -31,6 +31,61 @@
     ]
   },
   {
+    "paNo": "PA/26/061",
+    "rvNo": "ELE/26/092",
+    "poNo": "IMM/PO/25-26/0402",
+    "vendorId": "V002",
+    "status": "cleared_by_desk",
+    "createdDate": "2026-05-06",
+    "createdBy": "purchase_maker",
+    "rvValue": 3548000,
+    "ldWeeks": 2,
+    "ldSupplyAmount": 35480,
+    "ldIcAmount": 0,
+    "ldCap": 354800,
+    "ldAmount": 35480,
+    "finalPayment": 3512520,
+    "invoiceNo": "PFE/INV/26/0457",
+    "invoiceDate": "2026-05-02",
+    "makerRemark": "Delivery 10 days late — LD applied for 2 weeks.",
+    "pprNo": null,
+    "pprDate": null,
+    "history": [
+      {
+        "action": "pa_created",
+        "from": "rv_pending",
+        "to": "pa_created",
+        "by": "purchase_maker",
+        "date": "2026-05-06",
+        "remark": "Payment advice generated from RV."
+      },
+      {
+        "action": "forward_to_officer",
+        "from": "pa_created",
+        "to": "forwarded_to_officer",
+        "by": "purchase_maker",
+        "date": "2026-05-08",
+        "remark": "Delivery 10 days late — LD applied for 2 weeks."
+      },
+      {
+        "action": "officer_forward",
+        "from": "forwarded_to_officer",
+        "to": "at_payment_desk",
+        "by": "purchase_officer",
+        "date": "2026-05-09",
+        "remark": "Verified against PO terms. Forwarded to payment desk."
+      },
+      {
+        "action": "desk_clear",
+        "from": "at_payment_desk",
+        "to": "cleared_by_desk",
+        "by": "payment_desk",
+        "date": "2026-05-12",
+        "remark": "Cleared by payment desk — forwarded for HOD approval."
+      }
+    ]
+  },
+  {
     "paNo": "PA/26/058",
     "rvNo": "COM/26/144",
     "poNo": "IMM/PO/25-26/0463",
@@ -123,20 +178,20 @@
         "remark": "LD applicable — delivery 2 weeks late per PO schedule."
       },
       {
-        "action": "hod_approve",
+        "action": "desk_clear",
         "from": "at_payment_desk",
-        "to": "hod_approved",
-        "by": "hod_imm",
+        "to": "cleared_by_desk",
+        "by": "payment_desk",
         "date": "2026-05-11",
-        "remark": "Approved. Forward to CPPC."
+        "remark": "Cleared by payment desk — forwarded for HOD approval."
       },
       {
-        "action": "desk_to_cppc",
-        "from": "hod_approved",
+        "action": "hod_approve",
+        "from": "cleared_by_desk",
         "to": "sent_to_cppc",
-        "by": "payment_desk",
+        "by": "hod_imm",
         "date": "2026-05-12",
-        "remark": "Payment proposal sent to CPPC.",
+        "remark": "Approved — payment proposal forwarded to CPPC.",
         "pprNo": "PPR/26/0214",
         "pprDate": "2026-05-12"
       }
@@ -188,20 +243,20 @@
         "remark": "In order."
       },
       {
-        "action": "hod_approve",
+        "action": "desk_clear",
         "from": "at_payment_desk",
-        "to": "hod_approved",
-        "by": "hod_imm",
+        "to": "cleared_by_desk",
+        "by": "payment_desk",
         "date": "2026-04-24",
-        "remark": "Approved."
+        "remark": "Cleared by payment desk — forwarded for HOD approval."
       },
       {
-        "action": "desk_to_cppc",
-        "from": "hod_approved",
+        "action": "hod_approve",
+        "from": "cleared_by_desk",
         "to": "sent_to_cppc",
-        "by": "payment_desk",
+        "by": "hod_imm",
         "date": "2026-04-27",
-        "remark": "Payment proposal sent to CPPC.",
+        "remark": "Approved — payment proposal forwarded to CPPC.",
         "pprNo": "PPR/26/0187",
         "pprDate": "2026-04-27"
       },

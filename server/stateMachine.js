@@ -1,10 +1,12 @@
 import { rvByNo, todayISO } from './store.js';
 
-// PA lifecycle (linear; HOD gates CPPC dispatch):
+// PA lifecycle (linear; HOD approval gates CPPC dispatch):
 //   rv_pending → pa_created → forwarded_to_officer → at_payment_desk
-//   → hod_approved → sent_to_cppc → paid
-// Each named action is a row here; routes never hand-roll status changes.
-// `by` is stamped server-side into history — the role switcher is not trusted.
+//   → cleared_by_desk → sent_to_cppc → paid
+// The payment desk CLEARS an advice (no PPR yet); HOD approval is what dispatches
+// it to CPPC and captures the CPPC PPR no/date. Each named action is a row here;
+// routes never hand-roll status changes. `by` is stamped server-side into history
+// — the role switcher is not trusted.
 export const TRANSITIONS = {
   forward_to_officer: {
     from: 'pa_created',
@@ -28,24 +30,24 @@ export const TRANSITIONS = {
     by: 'payment_desk',
     remarkRequired: true
   },
-  hod_approve: {
+  desk_clear: {
     from: 'at_payment_desk',
-    to: 'hod_approved',
+    to: 'cleared_by_desk',
+    by: 'payment_desk',
+    defaultRemark: 'Cleared by payment desk — forwarded for HOD approval.'
+  },
+  hod_approve: {
+    from: 'cleared_by_desk',
+    to: 'sent_to_cppc',
     by: 'hod_imm',
-    defaultRemark: 'Approved.'
+    metaRequired: ['pprNo', 'pprDate'],
+    defaultRemark: 'Approved — payment proposal forwarded to CPPC.'
   },
   hod_return: {
-    from: 'at_payment_desk',
+    from: 'cleared_by_desk',
     to: 'pa_created',
     by: 'hod_imm',
     remarkRequired: true
-  },
-  desk_to_cppc: {
-    from: 'hod_approved',
-    to: 'sent_to_cppc',
-    by: 'payment_desk',
-    metaRequired: ['pprNo', 'pprDate'],
-    defaultRemark: 'Payment proposal sent to CPPC.'
   }
 };
 

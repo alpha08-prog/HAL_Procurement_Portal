@@ -6,7 +6,14 @@
     "gstin": "27AABCS1429B1ZX",
     "mseCategory": "MSE",
     "mseWomen": "NA",
-    "mseScSt": "NA"
+    "mseScSt": "NA",
+    "code": "SUP-SSI-0142",
+    "address": "Plot 14, MIDC Bhosari, Pune 411026, Maharashtra",
+    "bank": {
+      "name": "HDFC Bank",
+      "accountNo": "50200012345678",
+      "ifsc": "HDFC0000123"
+    }
   },
   {
     "id": "V002",
@@ -15,7 +22,14 @@
     "gstin": "27AAACP8821F1Z2",
     "mseCategory": "MSE",
     "mseWomen": "NA",
-    "mseScSt": "SC-ST"
+    "mseScSt": "SC-ST",
+    "code": "SUP-PFE-0088",
+    "address": "Gat 212, Chakan Industrial Area, Pune 410501, Maharashtra",
+    "bank": {
+      "name": "ICICI Bank",
+      "accountNo": "002705001234",
+      "ifsc": "ICIC0000027"
+    }
   },
   {
     "id": "V003",
@@ -24,7 +38,14 @@
     "gstin": "29AACCB4407J1ZD",
     "mseCategory": "Non-MSE",
     "mseWomen": "NA",
-    "mseScSt": "NA"
+    "mseScSt": "NA",
+    "code": "SUP-BAC-0301",
+    "address": "No. 47, Electronic City Phase 1, Bengaluru 560100, Karnataka",
+    "bank": {
+      "name": "State Bank of India",
+      "accountNo": "30912345678",
+      "ifsc": "SBIN0004321"
+    }
   },
   {
     "id": "V004",
@@ -33,7 +54,14 @@
     "gstin": "27AAFCN2310K1Z9",
     "mseCategory": "MSE",
     "mseWomen": "Women",
-    "mseScSt": "NA"
+    "mseScSt": "NA",
+    "code": "SUP-NIF-0210",
+    "address": "Plot 7, Satpur MIDC, Nashik 422007, Maharashtra",
+    "bank": {
+      "name": "Bank of Maharashtra",
+      "accountNo": "60123456789",
+      "ifsc": "MAHB0000456"
+    }
   },
   {
     "id": "V005",
@@ -42,7 +70,14 @@
     "gstin": "27AAACH1201R1ZM",
     "mseCategory": "Non-MSE",
     "mseWomen": "NA",
-    "mseScSt": "NA"
+    "mseScSt": "NA",
+    "code": "SUP-HIL-1201",
+    "address": "Century Bhavan, Dr Annie Besant Road, Worli, Mumbai 400030, Maharashtra",
+    "bank": {
+      "name": "Axis Bank",
+      "accountNo": "911020001234567",
+      "ifsc": "UTIB0000234"
+    }
   },
   {
     "id": "V006",
@@ -51,6 +86,13 @@
     "gstin": "27AADFD5512Q1Z4",
     "mseCategory": "MSE",
     "mseWomen": "NA",
-    "mseScSt": "NA"
+    "mseScSt": "NA",
+    "code": "SUP-DTA-0512",
+    "address": "Unit 22, Ambad MIDC, Nashik 422010, Maharashtra",
+    "bank": {
+      "name": "Kotak Mahindra Bank",
+      "accountNo": "7411223344",
+      "ifsc": "KKBK0000789"
+    }
   }
 ]

@@ -29,7 +29,45 @@
         "date": "2026-05-20",
         "remark": "Payment advice generated from RV."
       }
-    ]
+    ],
+    "invoiceValue": 23567200,
+    "checkingOfficerPbNo": "PB-44821",
+    "ldApplicable": "Yes",
+    "bankMismatch": false,
+    "securities": {
+      "sd": {
+        "applicable": "Yes",
+        "amount": 2356720,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      },
+      "pbg": {
+        "applicable": "Yes",
+        "amount": 4713440,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      },
+      "emd": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      },
+      "indemnity": {
+        "applicable": "Yes",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      }
+    },
+    "attachments": {
+      "rvCopy": "Yes",
+      "invoice": "No",
+      "ftr": "Yes",
+      "warranty": "Yes",
+      "bankChange": "No"
+    },
+    "securitiesRemark": ""
   },
   {
     "paNo": "PA/26/061",
@@ -85,7 +123,45 @@
         "date": "2026-05-12",
         "remark": "Cleared by payment desk — forwarded for HOD approval."
       }
-    ]
+    ],
+    "invoiceValue": 3548000,
+    "checkingOfficerPbNo": "PB-45110",
+    "ldApplicable": "Yes",
+    "bankMismatch": false,
+    "securities": {
+      "sd": {
+        "applicable": "Yes",
+        "amount": 177400,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      },
+      "pbg": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      },
+      "emd": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      },
+      "indemnity": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      }
+    },
+    "attachments": {
+      "rvCopy": "Yes",
+      "invoice": "Yes",
+      "ftr": "Yes",
+      "warranty": "No",
+      "bankChange": "No"
+    },
+    "securitiesRemark": "10% PBG amount kept on hold pending PBG validity extension."
   },
   {
     "paNo": "PA/26/058",
@@ -133,7 +209,45 @@
         "date": "2026-05-14",
         "remark": "Verified against PO terms. Forwarded to payment desk."
       }
-    ]
+    ],
+    "invoiceValue": 482160,
+    "checkingOfficerPbNo": "PB-44821",
+    "ldApplicable": "No",
+    "bankMismatch": true,
+    "securities": {
+      "sd": {
+        "applicable": "Yes",
+        "amount": 24108,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      },
+      "pbg": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      },
+      "emd": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      },
+      "indemnity": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      }
+    },
+    "attachments": {
+      "rvCopy": "Yes",
+      "invoice": "Yes",
+      "ftr": "Yes",
+      "warranty": "No",
+      "bankChange": "Yes"
+    },
+    "securitiesRemark": ""
   },
   {
     "paNo": "PA/26/051",
@@ -199,7 +313,45 @@
         "pprNo": "PPR/26/0214",
         "pprDate": "2026-05-12"
       }
-    ]
+    ],
+    "invoiceValue": 7812945,
+    "checkingOfficerPbNo": "PB-45110",
+    "ldApplicable": "Yes",
+    "bankMismatch": false,
+    "securities": {
+      "sd": {
+        "applicable": "Yes",
+        "amount": 781295,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      },
+      "pbg": {
+        "applicable": "Yes",
+        "amount": 1562589,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      },
+      "emd": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      },
+      "indemnity": {
+        "applicable": "Yes",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      }
+    },
+    "attachments": {
+      "rvCopy": "Yes",
+      "invoice": "Yes",
+      "ftr": "Yes",
+      "warranty": "Yes",
+      "bankChange": "No"
+    },
+    "securitiesRemark": ""
   },
   {
     "paNo": "PA/26/044",
@@ -273,7 +425,45 @@
         "date": "2026-05-06",
         "remark": "Payment released by CPPC."
       }
-    ]
+    ],
+    "invoiceValue": 195300,
+    "checkingOfficerPbNo": "PB-43977",
+    "ldApplicable": "No",
+    "bankMismatch": false,
+    "securities": {
+      "sd": {
+        "applicable": "Yes",
+        "amount": 9765,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      },
+      "pbg": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      },
+      "emd": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      },
+      "indemnity": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      }
+    },
+    "attachments": {
+      "rvCopy": "Yes",
+      "invoice": "Yes",
+      "ftr": "Yes",
+      "warranty": "No",
+      "bankChange": "No"
+    },
+    "securitiesRemark": ""
   },
   {
     "paNo": "PA/26/021",
@@ -347,7 +537,45 @@
         "date": "2026-02-05",
         "remark": "Payment released by CPPC."
       }
-    ]
+    ],
+    "invoiceValue": 1860000,
+    "checkingOfficerPbNo": "PB-43977",
+    "ldApplicable": "No",
+    "bankMismatch": false,
+    "securities": {
+      "sd": {
+        "applicable": "Yes",
+        "amount": 93000,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      },
+      "pbg": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      },
+      "emd": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      },
+      "indemnity": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      }
+    },
+    "attachments": {
+      "rvCopy": "Yes",
+      "invoice": "Yes",
+      "ftr": "Yes",
+      "warranty": "No",
+      "bankChange": "No"
+    },
+    "securitiesRemark": ""
   },
   {
     "paNo": "PA/26/018",
@@ -413,6 +641,44 @@
         "pprNo": "PPR/26/0079",
         "pprDate": "2026-02-18"
       }
-    ]
+    ],
+    "invoiceValue": 5400000,
+    "checkingOfficerPbNo": "PB-45110",
+    "ldApplicable": "Yes",
+    "bankMismatch": false,
+    "securities": {
+      "sd": {
+        "applicable": "Yes",
+        "amount": 550000,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      },
+      "pbg": {
+        "applicable": "Yes",
+        "amount": 1100000,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      },
+      "emd": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      },
+      "indemnity": {
+        "applicable": "Yes",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      }
+    },
+    "attachments": {
+      "rvCopy": "Yes",
+      "invoice": "Yes",
+      "ftr": "Yes",
+      "warranty": "Yes",
+      "bankChange": "No"
+    },
+    "securitiesRemark": ""
   }
 ]

@@ -21,3 +21,17 @@ export const STATUS_META = {
 export function statusMeta(status) {
   return STATUS_META[status] ?? { label: String(status ?? '—'), tone: 'neutral' };
 }
+
+// Grouped payment status the source doc asks for on Screens 1 & 6
+// ("With PO grp / With Payment group / Forwarded to CPPC").
+const PAYMENT_GROUP = {
+  rv_pending: 'RV Pending',
+  pa_created: 'With Purchase Group',
+  forwarded_to_officer: 'With Purchase Group',
+  at_payment_desk: 'With Payment Group',
+  cleared_by_desk: 'With HOD (IMM)',
+  sent_to_cppc: 'Forwarded to CPPC',
+  paid: 'Paid by CPPC'
+};
+
+export const paymentGroupStatus = (status) => PAYMENT_GROUP[status] ?? statusMeta(status).label;

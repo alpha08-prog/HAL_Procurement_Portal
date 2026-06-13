@@ -40,6 +40,17 @@ export const deskQueueConfig = {
         </div>
       )
     },
+    { key: 'gateEntryNo', label: 'Gate Entry No' },
+    {
+      key: 'gemContractNo',
+      label: 'GeM Contract No / Date',
+      render: (row) => (
+        <div className="cell-two-line">
+          <span>{row.gemContractNo ?? '—'}</span>
+          <span>{formatDate(row.gemContractDate)}</span>
+        </div>
+      )
+    },
     { key: 'mseCategory', label: 'MSME', render: (row) => <StatusPill status={row.mseCategory} /> },
     {
       key: 'finalPayment',
@@ -63,10 +74,14 @@ export const deskQueueConfig = {
       }
     },
     {
-      key: 'pendingDaysPa',
-      label: 'Pending Days (Advised)',
+      key: 'pendingDays',
+      label: 'Pending Days (GE / Advised)',
       align: 'right',
-      render: (row) => <span className="num">{row.pendingDaysPa}</span>
+      render: (row) => (
+        <span className="num">
+          {row.pendingDaysGate ?? '—'} / {row.pendingDaysPa}
+        </span>
+      )
     },
     {
       key: 'status',

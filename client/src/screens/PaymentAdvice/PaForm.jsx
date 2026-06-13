@@ -196,18 +196,22 @@ export default function PaForm({ paNo }) {
       {PA_FORM_SECTIONS.map((section) => (
         <div className="form-section" key={section.title}>
           <div className="form-section-title">{section.title}</div>
-          <div className="form-grid">
-            {section.fields.map((field) => (
-              <Field
-                key={field.key}
-                field={field}
-                pa={pa}
-                draft={draft}
-                onChange={onChange}
-                editable={editable && !busy}
-              />
-            ))}
-          </div>
+          {section.render ? (
+            section.render(pa, editable && !busy)
+          ) : (
+            <div className="form-grid">
+              {section.fields.map((field) => (
+                <Field
+                  key={field.key}
+                  field={field}
+                  pa={pa}
+                  draft={draft}
+                  onChange={onChange}
+                  editable={editable && !busy}
+                />
+              ))}
+            </div>
+          )}
         </div>
       ))}
 
@@ -218,24 +222,29 @@ export default function PaForm({ paNo }) {
         </div>
       )}
 
-      {editable && (
-        <div className="form-actions">
-          <button className="btn btn-secondary" onClick={saveDraft} disabled={busy}>
-            Save draft
-          </button>
-          <button
-            className="btn"
-            onClick={forward}
-            disabled={busy || missingRequired.length > 0}
-          >
-            Forward to purchase officer
-          </button>
-          {saved && <span className="action-note">Saved ✓</span>}
-          {missingRequired.length > 0 && (
-            <span className="action-note">Fill invoice no &amp; date to forward.</span>
-          )}
-        </div>
-      )}
+      <div className="form-actions">
+        <button className="btn btn-secondary" onClick={() => window.print()}>
+          Preview Payment Advice Format
+        </button>
+        {editable && (
+          <>
+            <button className="btn btn-secondary" onClick={saveDraft} disabled={busy}>
+              Save draft
+            </button>
+            <button
+              className="btn"
+              onClick={forward}
+              disabled={busy || missingRequired.length > 0}
+            >
+              Submit to Advising Officer
+            </button>
+            {saved && <span className="action-note">Saved ✓</span>}
+            {missingRequired.length > 0 && (
+              <span className="action-note">Fill invoice no &amp; date to submit.</span>
+            )}
+          </>
+        )}
+      </div>
     </section>
   );
 }

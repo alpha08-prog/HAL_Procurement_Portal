@@ -20,15 +20,31 @@ function joinPa(pa) {
     rvDate: rv.rvDate,
     gateEntryNo: rv.gateEntryNo,
     gateEntryDate: rv.gateEntryDate,
+    receiptDate: rv.receiptDate,
     qcDate: rv.qcDate,
     ftrDate: rv.ftrDate,
+    chargeApprovalDate: rv.chargeApprovalDate,
+    waybillNo: rv.waybillNo,
+    waybillDate: rv.waybillDate,
+    poNo: pa.poNo,
     poDate: rv.poDate,
     poValue: rv.poValue,
+    poOfficer: rv.poOfficer,
     deliveryDueDate: rv.deliveryDueDate,
     description: rv.description,
+    gemContractNo: rv.gemContractNo,
+    gemContractDate: rv.gemContractDate,
+    mprNo: rv.mprNo,
+    mprDate: rv.mprDate,
     vendorName: vendor.name ?? 'Unknown vendor',
+    vendorCode: vendor.code ?? vendor.id,
+    vendorAddress: vendor.address ?? '—',
+    vendorBank: vendor.bank ?? null,
     gstin: vendor.gstin ?? '—',
     mseCategory: vendor.mseCategory ?? 'Non-MSE',
+    mseWomen: vendor.mseWomen ?? 'NA',
+    mseScSt: vendor.mseScSt ?? 'NA',
+    ldApplicable: pa.ldAmount > 0 ? 'Yes' : 'No',
     pendingDaysGate: rv.gateEntryDate ? daysSince(rv.gateEntryDate) : null,
     pendingDaysPa: daysSince(pa.createdDate)
   };
@@ -48,31 +64,74 @@ const dateReached = (pa, toState) => pa.history?.find((h) => h.to === toState)?.
 
 const TERMINAL_STATES = new Set(['sent_to_cppc', 'paid']);
 
-// Flattened audit row for the register. Cycle-times are derived here (server-side)
-// from the fixture/history dates — never stored or computed in the UI.
+const between = (from, to) => (from && to ? daysBetween(from, to) : null);
+const lastRemark = (pa) => [...(pa.history ?? [])].reverse().find((h) => h.remark)?.remark ?? '';
+
+// Flattened audit row for the register (Screen 6 — the doc's full field list).
+// Cycle-times are derived here (server-side) from the fixture/history dates —
+// never stored or computed in the UI.
 function registerRow(pa) {
   const rv = rvByNo(pa.rvNo) ?? {};
   const vendor = vendorById(pa.vendorId);
-  const sentDate = dateReached(pa, 'sent_to_cppc');
+  const forwardedDate = dateReached(pa, 'forwarded_to_officer');
   const clearedDate = dateReached(pa, 'cleared_by_desk');
+  const sentDate = dateReached(pa, 'sent_to_cppc');
   return {
     paNo: pa.paNo,
     status: pa.status,
-    vendorName: vendor.name ?? 'Unknown vendor',
-    mseCategory: vendor.mseCategory ?? 'Non-MSE',
-    officer: pa.officer ?? '—',
     fy: financialYear(pa.createdDate),
-    createdDate: pa.createdDate,
+    officer: pa.officer ?? '—',
+    // vendor
+    vendorCode: vendor.code ?? vendor.id ?? '—',
+    vendorName: vendor.name ?? 'Unknown vendor',
+    vendorAddress: vendor.address ?? '—',
+    mseCategory: vendor.mseCategory ?? 'Non-MSE',
+    mseWomen: vendor.mseWomen ?? 'NA',
+    mseScSt: vendor.mseScSt ?? 'NA',
+    // goods inward
+    gateEntryNo: rv.gateEntryNo ?? null,
+    gateEntryDate: rv.gateEntryDate ?? null,
+    waybillNo: rv.waybillNo ?? null,
+    waybillDate: rv.waybillDate ?? null,
+    receiptDate: rv.receiptDate ?? null,
+    ftrDate: rv.ftrDate ?? null,
+    qcDate: rv.qcDate ?? null,
+    chargeApprovalDate: rv.chargeApprovalDate ?? null,
+    // RV / PO
     rvNo: pa.rvNo,
     rvDate: rv.rvDate ?? null,
     rvValue: pa.rvValue,
     poNo: pa.poNo,
+    poDate: rv.poDate ?? null,
+    poDescription: rv.description ?? '—',
+    poValue: rv.poValue ?? null,
+    deliveryDueDate: rv.deliveryDueDate ?? null,
+    gemContractNo: rv.gemContractNo ?? null,
+    gemContractDate: rv.gemContractDate ?? null,
+    mprNo: rv.mprNo ?? null,
+    mprDate: rv.mprDate ?? null,
+    // invoice / payment
+    invoiceNo: pa.invoiceNo ?? null,
+    invoiceDate: pa.invoiceDate ?? null,
+    invoiceValue: pa.invoiceValue ?? null,
+    ldApplicable: pa.ldAmount > 0 ? 'Yes' : 'No',
     ldAmount: pa.ldAmount,
     finalPayment: pa.finalPayment,
+    // dates & actors
+    createdDate: pa.createdDate,
+    forwardedDate,
     pprNo: pa.pprNo ?? null,
     pprDate: pa.pprDate ?? null,
-    rvToPaymentDays: sentDate && rv.rvDate ? daysBetween(rv.rvDate, sentDate) : null,
-    geToClearedDays: clearedDate && rv.gateEntryDate ? daysBetween(rv.gateEntryDate, clearedDate) : null,
+    createdBy: pa.createdBy ?? null,
+    forwardedBy: pa.history?.find((h) => h.action === 'officer_forward')?.by ?? null,
+    advisedBy: pa.history?.find((h) => h.action === 'hod_approve')?.by ?? null,
+    remarks: lastRemark(pa),
+    // cycle-times (whole days)
+    advisedFromRvDays: between(rv.rvDate, pa.createdDate),
+    processedFromForwardingDays: between(forwardedDate, sentDate),
+    rvToPaymentDays: between(rv.rvDate, sentDate),
+    geToPaymentDays: between(rv.gateEntryDate, sentDate),
+    geToClearedDays: between(rv.gateEntryDate, clearedDate),
     pendingDays: TERMINAL_STATES.has(pa.status) ? null : daysSince(pa.createdDate)
   };
 }

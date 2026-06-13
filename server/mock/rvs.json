@@ -13,7 +13,16 @@
     "vendorId": "V001",
     "description": "Ergonomic office seating — assembly shop & design office",
     "rvValue": 9905883,
-    "paStatus": "rv_pending"
+    "paStatus": "rv_pending",
+    "poOfficer": "R. Deshpande / PB-44821",
+    "waybillNo": "WB/26/2048",
+    "waybillDate": "2026-05-10",
+    "gemContractNo": "GEMC-511687730148265",
+    "gemContractDate": "2025-11-20",
+    "chargeApprovalDate": "2026-05-17",
+    "receiptDate": "2026-05-12",
+    "mprNo": "MPR/25-26/0731",
+    "mprDate": "2025-09-15"
   },
   {
     "rvNo": "COM/26/151",
@@ -29,7 +38,16 @@
     "vendorId": "V002",
     "description": "Forged steel brackets — undercarriage assembly jigs",
     "rvValue": 1248500,
-    "paStatus": "rv_pending"
+    "paStatus": "rv_pending",
+    "poOfficer": "S. Kulkarni / PB-45110",
+    "waybillNo": "WB/26/2071",
+    "waybillDate": "2026-05-20",
+    "gemContractNo": "GEMC-511687730151944",
+    "gemContractDate": "2025-12-18",
+    "chargeApprovalDate": "2026-05-26",
+    "receiptDate": "2026-05-22",
+    "mprNo": "MPR/25-26/0802",
+    "mprDate": "2025-10-05"
   },
   {
     "rvNo": "ELE/26/097",
@@ -45,7 +63,16 @@
     "vendorId": "V003",
     "description": "Avionics test-bench connector kits",
     "rvValue": 23567200,
-    "paStatus": "pa_created"
+    "paStatus": "pa_created",
+    "poOfficer": "R. Deshpande / PB-44821",
+    "waybillNo": "WB/26/1987",
+    "waybillDate": "2026-05-02",
+    "gemContractNo": "GEMC-511687730097512",
+    "gemContractDate": "2025-10-07",
+    "chargeApprovalDate": "2026-05-09",
+    "receiptDate": "2026-05-04",
+    "mprNo": "MPR/25-26/0566",
+    "mprDate": "2025-08-01"
   },
   {
     "rvNo": "COM/26/144",
@@ -61,7 +88,16 @@
     "vendorId": "V004",
     "description": "High-tensile fasteners — airframe shop",
     "rvValue": 482160,
-    "paStatus": "at_payment_desk"
+    "paStatus": "at_payment_desk",
+    "poOfficer": "A. Menon / PB-43977",
+    "waybillNo": "WB/26/1942",
+    "waybillDate": "2026-04-25",
+    "gemContractNo": "GEMC-511687730144078",
+    "gemContractDate": "2025-11-28",
+    "chargeApprovalDate": "2026-04-30",
+    "receiptDate": "2026-04-27",
+    "mprNo": "MPR/25-26/0689",
+    "mprDate": "2025-09-10"
   },
   {
     "rvNo": "RAW/26/210",
@@ -77,7 +113,16 @@
     "vendorId": "V005",
     "description": "Aluminium alloy sheets AA2024 — raw material stores",
     "rvValue": 7812945,
-    "paStatus": "sent_to_cppc"
+    "paStatus": "sent_to_cppc",
+    "poOfficer": "S. Kulkarni / PB-45110",
+    "waybillNo": "WB/26/1901",
+    "waybillDate": "2026-04-14",
+    "gemContractNo": "GEMC-511687730210336",
+    "gemContractDate": "2025-09-12",
+    "chargeApprovalDate": "2026-04-21",
+    "receiptDate": "2026-04-16",
+    "mprNo": "MPR/25-26/0421",
+    "mprDate": "2025-06-20"
   },
   {
     "rvNo": "COM/26/139",
@@ -93,7 +138,16 @@
     "vendorId": "V006",
     "description": "Carbide tooling & abrasive consumables",
     "rvValue": 195300,
-    "paStatus": "paid"
+    "paStatus": "paid",
+    "poOfficer": "A. Menon / PB-43977",
+    "waybillNo": "WB/26/1863",
+    "waybillDate": "2026-04-04",
+    "gemContractNo": "GEMC-511687730139845",
+    "gemContractDate": "2025-11-03",
+    "chargeApprovalDate": "2026-04-10",
+    "receiptDate": "2026-04-06",
+    "mprNo": "MPR/25-26/0648",
+    "mprDate": "2025-08-22"
   },
   {
     "rvNo": "ELE/26/092",
@@ -109,7 +163,16 @@
     "vendorId": "V002",
     "description": "Forged undercarriage fittings — machine shop jigs",
     "rvValue": 3548000,
-    "paStatus": "cleared_by_desk"
+    "paStatus": "cleared_by_desk",
+    "poOfficer": "S. Kulkarni / PB-45110",
+    "waybillNo": "WB/26/1971",
+    "waybillDate": "2026-04-28",
+    "gemContractNo": "GEMC-511687730092677",
+    "gemContractDate": "2025-10-18",
+    "chargeApprovalDate": "2026-05-02",
+    "receiptDate": "2026-04-30",
+    "mprNo": "MPR/25-26/0588",
+    "mprDate": "2025-07-28"
   },
   {
     "rvNo": "COM/26/072",
@@ -125,7 +188,16 @@
     "vendorId": "V001",
     "description": "Ergonomic seating — design office (phase 1)",
     "rvValue": 1860000,
-    "paStatus": "paid"
+    "paStatus": "paid",
+    "poOfficer": "A. Menon / PB-43977",
+    "waybillNo": "WB/26/0712",
+    "waybillDate": "2026-01-10",
+    "gemContractNo": "GEMC-511687720072145",
+    "gemContractDate": "2025-08-22",
+    "chargeApprovalDate": "2026-01-17",
+    "receiptDate": "2026-01-12",
+    "mprNo": "MPR/25-26/0231",
+    "mprDate": "2025-05-30"
   },
   {
     "rvNo": "RAW/26/065",
@@ -141,6 +213,15 @@
     "vendorId": "V003",
     "description": "Avionics-grade aluminium billets — raw material stores",
     "rvValue": 5400000,
-    "paStatus": "sent_to_cppc"
+    "paStatus": "sent_to_cppc",
+    "poOfficer": "S. Kulkarni / PB-45110",
+    "waybillNo": "WB/26/0689",
+    "waybillDate": "2026-01-31",
+    "gemContractNo": "GEMC-511687720065903",
+    "gemContractDate": "2025-07-30",
+    "chargeApprovalDate": "2026-02-04",
+    "receiptDate": "2026-02-02",
+    "mprNo": "MPR/25-26/0198",
+    "mprDate": "2025-05-12"
   }
 ]

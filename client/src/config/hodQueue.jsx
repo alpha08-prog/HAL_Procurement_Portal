@@ -38,6 +38,17 @@ export const hodQueueConfig = {
         </div>
       )
     },
+    { key: 'gateEntryNo', label: 'Gate Entry No' },
+    {
+      key: 'gemContractNo',
+      label: 'GeM Contract No / Date',
+      render: (row) => (
+        <div className="cell-two-line">
+          <span>{row.gemContractNo ?? '—'}</span>
+          <span>{formatDate(row.gemContractDate)}</span>
+        </div>
+      )
+    },
     { key: 'mseCategory', label: 'MSME', render: (row) => <StatusPill status={row.mseCategory} /> },
     {
       key: 'finalPayment',

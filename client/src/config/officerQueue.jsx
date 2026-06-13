@@ -32,8 +32,10 @@ export const officerQueueConfig = {
         </div>
       )
     },
+    { key: 'gateEntryNo', label: 'Gate Entry No' },
     { key: 'vendorName', label: 'Vendor' },
-    { key: 'createdBy', label: 'Created By', render: (row) => roleLabel(row.createdBy) },
+    { key: 'poOfficer', label: 'Purchase Officer / PB No' },
+    { key: 'createdBy', label: 'PA Created By', render: (row) => roleLabel(row.createdBy) },
     { key: 'mseCategory', label: 'MSME', render: (row) => <StatusPill status={row.mseCategory} /> },
     {
       key: 'finalPayment',

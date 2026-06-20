@@ -22,7 +22,10 @@
     "chargeApprovalDate": "2026-05-17",
     "receiptDate": "2026-05-12",
     "mprNo": "MPR/25-26/0731",
-    "mprDate": "2025-09-15"
+    "mprDate": "2025-09-15",
+    "invoiceNo": "INV/26-27/0002",
+    "invoiceDate": "2026-05-18",
+    "invoiceValue": 9905883
   },
   {
     "rvNo": "COM/26/151",
@@ -47,7 +50,10 @@
     "chargeApprovalDate": "2026-05-26",
     "receiptDate": "2026-05-22",
     "mprNo": "MPR/25-26/0802",
-    "mprDate": "2025-10-05"
+    "mprDate": "2025-10-05",
+    "invoiceNo": "PFE/INV/26/0488",
+    "invoiceDate": "2026-05-26",
+    "invoiceValue": 1248500
   },
   {
     "rvNo": "ELE/26/097",
@@ -72,7 +78,10 @@
     "chargeApprovalDate": "2026-05-09",
     "receiptDate": "2026-05-04",
     "mprNo": "MPR/25-26/0566",
-    "mprDate": "2025-08-01"
+    "mprDate": "2025-08-01",
+    "invoiceNo": "BAC/INV/26/0331",
+    "invoiceDate": "2026-05-02",
+    "invoiceValue": 23567200
   },
   {
     "rvNo": "COM/26/144",
@@ -97,7 +106,10 @@
     "chargeApprovalDate": "2026-04-30",
     "receiptDate": "2026-04-27",
     "mprNo": "MPR/25-26/0689",
-    "mprDate": "2025-09-10"
+    "mprDate": "2025-09-10",
+    "invoiceNo": "NIF/INV/26/118",
+    "invoiceDate": "2026-05-02",
+    "invoiceValue": 482160
   },
   {
     "rvNo": "RAW/26/210",
@@ -122,7 +134,10 @@
     "chargeApprovalDate": "2026-04-21",
     "receiptDate": "2026-04-16",
     "mprNo": "MPR/25-26/0421",
-    "mprDate": "2025-06-20"
+    "mprDate": "2025-06-20",
+    "invoiceNo": "HIL/MUM/26/2210",
+    "invoiceDate": "2026-04-25",
+    "invoiceValue": 7812945
   },
   {
     "rvNo": "COM/26/139",
@@ -147,7 +162,10 @@
     "chargeApprovalDate": "2026-04-10",
     "receiptDate": "2026-04-06",
     "mprNo": "MPR/25-26/0648",
-    "mprDate": "2025-08-22"
+    "mprDate": "2025-08-22",
+    "invoiceNo": "DTA/26/0312",
+    "invoiceDate": "2026-04-12",
+    "invoiceValue": 195300
   },
   {
     "rvNo": "ELE/26/092",
@@ -172,7 +190,10 @@
     "chargeApprovalDate": "2026-05-02",
     "receiptDate": "2026-04-30",
     "mprNo": "MPR/25-26/0588",
-    "mprDate": "2025-07-28"
+    "mprDate": "2025-07-28",
+    "invoiceNo": "PFE/INV/26/0457",
+    "invoiceDate": "2026-05-02",
+    "invoiceValue": 3548000
   },
   {
     "rvNo": "COM/26/072",
@@ -197,7 +218,10 @@
     "chargeApprovalDate": "2026-01-17",
     "receiptDate": "2026-01-12",
     "mprNo": "MPR/25-26/0231",
-    "mprDate": "2025-05-30"
+    "mprDate": "2025-05-30",
+    "invoiceNo": "SSI/INV/25/0884",
+    "invoiceDate": "2026-01-18",
+    "invoiceValue": 1860000
   },
   {
     "rvNo": "RAW/26/065",
@@ -222,6 +246,9 @@
     "chargeApprovalDate": "2026-02-04",
     "receiptDate": "2026-02-02",
     "mprNo": "MPR/25-26/0198",
-    "mprDate": "2025-05-12"
+    "mprDate": "2025-05-12",
+    "invoiceNo": "BAC/INV/26/0203",
+    "invoiceDate": "2026-02-06",
+    "invoiceValue": 5400000
   }
 ]

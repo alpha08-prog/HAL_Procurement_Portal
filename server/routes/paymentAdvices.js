@@ -127,6 +127,8 @@ function registerRow(pa) {
     pprNo: pa.pprNo ?? null,
     pprDate: pa.pprDate ?? null,
     createdBy: pa.createdBy ?? null,
+    createdByName: pa.createdByName ?? null,
+    createdByPb: pa.createdByPb ?? null,
     forwardedBy: pa.history?.find((h) => h.action === 'officer_forward')?.by ?? null,
     advisedBy: pa.history?.find((h) => h.action === 'hod_approve')?.by ?? null,
     remarks: lastRemark(pa),
@@ -224,11 +226,19 @@ router.post('/', (req, res) => {
     status: 'pa_created',
     createdDate: todayISO(),
     createdBy: 'purchase_maker',
+    createdByName: 'V. Sharma',
+    createdByPb: 'PB-44102',
+    officer: rv.poOfficer ? rv.poOfficer.split(' / ')[0] : '—',
     rvValue: rv.rvValue,
     ...computeLd(rv),
-    invoiceNo: null,
-    invoiceDate: null,
+    // Invoice no/date/value are IFS-fetched from the RV (red fields on Screen 2) —
+    // copied at generation so the maker sees them read-only and can forward.
+    invoiceNo: rv.invoiceNo ?? null,
+    invoiceDate: rv.invoiceDate ?? null,
+    invoiceValue: rv.invoiceValue ?? null,
+    checkingOfficerPbNo: '',
     makerRemark: '',
+    securitiesRemark: '',
     pprNo: null,
     pprDate: null,
     history: [
@@ -257,9 +267,17 @@ router.post('/update', (req, res) => {
 
   // Invoice no/date/value are IFS-fetched (read-only on Screen 2) — not accepted here.
   // The maker supplies the LD switches, the manual I&C amount, their PB no and a remark.
-  const { makerRemark, ldApplicable, ldByGateEntry, ldByFtr, ldIcAmount, checkingOfficerPbNo } =
-    req.body;
+  const {
+    makerRemark,
+    securitiesRemark,
+    ldApplicable,
+    ldByGateEntry,
+    ldByFtr,
+    ldIcAmount,
+    checkingOfficerPbNo
+  } = req.body;
   if (makerRemark !== undefined) pa.makerRemark = makerRemark;
+  if (securitiesRemark !== undefined) pa.securitiesRemark = securitiesRemark;
   if (checkingOfficerPbNo !== undefined) pa.checkingOfficerPbNo = checkingOfficerPbNo || null;
   if (ldApplicable !== undefined) pa.ldApplicable = ldApplicable === 'Yes' ? 'Yes' : 'No';
   if (ldByGateEntry !== undefined) pa.ldByGateEntry = ldByGateEntry === 'Yes' ? 'Yes' : 'No';

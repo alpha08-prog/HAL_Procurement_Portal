@@ -10,8 +10,15 @@ const SECURITY_ROWS = [
   ['indemnity', 'Indemnity Bond']
 ];
 
-export function SecuritiesPanel({ pa }) {
+export function SecuritiesPanel({ pa, editable = false, draft, onChange }) {
   const s = pa.securities ?? {};
+  // Each security is a green "Fetch/Upload" action in the doc — fetched from IFS or
+  // the EMD portal. Placeholder only; document storage is not wired in the prototype.
+  const fetchAct = (label, present) =>
+    window.alert(
+      `${present ? 'Viewing' : 'Fetching / uploading'} "${label}" — prototype only; pulls from IFS / EMD portal in production.`
+    );
+  const remarkValue = draft ? draft.securitiesRemark ?? '' : pa.securitiesRemark ?? '';
   return (
     <div>
       <table className="mini-table">
@@ -22,11 +29,13 @@ export function SecuritiesPanel({ pa }) {
             <th className="align-right">Amount</th>
             <th>On Hold</th>
             <th>Copy Enclosed</th>
+            <th>Fetch / Upload</th>
           </tr>
         </thead>
         <tbody>
           {SECURITY_ROWS.map(([key, label]) => {
             const v = s[key] ?? {};
+            const present = v.copyEnclosed === 'Yes';
             return (
               <tr key={key}>
                 <td>{label}</td>
@@ -34,12 +43,29 @@ export function SecuritiesPanel({ pa }) {
                 <td className="align-right num">{v.amount != null ? formatINR(v.amount) : '—'}</td>
                 <td>{v.onHold ? 'Yes' : 'No'}</td>
                 <td>{v.copyEnclosed ?? 'No'}</td>
+                <td>
+                  <button className="btn btn-secondary" onClick={() => fetchAct(label, present)}>
+                    {present ? 'View' : 'Fetch / Upload'}
+                  </button>
+                </td>
               </tr>
             );
           })}
         </tbody>
       </table>
-      {pa.securitiesRemark && <div className="field-hint">Remark: {pa.securitiesRemark}</div>}
+      <div className="field field-wide">
+        <div className="field-label">Remark for amount against SD / PBG on hold etc.</div>
+        {editable ? (
+          <textarea
+            className="field-input"
+            rows={2}
+            value={remarkValue}
+            onChange={(e) => onChange?.('securitiesRemark', e.target.value)}
+          />
+        ) : (
+          <div className="field-value">{pa.securitiesRemark || '—'}</div>
+        )}
+      </div>
     </div>
   );
 }

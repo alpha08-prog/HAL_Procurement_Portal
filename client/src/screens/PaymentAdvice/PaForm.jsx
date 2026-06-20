@@ -219,7 +219,7 @@ export default function PaForm({ paNo }) {
         <div className="form-section" key={section.title}>
           <div className="form-section-title">{section.title}</div>
           {section.render ? (
-            section.render(pa, editable && !busy)
+            section.render(pa, editable && !busy, { draft, onChange })
           ) : (
             <div className="form-grid">
               {section.fields.map((field) => (

@@ -25,7 +25,13 @@ export const PA_FORM_SECTIONS = [
   {
     title: 'Advice & References',
     fields: [
-      { key: 'createdBy', label: 'PA Created By', source: 'ifs', render: (pa) => roleLabel(pa.createdBy) },
+      { key: 'paNo', label: 'Payment Advice No', source: 'ifs' },
+      {
+        key: 'createdBy',
+        label: 'PA Created By',
+        source: 'ifs',
+        render: (pa) => (pa.createdByName ? `${pa.createdByName} / ${pa.createdByPb}` : roleLabel(pa.createdBy))
+      },
       { key: 'poOfficer', label: 'PO Officer Name / PB No', source: 'ifs' },
       { key: 'mprNo', label: 'MPR No', source: 'ifs' },
       { key: 'mprDate', label: 'MPR Date', source: 'ifs', type: 'date' },
@@ -168,7 +174,9 @@ export const PA_FORM_SECTIONS = [
   },
   {
     title: 'Securities & Holds',
-    render: (pa) => <SecuritiesPanel pa={pa} />
+    render: (pa, editable, ctx) => (
+      <SecuritiesPanel pa={pa} editable={editable} draft={ctx?.draft} onChange={ctx?.onChange} />
+    )
   },
   {
     title: 'Attachments',
@@ -176,9 +184,13 @@ export const PA_FORM_SECTIONS = [
   }
 ];
 
-// Keys the maker edits locally before save/forward (render-only sections have no fields).
-export const PA_MAKER_FIELDS = PA_FORM_SECTIONS.flatMap((s) => s.fields ?? []).filter(
-  (f) => f.source === 'maker'
-);
+// Keys the maker edits locally before save/forward. Render-only sections (securities,
+// attachments) declare their maker inputs here so they flow through the draft → /update.
+const VIRTUAL_MAKER_FIELDS = [{ key: 'securitiesRemark', source: 'maker', type: 'textarea' }];
+
+export const PA_MAKER_FIELDS = [
+  ...PA_FORM_SECTIONS.flatMap((s) => s.fields ?? []),
+  ...VIRTUAL_MAKER_FIELDS
+].filter((f) => f.source === 'maker');
 
 export const PA_REQUIRED_FIELDS = PA_MAKER_FIELDS.filter((f) => f.required).map((f) => f.key);

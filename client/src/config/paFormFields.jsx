@@ -3,15 +3,17 @@
 // here, not in the screen.
 //
 // Field shape:
-//   key       — property on the PA object from the API
-//   label     — display label
-//   source    — 'ifs' (ERP-fetched, read-only, tagged IFS) | 'maker' (input) |
-//               'computed' (server-computed, read-only, tagged Computed)
-//   type      — text | date | currency | pill | date-input | amount | textarea
-//   required  — maker fields that must be filled before forwarding
-//   render(pa)— optional custom display for read-only fields
-//   emphasis  — render value large/bold (final payment)
-//   hint      — small helper text under the value
+//   key        — property on the PA object from the API
+//   label      — display label
+//   source     — 'ifs' (ERP-fetched, read-only, tagged IFS) | 'maker' (input) |
+//                'computed' (server-computed, read-only, tagged Computed)
+//   type       — text | date | currency | pill | date-input | amount | textarea | select
+//   options    — choices for type 'select' (e.g. ['Yes', 'No'])
+//   required   — maker fields that must be filled before forwarding
+//   render(pa) — optional custom display for read-only fields
+//   emphasis   — render value large/bold (final payment)
+//   hint       — small helper text under the value
+//   disabledWhen(draft) — optional; maker input is greyed out when this returns true
 //
 // A section may instead carry render(pa, editable) to draw a custom sub-form
 // (securities, attachments) in place of the field grid.
@@ -24,8 +26,7 @@ export const PA_FORM_SECTIONS = [
     title: 'Advice & References',
     fields: [
       { key: 'createdBy', label: 'PA Created By', source: 'ifs', render: (pa) => roleLabel(pa.createdBy) },
-      { key: 'poOfficer', label: 'PO Officer / PB No', source: 'ifs' },
-      { key: 'checkingOfficerPbNo', label: 'Checked & Forwarded by (PB No)', source: 'ifs' },
+      { key: 'poOfficer', label: 'PO Officer Name / PB No', source: 'ifs' },
       { key: 'mprNo', label: 'MPR No', source: 'ifs' },
       { key: 'mprDate', label: 'MPR Date', source: 'ifs', type: 'date' },
       { key: 'gemContractNo', label: 'GeM Contract No', source: 'ifs' },
@@ -76,12 +77,11 @@ export const PA_FORM_SECTIONS = [
     ]
   },
   {
-    title: 'Invoice — Maker Entry',
+    title: 'Invoice',
     fields: [
-      { key: 'invoiceNo', label: 'Invoice No', source: 'maker', type: 'text', required: true },
-      { key: 'invoiceDate', label: 'Invoice Date', source: 'maker', type: 'date-input', required: true },
-      { key: 'invoiceValue', label: 'Invoice Value', source: 'ifs', type: 'currency' },
-      { key: 'makerRemark', label: 'Maker Remark', source: 'maker', type: 'textarea' }
+      { key: 'invoiceNo', label: 'Invoice No', source: 'ifs' },
+      { key: 'invoiceDate', label: 'Invoice Date', source: 'ifs', type: 'date' },
+      { key: 'invoiceValue', label: 'Invoice Value', source: 'ifs', type: 'currency' }
     ]
   },
   {
@@ -89,7 +89,23 @@ export const PA_FORM_SECTIONS = [
     fields: [
       { key: 'rvValue', label: 'RV Value', source: 'ifs', type: 'currency' },
       { key: 'poValue', label: 'PO Order Value', source: 'ifs', type: 'currency', hint: 'LD cap base' },
-      { key: 'ldApplicable', label: 'LD Applicable', source: 'computed' },
+      {
+        key: 'ldApplicable',
+        label: 'LD Applicable',
+        source: 'maker',
+        type: 'select',
+        options: ['Yes', 'No'],
+        hint: 'Set No to waive the entire deduction — totals recompute on save'
+      },
+      {
+        key: 'ldByGateEntry',
+        label: 'Calculate LD on Gate Entry date',
+        source: 'maker',
+        type: 'select',
+        options: ['Yes', 'No'],
+        hint: 'Automatic supply-delay LD (a)',
+        disabledWhen: (d) => d.ldApplicable !== 'Yes'
+      },
       {
         key: 'ldWeeks',
         label: 'Supply Delay',
@@ -104,11 +120,21 @@ export const PA_FORM_SECTIONS = [
         hint: '0.5% of RV value per week or part thereof'
       },
       {
+        key: 'ldByFtr',
+        label: 'Calculate LD on FTR date (Installation & Commissioning)',
+        source: 'maker',
+        type: 'select',
+        options: ['Yes', 'No'],
+        hint: 'Enables the manual I&C entry (b)',
+        disabledWhen: (d) => d.ldApplicable !== 'Yes'
+      },
+      {
         key: 'ldIcAmount',
         label: 'LD (b) — Installation & Commissioning',
         source: 'maker',
         type: 'amount',
-        hint: 'Manual, per FTR date — totals recompute on save'
+        hint: 'Manual, per FTR date — totals recompute on save',
+        disabledWhen: (d) => d.ldApplicable !== 'Yes' || d.ldByFtr !== 'Yes'
       },
       {
         key: 'ldAmount',
@@ -125,6 +151,19 @@ export const PA_FORM_SECTIONS = [
         emphasis: true,
         hint: 'RV value − LD total'
       }
+    ]
+  },
+  {
+    title: 'Verification & Forwarding',
+    fields: [
+      {
+        key: 'checkingOfficerPbNo',
+        label: 'PB No of person checking & forwarding',
+        source: 'maker',
+        type: 'text',
+        required: true
+      },
+      { key: 'makerRemark', label: 'Maker Remark', source: 'maker', type: 'textarea' }
     ]
   },
   {

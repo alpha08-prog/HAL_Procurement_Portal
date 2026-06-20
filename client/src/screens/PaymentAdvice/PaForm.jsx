@@ -7,7 +7,12 @@ import { formatINR } from '../../lib/currency.js';
 import { formatDate } from '../../lib/date.js';
 
 const initDraft = (pa) =>
-  Object.fromEntries(PA_MAKER_FIELDS.map((f) => [f.key, pa[f.key] ?? '']));
+  Object.fromEntries(
+    PA_MAKER_FIELDS.map((f) => [
+      f.key,
+      pa[f.key] ?? (f.type === 'select' ? f.options?.[0] ?? '' : '')
+    ])
+  );
 
 function displayValue(field, pa) {
   if (field.render) return field.render(pa);
@@ -26,6 +31,7 @@ function displayValue(field, pa) {
 
 function Field({ field, pa, draft, onChange, editable }) {
   const wide = field.type === 'textarea';
+  const disabled = !editable || (field.disabledWhen?.(draft) ?? false);
   const tag =
     field.source === 'ifs' ? (
       <span className="tag">IFS</span>
@@ -46,9 +52,22 @@ function Field({ field, pa, draft, onChange, editable }) {
             className="field-input"
             rows={2}
             value={draft[field.key]}
-            disabled={!editable}
+            disabled={disabled}
             onChange={(e) => onChange(field.key, e.target.value)}
           />
+        ) : field.type === 'select' ? (
+          <select
+            className="field-input"
+            value={draft[field.key]}
+            disabled={disabled}
+            onChange={(e) => onChange(field.key, e.target.value)}
+          >
+            {field.options.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
         ) : (
           <input
             className="field-input"
@@ -57,7 +76,7 @@ function Field({ field, pa, draft, onChange, editable }) {
             }
             min={field.type === 'amount' ? 0 : undefined}
             value={draft[field.key]}
-            disabled={!editable}
+            disabled={disabled}
             onChange={(e) => onChange(field.key, e.target.value)}
           />
         )
@@ -125,6 +144,9 @@ export default function PaForm({ paNo }) {
 
   const editable = pa.status === 'pa_created' && !recordView;
   const missingRequired = PA_REQUIRED_FIELDS.filter((key) => !draft[key]);
+  const missingLabels = PA_MAKER_FIELDS.filter((f) => missingRequired.includes(f.key)).map(
+    (f) => f.label
+  );
 
   const onChange = (key, value) => {
     setDraft((d) => ({ ...d, [key]: value }));
@@ -240,7 +262,7 @@ export default function PaForm({ paNo }) {
             </button>
             {saved && <span className="action-note">Saved ✓</span>}
             {missingRequired.length > 0 && (
-              <span className="action-note">Fill invoice no &amp; date to submit.</span>
+              <span className="action-note">Fill {missingLabels.join(', ')} to submit.</span>
             )}
           </>
         )}

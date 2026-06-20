@@ -44,7 +44,11 @@ function joinPa(pa) {
     mseCategory: vendor.mseCategory ?? 'Non-MSE',
     mseWomen: vendor.mseWomen ?? 'NA',
     mseScSt: vendor.mseScSt ?? 'NA',
-    ldApplicable: pa.ldAmount > 0 ? 'Yes' : 'No',
+    // LD switches are maker-controlled (Screen 2) — pass the stored decision through,
+    // defaulting for older fixtures that predate the explicit switches.
+    ldApplicable: pa.ldApplicable ?? (pa.ldAmount > 0 ? 'Yes' : 'No'),
+    ldByGateEntry: pa.ldByGateEntry ?? (pa.ldSupplyAmount > 0 ? 'Yes' : 'No'),
+    ldByFtr: pa.ldByFtr ?? (pa.ldIcAmount > 0 ? 'Yes' : 'No'),
     pendingDaysGate: rv.gateEntryDate ? daysSince(rv.gateEntryDate) : null,
     pendingDaysPa: daysSince(pa.createdDate)
   };
@@ -114,7 +118,7 @@ function registerRow(pa) {
     invoiceNo: pa.invoiceNo ?? null,
     invoiceDate: pa.invoiceDate ?? null,
     invoiceValue: pa.invoiceValue ?? null,
-    ldApplicable: pa.ldAmount > 0 ? 'Yes' : 'No',
+    ldApplicable: pa.ldApplicable ?? (pa.ldAmount > 0 ? 'Yes' : 'No'),
     ldAmount: pa.ldAmount,
     finalPayment: pa.finalPayment,
     // dates & actors
@@ -251,10 +255,15 @@ router.post('/update', (req, res) => {
     return res.status(409).json({ error: `${pa.paNo} is ${pa.status} — maker fields are locked` });
   }
 
-  const { invoiceNo, invoiceDate, makerRemark, ldIcAmount } = req.body;
-  if (invoiceNo !== undefined) pa.invoiceNo = invoiceNo || null;
-  if (invoiceDate !== undefined) pa.invoiceDate = invoiceDate || null;
+  // Invoice no/date/value are IFS-fetched (read-only on Screen 2) — not accepted here.
+  // The maker supplies the LD switches, the manual I&C amount, their PB no and a remark.
+  const { makerRemark, ldApplicable, ldByGateEntry, ldByFtr, ldIcAmount, checkingOfficerPbNo } =
+    req.body;
   if (makerRemark !== undefined) pa.makerRemark = makerRemark;
+  if (checkingOfficerPbNo !== undefined) pa.checkingOfficerPbNo = checkingOfficerPbNo || null;
+  if (ldApplicable !== undefined) pa.ldApplicable = ldApplicable === 'Yes' ? 'Yes' : 'No';
+  if (ldByGateEntry !== undefined) pa.ldByGateEntry = ldByGateEntry === 'Yes' ? 'Yes' : 'No';
+  if (ldByFtr !== undefined) pa.ldByFtr = ldByFtr === 'Yes' ? 'Yes' : 'No';
   if (ldIcAmount !== undefined) {
     const ic = Number(ldIcAmount === '' ? 0 : ldIcAmount);
     if (!Number.isFinite(ic) || ic < 0) {
@@ -265,7 +274,16 @@ router.post('/update', (req, res) => {
 
   // Re-derive LD totals and final payment so the client never does money math.
   const rv = rvByNo(pa.rvNo);
-  if (rv) Object.assign(pa, computeLd(rv, pa.ldIcAmount ?? 0));
+  if (rv)
+    Object.assign(
+      pa,
+      computeLd(rv, {
+        ldApplicable: pa.ldApplicable,
+        ldByGateEntry: pa.ldByGateEntry,
+        ldByFtr: pa.ldByFtr,
+        ldIcAmount: pa.ldIcAmount ?? 0
+      })
+    );
   res.json(joinPa(pa));
 });
 

@@ -1,0 +1,33 @@
+{
+  "_GUARD": "Output ONLY the note body text. Do not restate these instructions, do not add a document title, preamble like 'The following is...', or closing pleasantries like 'Thank you'. Write amounts as 'INR <number>', never the rupee symbol. Do NOT use markdown formatting (no **, no #, no bullet markers). Do NOT invent any figure, amount, date, name, or reference number that is not present in the supplied data — if a value is absent, omit that line entirely rather than inserting a placeholder.",
+  "provisioning": {
+    "user": "You are a procurement officer at HAL Aircraft Overhaul Division, Nashik. Write the body of an official Provisioning Note using the structured data below. Formal HAL house style. Include: (1) item is sanctioned under the stated budget, (2) CAR number with attachment ref (A1), (3) technical specification attachment ref (A2), (4) DOP clause under which approval is sought, (5) closing line 'Submitted for kind approval of GM(AOD)'. Plain text only, no headings.\n\nData:\n{delta_json}\n{annexures}"
+  },
+  "tender_doc": {
+    "user": "You are a tendering officer at HAL Aircraft Overhaul Division, Nashik. Write the covering note for a Tender Document being floated on GeM/E-Proc. Formal HAL house style. Include: (1) tender type and reference, (2) IFS tender enquiry number against the requisition, (3) statement that commercial conditions, MII/LBS/integrity-pact/NDA undertakings and SD/PBG formats are enclosed, (4) submission line. Plain text only, no headings.\n\nData:\n{delta_json}\n{annexures}"
+  },
+  "emd": {
+    "user": "You are a tendering officer at HAL Aircraft Overhaul Division, Nashik. Write the body of an EMD Stage Acceptance Note in formal HAL house style. Include: (1) the tender reference and date, (2) the total number of bids received, (3) the EMD-accepted bidders — list each on its own line, reproducing its name, Udyam number, MSE size and NIC code exactly as supplied, (4) the EMD-rejected bidders, each with its name, Udyam number and the reason for rejection, (5) a closing line submitting for concurrence of Finance and approval of Head of IMM. Reproduce every Udyam and NIC value verbatim; never invent, omit or reorder them. Do not quote or mention any data field names.\n\nData:\n{delta_json}\n{annexures}"
+  },
+  "tec_req": {
+    "user": "You are a tendering officer at HAL Aircraft Overhaul Division, Nashik. Write the body of a TEC Request Note in formal HAL house style. Include: (1) a reference that the following offers were accepted at the EMD stage, (2) the bidders being forwarded to the Technical Evaluation Committee — list each on its own line, reproducing its name, Udyam number, MSE size and NIC code exactly as supplied, (3) a request to the TEC to evaluate these offers against the technical specifications, (4) a closing submission line to AGM(IMM-OH). Reproduce every value verbatim; never invent or reorder Udyam/NIC numbers. Do not quote or mention any data field names.\n\nData:\n{delta_json}\n{annexures}"
+  },
+  "tec_report": {
+    "user": "You are the indenting agency at HAL Aircraft Overhaul Division, Nashik. Write the body of a TEC Report Note recording the committee's findings. Formal HAL house style. Include: (1) any TEC query raised and bidder replies, (2) technically accepted bidders, (3) technically rejected bidders with specification non-compliance sl. nos., (4) recommendation to update TEC report in GeM. Plain text only, no headings.\n\nData:\n{delta_json}\n{annexures}"
+  },
+  "pbo": {
+    "user": "You are a tendering officer at HAL Aircraft Overhaul Division, Nashik. Write ONLY the NEW Price Bid Opening section to be appended after the carry-forward body. Formal HAL house style. Include: (1) technically accepted bidders whose price bids are to be opened, (2) reference to Purchase Manual clause 8.5.6 if fewer than threshold offers qualify, (3) L1 vendor and offered price once opened, (4) request for AGM(IMM-OH) concurrence and GM(AOD) approval. Do NOT repeat the carry-forward body. Plain text only, no headings.\n\nNew data only:\n{delta_json}\n{annexures}"
+  },
+  "pnc_req": {
+    "user": "You are a tendering officer at HAL Aircraft Overhaul Division, Nashik. Write ONLY the NEW PNC Request section to be appended after the carry-forward body. Formal HAL house style. Include: (1) L1 price vs budget estimate — amount and percentage deviation, (2) LPP reference contract, (3) reverse auction participation result, (4) reference to the enclosed Comparative Statement, Commercial Evaluation and Price Justification annexures, (5) proposed PNC committee, (6) request for approval to negotiate. Do NOT repeat the carry-forward body. Plain text only, no headings.\n\nNew data only:\n{delta_json}\n{annexures}"
+  },
+  "pnc_rec": {
+    "user": "You are a tendering officer at HAL Aircraft Overhaul Division, Nashik. Write ONLY the NEW PNC Recommendation section to be appended after the carry-forward body. Formal HAL house style. Include: (1) counter-offer received with date, (2) revised price vs initial L1 price, (3) savings in rupees and percentage, (4) citation of Purchase Manual clause 8.20.1 (counter-offer tantamounts to negotiation), (5) PNC recommendation to procure from L1 vendor at the counter-offered price. Do NOT repeat the carry-forward body. Plain text only, no headings.\n\nNew data only:\n{delta_json}\n{annexures}"
+  },
+  "pp": {
+    "user": "You are a tendering officer at HAL Aircraft Overhaul Division, Nashik. Write ONLY the NEW Purchase Proposal section to be appended after the carry-forward body. Formal HAL house style. Include: (1) proposal reference number, (2) Initiator, FCA and CFA names with designations, (3) DOP-2025 Annexure clause empowering the CFA, (4) recommended vendor, quantity and final negotiated value, (5) submission to DPC and CFA for approval to place the Purchase Order. Do NOT repeat the carry-forward body. Plain text only, no headings.\n\nNew data only:\n{delta_json}\n{annexures}"
+  },
+  "po": {
+    "user": "You are a tendering officer at HAL Aircraft Overhaul Division, Nashik. Write the covering note for the Purchase Order and HAL Standard Contract. Formal HAL house style. Include: (1) PO number and vendor, (2) Security Deposit and Performance Bank Guarantee amounts as enclosed, (3) warranty terms, (4) delivery terms, (5) statement that SD/PBG/indemnity are being collected per the standard contract. Plain text only, no headings.\n\nData:\n{delta_json}\n{annexures}"
+  }
+}

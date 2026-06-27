@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import StatusPill from '../../components/StatusPill.jsx';
 import Timeline from '../../components/Timeline.jsx';
 import { PA_FORM_SECTIONS, PA_MAKER_FIELDS, PA_REQUIRED_FIELDS } from '../../config/paFormFields.jsx';
+import { apiFetch } from '../../lib/api.js';
 import { formatINR } from '../../lib/currency.js';
 import { formatDate } from '../../lib/date.js';
 
@@ -105,7 +106,7 @@ export default function PaForm({ paNo }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/payment-advices?pa=${encodeURIComponent(paNo)}`)
+    apiFetch(`/api/payment-advices?pa=${encodeURIComponent(paNo)}`)
       .then((res) => {
         if (!res.ok) throw new Error(`API error ${res.status}`);
         return res.json();
@@ -154,7 +155,7 @@ export default function PaForm({ paNo }) {
   };
 
   const post = async (path, body) => {
-    const res = await fetch(path, {
+    const res = await apiFetch(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)

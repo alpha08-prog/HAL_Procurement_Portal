@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { actionLabel } from '../config/historyMeta.js';
 import { roleLabel } from '../config/roles.js';
+import { apiFetch } from '../lib/api.js';
 import { formatDate } from '../lib/date.js';
 
 // Read-only PA history timeline for the Screen 6 detail view. Fetches the ordered
@@ -11,7 +12,7 @@ export default function Timeline({ paNo }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/payment-advices/history?pa=${encodeURIComponent(paNo)}`)
+    apiFetch(`/api/payment-advices/history?pa=${encodeURIComponent(paNo)}`)
       .then((res) => {
         if (!res.ok) throw new Error(`API error ${res.status}`);
         return res.json();

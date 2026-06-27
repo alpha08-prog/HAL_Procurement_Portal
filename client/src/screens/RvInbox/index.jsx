@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import DataGrid from '../../components/DataGrid.jsx';
 import { rvInboxColumns } from '../../config/rvInboxColumns.jsx';
 import { useRole } from '../../context/RoleContext.jsx';
+import { apiFetch } from '../../lib/api.js';
 
 export default function RvInbox() {
   const navigate = useNavigate();
@@ -13,7 +14,7 @@ export default function RvInbox() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/rvs?status=pending')
+    apiFetch('/api/rvs?status=pending')
       .then((res) => {
         if (!res.ok) throw new Error(`API error ${res.status}`);
         return res.json();
@@ -29,7 +30,7 @@ export default function RvInbox() {
   const onGenerate = async (row) => {
     setBusyRvNo(row.rvNo);
     try {
-      const res = await fetch('/api/payment-advices', {
+      const res = await apiFetch('/api/payment-advices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rvNo: row.rvNo })

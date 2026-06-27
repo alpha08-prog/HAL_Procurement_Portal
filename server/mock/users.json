@@ -1,0 +1,74 @@
+[
+  {
+    "id": "U001",
+    "name": "Indent Cell",
+    "email": "indentor@hal.local",
+    "password": "hal@1234",
+    "role": "indentor",
+    "pb": "PB-51002",
+    "department": "User Department / Indenting"
+  },
+  {
+    "id": "U002",
+    "name": "Asha Mhatre",
+    "email": "maker@hal.local",
+    "password": "hal@1234",
+    "role": "purchase_maker",
+    "pb": "PB-44731",
+    "department": "Purchase (IMM)"
+  },
+  {
+    "id": "U003",
+    "name": "R. Deshpande",
+    "email": "officer@hal.local",
+    "password": "hal@1234",
+    "role": "purchase_officer",
+    "pb": "PB-44821",
+    "department": "Purchase (IMM)"
+  },
+  {
+    "id": "U004",
+    "name": "S. Kulkarni",
+    "email": "stores@hal.local",
+    "password": "hal@1234",
+    "role": "stores_inspection",
+    "pb": "PB-47210",
+    "department": "Stores & Inspection"
+  },
+  {
+    "id": "U005",
+    "name": "M. Iyer",
+    "email": "desk@hal.local",
+    "password": "hal@1234",
+    "role": "payment_desk",
+    "pb": "PB-48990",
+    "department": "CPPC — Payment Desk"
+  },
+  {
+    "id": "U006",
+    "name": "V. Rao",
+    "email": "hod@hal.local",
+    "password": "hal@1234",
+    "role": "hod_imm",
+    "pb": "PB-40015",
+    "department": "Integrated Materials Management"
+  },
+  {
+    "id": "U007",
+    "name": "Administrator",
+    "email": "admin@hal.local",
+    "password": "hal@1234",
+    "role": "admin",
+    "pb": "PB-40000",
+    "department": "System Administration"
+  },
+  {
+    "id": "U008",
+    "name": "QA Test",
+    "email": "test@hal.local",
+    "password": "hal@1234",
+    "role": "admin",
+    "pb": "PB-49999",
+    "department": "Quality Assurance / Demo"
+  }
+]

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import DataGrid from '../../components/DataGrid.jsx';
 import { registerColumns, registerCsvColumns } from '../../config/registerColumns.jsx';
 import { statusMeta } from '../../config/statusColors.js';
+import { apiFetch } from '../../lib/api.js';
 import { downloadCsv, toCsv } from '../../lib/csv.js';
 
 const EMPTY_FILTERS = { fy: '', status: '', officer: '', q: '' };
@@ -19,7 +20,7 @@ export default function PaymentRegister() {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(filters)) if (value) params.set(key, value);
     let cancelled = false;
-    fetch(`/api/payment-advices/register?${params.toString()}`)
+    apiFetch(`/api/payment-advices/register?${params.toString()}`)
       .then((res) => {
         if (!res.ok) throw new Error(`API error ${res.status}`);
         return res.json();

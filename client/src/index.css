@@ -48,8 +48,9 @@ body {
 
 /* Header / shell */
 .app-header {
-  background: var(--accent);
+  background: linear-gradient(180deg, #0e4474 0%, var(--accent) 100%);
   color: #fff;
+  box-shadow: 0 2px 12px rgba(8, 44, 78, 0.18);
 }
 
 .app-header-row {
@@ -64,39 +65,149 @@ body {
 
 .app-brand {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-3);
+  min-width: 0;
+}
+
+.app-brand-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 46px;
+  padding: 5px 9px;
+  background: #fff;
+  border-radius: 9px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  flex: none;
+}
+
+.app-brand-logo img {
+  height: 100%;
+  width: auto;
+  display: block;
+}
+
+.app-brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  min-width: 0;
 }
 
 .app-brand-name {
   font-size: 18px;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 
 .app-brand-sub {
-  font-size: 13px;
-  opacity: 0.75;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+}
+
+/* Right cluster: role switcher · divider · user · logout */
+.app-user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: none;
 }
 
 .role-switcher {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: 13px;
 }
 
 .role-switcher-label {
-  opacity: 0.75;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .role-switcher select {
-  background: #fff;
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: var(--space-1) var(--space-2);
   font: inherit;
+  font-size: 13px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.role-switcher select:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* native dropdown list renders on white, so keep option text dark */
+.role-switcher select option {
+  color: var(--text);
+}
+
+.app-user-divider {
+  width: 1px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.app-user-id {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.app-user-avatar {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #ffd27a;
+  color: #082c4e;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-user-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.app-user-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.app-user-role {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.app-logout {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: var(--radius);
+  padding: 7px 15px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.app-logout:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .app-nav {
@@ -104,28 +215,30 @@ body {
   margin: 0 auto;
   padding: 0 var(--space-5);
   display: flex;
-  gap: var(--space-1);
+  gap: var(--space-4);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   overflow-x: auto;
 }
 
 .app-nav-link {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.72);
   text-decoration: none;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 12px 2px;
   white-space: nowrap;
   font-size: 13px;
+  font-weight: 500;
+  border-bottom: 3px solid transparent;
+  transition: color 0.12s ease;
 }
 
 .app-nav-link:hover {
   color: #fff;
-  background: rgba(255, 255, 255, 0.1);
 }
 
 .app-nav-link.active {
-  background: var(--bg);
-  color: var(--accent);
+  color: #fff;
   font-weight: 600;
+  border-bottom-color: #ffd27a;
 }
 
 /* Screens */
@@ -669,4 +782,371 @@ body {
   flex-wrap: wrap;
   gap: var(--space-2);
   margin-top: var(--space-3);
+}
+
+/* ── Login / landing page ──────────────────────────────────────────── */
+.login-page {
+  position: relative;
+  min-height: 100vh;
+  display: grid;
+  /* minmax(0, …) keeps each track from growing to its content's min-content
+     width (otherwise a long title/logo bar pushes the column past the viewport). */
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  overflow-x: hidden;
+}
+
+.login-hero-body {
+  min-width: 0;
+}
+
+/* Left brand hero */
+.login-hero {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: var(--space-5) clamp(24px, 5vw, 64px);
+  color: #fff;
+  background:
+    radial-gradient(1100px 480px at 10% -10%, #14528a 0%, rgba(20, 82, 138, 0) 60%),
+    radial-gradient(900px 600px at 110% 120%, #0a2e52 0%, rgba(10, 46, 82, 0) 55%),
+    linear-gradient(160deg, #0b3d6b 0%, #082c4e 100%);
+}
+
+/* subtle aerospace arc motif */
+.login-hero::after {
+  content: '';
+  position: absolute;
+  right: -180px;
+  top: -120px;
+  width: 520px;
+  height: 520px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+  box-shadow: 0 0 0 60px rgba(255, 255, 255, 0.04);
+  pointer-events: none;
+}
+
+.login-hero-bar,
+.login-hero-body,
+.login-hero-foot {
+  position: relative;
+  z-index: 1;
+}
+
+/* HAL brand mark on a clean white card, top-left */
+.login-hero-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.login-logo-hal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+  padding: 10px 14px;
+}
+
+.login-logo-hal img {
+  height: clamp(72px, 8vw, 96px);
+  width: auto;
+  display: block;
+}
+
+/* IIIT Dharwad — pinned to the top-right-most corner of the page. The logo PNG has a
+   transparent background, so on the light panel only the mark shows (no white box). */
+.login-badge-iiit {
+  position: absolute;
+  top: clamp(14px, 1.8vw, 26px);
+  right: clamp(14px, 1.8vw, 30px);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-badge-iiit img {
+  height: clamp(84px, 8.5vw, 112px);
+  width: auto;
+  display: block;
+}
+
+.login-hero-eyebrow {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #ffd27a;
+}
+
+.login-hero-title {
+  font-size: clamp(38px, 4.6vw, 56px);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 1.05;
+  margin: var(--space-3) 0 0;
+}
+
+.login-hero-subtitle {
+  font-size: clamp(17px, 1.9vw, 22px);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+  margin: var(--space-2) 0 var(--space-3);
+}
+
+.login-hero-tagline {
+  font-size: 15px;
+  opacity: 0.82;
+  max-width: 42ch;
+  margin: 0;
+}
+
+/* Process-flow as a connected workflow (nodes joined by arrows) */
+.login-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin-top: var(--space-5);
+}
+
+.login-flow-step {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+}
+
+.login-flow-step.is-active {
+  background: #ffd27a;
+  border-color: #ffd27a;
+  color: #082c4e;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(255, 210, 122, 0.35);
+}
+
+.login-flow-arrow {
+  display: inline-flex;
+  align-items: center;
+  color: rgba(255, 210, 122, 0.75);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.login-hero-foot {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+
+/* Right login panel */
+.login-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--bg);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(11, 61, 107, 0.1);
+  padding: clamp(24px, 4vw, 36px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.login-welcome {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.login-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--accent);
+  margin: 0;
+}
+
+.login-card-tick {
+  display: inline-block;
+  width: 5px;
+  height: 22px;
+  border-radius: 3px;
+  background: #e8771f;
+}
+
+.login-card-sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 var(--space-2);
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.login-field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.login-field input,
+.login-password input {
+  font: inherit;
+  font-size: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--text);
+  width: 100%;
+}
+
+.login-field input:focus,
+.login-password input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.login-password {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.login-password input {
+  padding-right: 64px;
+}
+
+.login-show {
+  position: absolute;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.login-remember {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.login-remember input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+}
+
+.login-submit {
+  margin-top: var(--space-2);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 11px;
+  border: none;
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, #134e85 0%, var(--accent) 100%);
+  color: #fff;
+  cursor: pointer;
+}
+
+.login-submit:hover {
+  filter: brightness(1.08);
+}
+
+.login-submit:disabled {
+  background: var(--neutral-bg);
+  color: var(--neutral-fg);
+  cursor: not-allowed;
+  filter: none;
+}
+
+.login-error {
+  background: var(--danger-bg);
+  color: var(--danger-fg);
+  border: 1px solid #f1c4c0;
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+  font-size: 13px;
+}
+
+.login-footer {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .login-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .login-hero {
+    padding: var(--space-5);
+    gap: var(--space-4);
+  }
+  .login-hero::after {
+    display: none;
+  }
+  .login-hero-title {
+    font-size: clamp(30px, 8vw, 42px);
+  }
+  .login-logo-hal img {
+    height: 54px;
+  }
+  /* The page's top-right corner is the navy hero on mobile, so the navy logo
+     needs a white circle behind it to stay visible. */
+  .login-badge-iiit {
+    top: 14px;
+    right: 14px;
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 6px 18px rgba(8, 44, 78, 0.25);
+  }
+  .login-badge-iiit img {
+    height: 56px;
+  }
+  .login-flow {
+    margin-top: var(--space-3);
+  }
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { apiFetch } from '../lib/api.js';
 import CaptureModal from './CaptureModal.jsx';
 import DataGrid from './DataGrid.jsx';
 
@@ -36,7 +37,7 @@ export default function ApprovalQueue({ config }) {
     : config.states ?? config.state;
 
   const fetchRows = useCallback(() => {
-    return fetch(`/api/payment-advices?state=${encodeURIComponent(stateParam)}`)
+    return apiFetch(`/api/payment-advices?state=${encodeURIComponent(stateParam)}`)
       .then((res) => {
         if (!res.ok) throw new Error(`API error ${res.status}`);
         return res.json();
@@ -64,7 +65,7 @@ export default function ApprovalQueue({ config }) {
         body[input.key] = inputValue(row.paNo, input.key);
       }
       Object.assign(body, extra);
-      const res = await fetch('/api/payment-advices/transition', {
+      const res = await apiFetch('/api/payment-advices/transition', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)

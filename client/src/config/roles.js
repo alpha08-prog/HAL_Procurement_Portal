@@ -12,6 +12,10 @@ export const ROLES = [
 
 export const DEFAULT_ROLE = 'purchase_maker';
 
+// Accounts that see every screen and may switch roles freely from the top bar.
+export const ALL_ACCESS_ROLES = ['admin'];
+export const canSwitchRoles = (role) => ALL_ACCESS_ROLES.includes(role);
+
 export const roleLabel = (id) => ROLES.find((r) => r.id === id)?.label ?? id;
 
 const ALL_ROLES = ROLES.map((r) => r.id);
@@ -57,5 +61,17 @@ export const SCREENS = [
 ];
 
 export function screensForRole(role) {
+  if (ALL_ACCESS_ROLES.includes(role)) return SCREENS;
   return SCREENS.filter((s) => s.visibleTo.includes(role));
+}
+
+// True if `role` is allowed to open `path`. ALL_ACCESS_ROLES (admin) see everything.
+export function canAccessPath(role, path) {
+  return screensForRole(role).some((s) => s.path === path);
+}
+
+// Where a role should land after login / on "/". Payment Register is visible to all,
+// so it's a safe fallback for roles without a dedicated first screen.
+export function firstScreenForRole(role) {
+  return screensForRole(role)[0]?.path ?? '/payment-register';
 }

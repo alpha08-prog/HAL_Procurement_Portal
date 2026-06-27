@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import DataGrid from '../../components/DataGrid.jsx';
 import { paPickerColumns } from '../../config/paPickerColumns.jsx';
+import { apiFetch } from '../../lib/api.js';
 
 export default function PaPicker() {
   const navigate = useNavigate();
@@ -10,7 +11,7 @@ export default function PaPicker() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/payment-advices?status=pa_created')
+    apiFetch('/api/payment-advices?status=pa_created')
       .then((res) => {
         if (!res.ok) throw new Error(`API error ${res.status}`);
         return res.json();

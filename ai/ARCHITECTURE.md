@@ -1,5 +1,39 @@
 # HAL Procurement Noting — Module B (AI/Automation) Design
 
+## Quickstart — How to Run (Ollama)
+
+Run everything from the repo root (`HAL_Procurement_Portal/`). Python deps live in the **`hal` conda env**; the SLM is a **local Ollama** model.
+
+1. **Start Ollama and pull the model** (the pull is one-time):
+   ```bash
+   ollama serve                  # skip if already running (port 11434 in use)
+   ollama pull qwen2.5:3b        # the model tools/slm_client.py expects
+   ```
+2. **Install Python deps into the `hal` env** (one-time):
+   ```bash
+   conda run -n hal pip install pymupdf python-docx requests reportlab
+   ```
+3. **Run the pipeline:**
+   ```bash
+   conda run -n hal python ai/run.py
+   ```
+   Reads `ai/case_input.json` → walks the 10-stage graph → SLM drafts each new section → writes `ai/outputs/`.
+4. **Inspect outputs** (`ai/outputs/`, gitignored):
+   - `case_full.json` — full case object (data, deltas, generated, carry_forward, formats, path, skipped)
+   - `pdf/NN_<Ref>.pdf` — one HAL house-style PDF per executed note
+5. **(Optional) Score the run** against gold facts from `sampleData/`:
+   ```bash
+   conda run -n hal python ai/validate.py
+   ```
+6. **(Optional) Rebuild `case_input.json`** from the approved sample notes (seeding aid only — off the run path):
+   ```bash
+   conda run -n hal python ai/seed_case_input.py
+   ```
+
+**Troubleshooting:** notes come back as `[SLM_UNAVAILABLE]` → Ollama isn't running (step 1); `[SLM_ERROR]` or wrong style → wrong/missing model, check `ollama list`; `ModuleNotFoundError` → deps not in the `hal` env, or you didn't invoke via `conda run -n hal`.
+
+---
+
 ## 1. Problem Statement
 
 Hindustan Aeronautics Limited (HAL), Aircraft Overhaul Division, Nashik runs every procurement through a **sequence of formal "notes"** (Provisioning → Tendering → Technical → Commercial → Purchase Proposal). Each note is a long, house-style document routed through many approvers under **DOP-2025**, **Purchase Manual Issue-4**, and the **GeM** portal, with **IFS-ERP** as the system of record.

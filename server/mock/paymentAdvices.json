@@ -1,0 +1,700 @@
+[
+  {
+    "paNo": "PA/26/063",
+    "rvNo": "ELE/26/097",
+    "poNo": "IMM/PO/25-26/0389",
+    "vendorId": "V003",
+    "status": "pa_created",
+    "createdDate": "2026-05-20",
+    "createdBy": "purchase_maker",
+    "createdByName": "V. Sharma",
+    "createdByPb": "PB-44102",
+    "officer": "R. Deshpande",
+    "rvValue": 23567200,
+    "ldWeeks": 1,
+    "ldSupplyAmount": 117836,
+    "ldIcAmount": 0,
+    "ldCap": 4713440,
+    "ldAmount": 117836,
+    "finalPayment": 23449364,
+    "ldByGateEntry": "Yes",
+    "ldByFtr": "No",
+    "invoiceNo": "BAC/INV/26/0331",
+    "invoiceDate": "2026-05-02",
+    "makerRemark": "",
+    "pprNo": null,
+    "pprDate": null,
+    "history": [
+      {
+        "action": "pa_created",
+        "from": "rv_pending",
+        "to": "pa_created",
+        "by": "purchase_maker",
+        "date": "2026-05-20",
+        "remark": "Payment advice generated from RV."
+      }
+    ],
+    "invoiceValue": 23567200,
+    "checkingOfficerPbNo": "PB-44821",
+    "ldApplicable": "Yes",
+    "bankMismatch": false,
+    "securities": {
+      "sd": {
+        "applicable": "Yes",
+        "amount": 2356720,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      },
+      "pbg": {
+        "applicable": "Yes",
+        "amount": 4713440,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      },
+      "emd": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      },
+      "indemnity": {
+        "applicable": "Yes",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      }
+    },
+    "attachments": {
+      "rvCopy": "Yes",
+      "invoice": "No",
+      "ftr": "Yes",
+      "warranty": "Yes",
+      "bankChange": "No"
+    },
+    "securitiesRemark": ""
+  },
+  {
+    "paNo": "PA/26/061",
+    "rvNo": "ELE/26/092",
+    "poNo": "IMM/PO/25-26/0402",
+    "vendorId": "V002",
+    "status": "cleared_by_desk",
+    "createdDate": "2026-05-06",
+    "createdBy": "purchase_maker",
+    "createdByName": "P. Joshi",
+    "createdByPb": "PB-44310",
+    "officer": "S. Kulkarni",
+    "rvValue": 3548000,
+    "ldWeeks": 2,
+    "ldSupplyAmount": 35480,
+    "ldIcAmount": 0,
+    "ldCap": 354800,
+    "ldAmount": 35480,
+    "finalPayment": 3512520,
+    "invoiceNo": "PFE/INV/26/0457",
+    "invoiceDate": "2026-05-02",
+    "makerRemark": "Delivery 10 days late — LD applied for 2 weeks.",
+    "pprNo": null,
+    "pprDate": null,
+    "history": [
+      {
+        "action": "pa_created",
+        "from": "rv_pending",
+        "to": "pa_created",
+        "by": "purchase_maker",
+        "date": "2026-05-06",
+        "remark": "Payment advice generated from RV."
+      },
+      {
+        "action": "forward_to_officer",
+        "from": "pa_created",
+        "to": "forwarded_to_officer",
+        "by": "purchase_maker",
+        "date": "2026-05-08",
+        "remark": "Delivery 10 days late — LD applied for 2 weeks."
+      },
+      {
+        "action": "officer_forward",
+        "from": "forwarded_to_officer",
+        "to": "at_payment_desk",
+        "by": "purchase_officer",
+        "date": "2026-05-09",
+        "remark": "Verified against PO terms. Forwarded to payment desk."
+      },
+      {
+        "action": "desk_clear",
+        "from": "at_payment_desk",
+        "to": "cleared_by_desk",
+        "by": "payment_desk",
+        "date": "2026-05-12",
+        "remark": "Cleared by payment desk — forwarded for HOD approval."
+      }
+    ],
+    "invoiceValue": 3548000,
+    "checkingOfficerPbNo": "PB-45110",
+    "ldApplicable": "Yes",
+    "bankMismatch": false,
+    "securities": {
+      "sd": {
+        "applicable": "Yes",
+        "amount": 177400,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      },
+      "pbg": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      },
+      "emd": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      },
+      "indemnity": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      }
+    },
+    "attachments": {
+      "rvCopy": "Yes",
+      "invoice": "Yes",
+      "ftr": "Yes",
+      "warranty": "No",
+      "bankChange": "No"
+    },
+    "securitiesRemark": "10% PBG amount kept on hold pending PBG validity extension."
+  },
+  {
+    "paNo": "PA/26/058",
+    "rvNo": "COM/26/144",
+    "poNo": "IMM/PO/25-26/0463",
+    "vendorId": "V004",
+    "status": "at_payment_desk",
+    "createdDate": "2026-05-08",
+    "createdBy": "purchase_maker",
+    "createdByName": "V. Sharma",
+    "createdByPb": "PB-44102",
+    "officer": "R. Deshpande",
+    "rvValue": 482160,
+    "ldWeeks": 0,
+    "ldSupplyAmount": 0,
+    "ldIcAmount": 0,
+    "ldCap": 48216,
+    "ldAmount": 0,
+    "finalPayment": 482160,
+    "invoiceNo": "NIF/INV/26/118",
+    "invoiceDate": "2026-05-02",
+    "makerRemark": "Invoice verified against RV and PO terms.",
+    "pprNo": null,
+    "pprDate": null,
+    "history": [
+      {
+        "action": "pa_created",
+        "from": "rv_pending",
+        "to": "pa_created",
+        "by": "purchase_maker",
+        "date": "2026-05-08",
+        "remark": "Payment advice generated from RV."
+      },
+      {
+        "action": "forward_to_officer",
+        "from": "pa_created",
+        "to": "forwarded_to_officer",
+        "by": "purchase_maker",
+        "date": "2026-05-12",
+        "remark": "Invoice verified against RV and PO terms."
+      },
+      {
+        "action": "officer_forward",
+        "from": "forwarded_to_officer",
+        "to": "at_payment_desk",
+        "by": "purchase_officer",
+        "date": "2026-05-14",
+        "remark": "Verified against PO terms. Forwarded to payment desk."
+      }
+    ],
+    "invoiceValue": 482160,
+    "checkingOfficerPbNo": "PB-44821",
+    "ldApplicable": "No",
+    "bankMismatch": true,
+    "securities": {
+      "sd": {
+        "applicable": "Yes",
+        "amount": 24108,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      },
+      "pbg": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      },
+      "emd": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      },
+      "indemnity": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      }
+    },
+    "attachments": {
+      "rvCopy": "Yes",
+      "invoice": "Yes",
+      "ftr": "Yes",
+      "warranty": "No",
+      "bankChange": "Yes"
+    },
+    "securitiesRemark": ""
+  },
+  {
+    "paNo": "PA/26/051",
+    "rvNo": "RAW/26/210",
+    "poNo": "IMM/PO/25-26/0341",
+    "vendorId": "V005",
+    "status": "sent_to_cppc",
+    "createdDate": "2026-04-28",
+    "createdBy": "purchase_maker",
+    "createdByName": "P. Joshi",
+    "createdByPb": "PB-44310",
+    "officer": "S. Kulkarni",
+    "rvValue": 7812945,
+    "ldWeeks": 2,
+    "ldSupplyAmount": 78129,
+    "ldIcAmount": 0,
+    "ldCap": 1562589,
+    "ldAmount": 78129,
+    "finalPayment": 7734816,
+    "invoiceNo": "HIL/MUM/26/2210",
+    "invoiceDate": "2026-04-25",
+    "makerRemark": "Delivery 2 weeks beyond PO schedule — LD applied.",
+    "pprNo": "PPR/26/0214",
+    "pprDate": "2026-05-12",
+    "history": [
+      {
+        "action": "pa_created",
+        "from": "rv_pending",
+        "to": "pa_created",
+        "by": "purchase_maker",
+        "date": "2026-04-28",
+        "remark": "Payment advice generated from RV."
+      },
+      {
+        "action": "forward_to_officer",
+        "from": "pa_created",
+        "to": "forwarded_to_officer",
+        "by": "purchase_maker",
+        "date": "2026-05-01",
+        "remark": "Delivery 2 weeks beyond PO schedule — LD applied."
+      },
+      {
+        "action": "officer_forward",
+        "from": "forwarded_to_officer",
+        "to": "at_payment_desk",
+        "by": "purchase_officer",
+        "date": "2026-05-02",
+        "remark": "LD applicable — delivery 2 weeks late per PO schedule."
+      },
+      {
+        "action": "desk_clear",
+        "from": "at_payment_desk",
+        "to": "cleared_by_desk",
+        "by": "payment_desk",
+        "date": "2026-05-11",
+        "remark": "Cleared by payment desk — forwarded for HOD approval."
+      },
+      {
+        "action": "hod_approve",
+        "from": "cleared_by_desk",
+        "to": "sent_to_cppc",
+        "by": "hod_imm",
+        "date": "2026-05-12",
+        "remark": "Approved — payment proposal forwarded to CPPC.",
+        "pprNo": "PPR/26/0214",
+        "pprDate": "2026-05-12"
+      }
+    ],
+    "invoiceValue": 7812945,
+    "checkingOfficerPbNo": "PB-45110",
+    "ldApplicable": "Yes",
+    "bankMismatch": false,
+    "securities": {
+      "sd": {
+        "applicable": "Yes",
+        "amount": 781295,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      },
+      "pbg": {
+        "applicable": "Yes",
+        "amount": 1562589,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      },
+      "emd": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      },
+      "indemnity": {
+        "applicable": "Yes",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      }
+    },
+    "attachments": {
+      "rvCopy": "Yes",
+      "invoice": "Yes",
+      "ftr": "Yes",
+      "warranty": "Yes",
+      "bankChange": "No"
+    },
+    "securitiesRemark": ""
+  },
+  {
+    "paNo": "PA/26/044",
+    "rvNo": "COM/26/139",
+    "poNo": "IMM/PO/25-26/0428",
+    "vendorId": "V006",
+    "status": "paid",
+    "createdDate": "2026-04-15",
+    "createdBy": "purchase_maker",
+    "createdByName": "N. Patil",
+    "createdByPb": "PB-44588",
+    "officer": "A. Menon",
+    "rvValue": 195300,
+    "ldWeeks": 0,
+    "ldSupplyAmount": 0,
+    "ldIcAmount": 0,
+    "ldCap": 19530,
+    "ldAmount": 0,
+    "finalPayment": 195300,
+    "invoiceNo": "DTA/26/0312",
+    "invoiceDate": "2026-04-12",
+    "makerRemark": "Verified. No deductions.",
+    "pprNo": "PPR/26/0187",
+    "pprDate": "2026-04-27",
+    "history": [
+      {
+        "action": "pa_created",
+        "from": "rv_pending",
+        "to": "pa_created",
+        "by": "purchase_maker",
+        "date": "2026-04-15",
+        "remark": "Payment advice generated from RV."
+      },
+      {
+        "action": "forward_to_officer",
+        "from": "pa_created",
+        "to": "forwarded_to_officer",
+        "by": "purchase_maker",
+        "date": "2026-04-18",
+        "remark": "Verified. No deductions."
+      },
+      {
+        "action": "officer_forward",
+        "from": "forwarded_to_officer",
+        "to": "at_payment_desk",
+        "by": "purchase_officer",
+        "date": "2026-04-21",
+        "remark": "In order."
+      },
+      {
+        "action": "desk_clear",
+        "from": "at_payment_desk",
+        "to": "cleared_by_desk",
+        "by": "payment_desk",
+        "date": "2026-04-24",
+        "remark": "Cleared by payment desk — forwarded for HOD approval."
+      },
+      {
+        "action": "hod_approve",
+        "from": "cleared_by_desk",
+        "to": "sent_to_cppc",
+        "by": "hod_imm",
+        "date": "2026-04-27",
+        "remark": "Approved — payment proposal forwarded to CPPC.",
+        "pprNo": "PPR/26/0187",
+        "pprDate": "2026-04-27"
+      },
+      {
+        "action": "paid",
+        "from": "sent_to_cppc",
+        "to": "paid",
+        "by": "cppc",
+        "date": "2026-05-06",
+        "remark": "Payment released by CPPC."
+      }
+    ],
+    "invoiceValue": 195300,
+    "checkingOfficerPbNo": "PB-43977",
+    "ldApplicable": "No",
+    "bankMismatch": false,
+    "securities": {
+      "sd": {
+        "applicable": "Yes",
+        "amount": 9765,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      },
+      "pbg": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      },
+      "emd": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      },
+      "indemnity": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      }
+    },
+    "attachments": {
+      "rvCopy": "Yes",
+      "invoice": "Yes",
+      "ftr": "Yes",
+      "warranty": "No",
+      "bankChange": "No"
+    },
+    "securitiesRemark": ""
+  },
+  {
+    "paNo": "PA/26/021",
+    "rvNo": "COM/26/072",
+    "poNo": "IMM/PO/25-26/0188",
+    "vendorId": "V001",
+    "status": "paid",
+    "createdDate": "2026-01-22",
+    "createdBy": "purchase_maker",
+    "createdByName": "N. Patil",
+    "createdByPb": "PB-44588",
+    "officer": "A. Menon",
+    "rvValue": 1860000,
+    "ldWeeks": 0,
+    "ldSupplyAmount": 0,
+    "ldIcAmount": 0,
+    "ldCap": 186000,
+    "ldAmount": 0,
+    "finalPayment": 1860000,
+    "invoiceNo": "SSI/INV/25/0884",
+    "invoiceDate": "2026-01-18",
+    "makerRemark": "Delivered on schedule. No deductions.",
+    "pprNo": "PPR/26/0061",
+    "pprDate": "2026-01-29",
+    "history": [
+      {
+        "action": "pa_created",
+        "from": "rv_pending",
+        "to": "pa_created",
+        "by": "purchase_maker",
+        "date": "2026-01-22",
+        "remark": "Payment advice generated from RV."
+      },
+      {
+        "action": "forward_to_officer",
+        "from": "pa_created",
+        "to": "forwarded_to_officer",
+        "by": "purchase_maker",
+        "date": "2026-01-23",
+        "remark": "Delivered on schedule. No deductions."
+      },
+      {
+        "action": "officer_forward",
+        "from": "forwarded_to_officer",
+        "to": "at_payment_desk",
+        "by": "purchase_officer",
+        "date": "2026-01-25",
+        "remark": "In order. Forwarded to payment desk."
+      },
+      {
+        "action": "desk_clear",
+        "from": "at_payment_desk",
+        "to": "cleared_by_desk",
+        "by": "payment_desk",
+        "date": "2026-01-27",
+        "remark": "Cleared by payment desk — forwarded for HOD approval."
+      },
+      {
+        "action": "hod_approve",
+        "from": "cleared_by_desk",
+        "to": "sent_to_cppc",
+        "by": "hod_imm",
+        "date": "2026-01-29",
+        "remark": "Approved — payment proposal forwarded to CPPC.",
+        "pprNo": "PPR/26/0061",
+        "pprDate": "2026-01-29"
+      },
+      {
+        "action": "paid",
+        "from": "sent_to_cppc",
+        "to": "paid",
+        "by": "cppc",
+        "date": "2026-02-05",
+        "remark": "Payment released by CPPC."
+      }
+    ],
+    "invoiceValue": 1860000,
+    "checkingOfficerPbNo": "PB-43977",
+    "ldApplicable": "No",
+    "bankMismatch": false,
+    "securities": {
+      "sd": {
+        "applicable": "Yes",
+        "amount": 93000,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      },
+      "pbg": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      },
+      "emd": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      },
+      "indemnity": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      }
+    },
+    "attachments": {
+      "rvCopy": "Yes",
+      "invoice": "Yes",
+      "ftr": "Yes",
+      "warranty": "No",
+      "bankChange": "No"
+    },
+    "securitiesRemark": ""
+  },
+  {
+    "paNo": "PA/26/018",
+    "rvNo": "RAW/26/065",
+    "poNo": "IMM/PO/25-26/0151",
+    "vendorId": "V003",
+    "status": "sent_to_cppc",
+    "createdDate": "2026-02-10",
+    "createdBy": "purchase_maker",
+    "createdByName": "P. Joshi",
+    "createdByPb": "PB-44310",
+    "officer": "S. Kulkarni",
+    "rvValue": 5400000,
+    "ldWeeks": 2,
+    "ldSupplyAmount": 54000,
+    "ldIcAmount": 0,
+    "ldCap": 1100000,
+    "ldAmount": 54000,
+    "finalPayment": 5346000,
+    "invoiceNo": "BAC/INV/26/0203",
+    "invoiceDate": "2026-02-06",
+    "makerRemark": "Delivery 13 days late — LD applied for 2 weeks.",
+    "pprNo": "PPR/26/0079",
+    "pprDate": "2026-02-18",
+    "history": [
+      {
+        "action": "pa_created",
+        "from": "rv_pending",
+        "to": "pa_created",
+        "by": "purchase_maker",
+        "date": "2026-02-10",
+        "remark": "Payment advice generated from RV."
+      },
+      {
+        "action": "forward_to_officer",
+        "from": "pa_created",
+        "to": "forwarded_to_officer",
+        "by": "purchase_maker",
+        "date": "2026-02-12",
+        "remark": "Delivery 13 days late — LD applied for 2 weeks."
+      },
+      {
+        "action": "officer_forward",
+        "from": "forwarded_to_officer",
+        "to": "at_payment_desk",
+        "by": "purchase_officer",
+        "date": "2026-02-13",
+        "remark": "LD applicable — verified against PO schedule."
+      },
+      {
+        "action": "desk_clear",
+        "from": "at_payment_desk",
+        "to": "cleared_by_desk",
+        "by": "payment_desk",
+        "date": "2026-02-16",
+        "remark": "Cleared by payment desk — forwarded for HOD approval."
+      },
+      {
+        "action": "hod_approve",
+        "from": "cleared_by_desk",
+        "to": "sent_to_cppc",
+        "by": "hod_imm",
+        "date": "2026-02-18",
+        "remark": "Approved — payment proposal forwarded to CPPC.",
+        "pprNo": "PPR/26/0079",
+        "pprDate": "2026-02-18"
+      }
+    ],
+    "invoiceValue": 5400000,
+    "checkingOfficerPbNo": "PB-45110",
+    "ldApplicable": "Yes",
+    "bankMismatch": false,
+    "securities": {
+      "sd": {
+        "applicable": "Yes",
+        "amount": 550000,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      },
+      "pbg": {
+        "applicable": "Yes",
+        "amount": 1100000,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      },
+      "emd": {
+        "applicable": "NA",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "No"
+      },
+      "indemnity": {
+        "applicable": "Yes",
+        "amount": null,
+        "onHold": false,
+        "copyEnclosed": "Yes"
+      }
+    },
+    "attachments": {
+      "rvCopy": "Yes",
+      "invoice": "Yes",
+      "ftr": "Yes",
+      "warranty": "Yes",
+      "bankChange": "No"
+    },
+    "securitiesRemark": ""
+  }
+]

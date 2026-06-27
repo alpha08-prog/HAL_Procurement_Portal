@@ -57,6 +57,12 @@ export const SCREENS = [
     title: 'Payment Record & History Register',
     navLabel: 'Payment Register',
     visibleTo: ALL_ROLES
+  },
+  {
+    path: '/ai-documents',
+    title: 'AI Documents',
+    navLabel: 'AI Documents',
+    visibleTo: ['indentor', 'purchase_maker', 'purchase_officer', 'hod_imm', 'admin']
   }
 ];
 

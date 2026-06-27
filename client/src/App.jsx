@@ -3,6 +3,7 @@ import RequireAuth from './components/RequireAuth.jsx';
 import { firstScreenForRole } from './config/roles.js';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { RoleProvider, useRole } from './context/RoleContext.jsx';
+import AiDocuments from './screens/AiDocuments/index.jsx';
 import ForwardAdvice from './screens/ForwardAdvice/index.jsx';
 import HodApproval from './screens/HodApproval/index.jsx';
 import Login from './screens/Login/index.jsx';
@@ -31,6 +32,7 @@ export default function App() {
               <Route path="/process-payment" element={<ProcessPayment />} />
               <Route path="/hod-approval" element={<HodApproval />} />
               <Route path="/payment-register" element={<PaymentRegister />} />
+              <Route path="/ai-documents" element={<AiDocuments />} />
               <Route path="*" element={<HomeRedirect />} />
             </Route>
           </Routes>

@@ -1,0 +1,143 @@
+{
+  "_provenance": "AUTO-SEEDED from sampleData only (F1 pdf + F2/F4/F5/F6/F7 docx). Regenerate: python ai/seed_case_input.py. NOT hand-authored, NO internet/API.",
+  "requisition": {
+    "item_description": "NIGHT VISION BINOCULAR",
+    "car_no": "CAR/25/229",
+    "car_date": "17 July 2025",
+    "reference_no": "KS/1060/NVB/2025/124",
+    "quantity": 5,
+    "budget_year": "2025-26",
+    "budget_type": "Capital Budget",
+    "mpr_estimate": "15,94,065",
+    "amount_in_words": "Fifteen Lakh Ninty Four \nThousand Sixty Five Only",
+    "dop_clause": "Annexure III B, Sl No 1a"
+  },
+  "tender": {
+    "tender_no": "GEM/2025/B/6638737",
+    "tender_date": "03-09-2025",
+    "tender_enquiry": "31653",
+    "tender_type": "GeM Custom Bid (Open)",
+    "total_bids": 8
+  },
+  "bidders": [
+    {
+      "name": "ANIKA STEEL",
+      "udyam": "UDYAM-MH-19-0091880",
+      "mse": "Small",
+      "nic": "24105",
+      "emd": "Not Accepted"
+    },
+    {
+      "name": "DELLEPSON INFOTECH SYSTEM",
+      "udyam": "UDYAM-UP-75-0001380",
+      "mse": "Micro",
+      "nic": "26700",
+      "emd": "Accepted"
+    },
+    {
+      "name": "HAZZALE BLUE TRADING PRIVATE LIMITED",
+      "udyam": "UDYAM-UK-08-0001097",
+      "mse": "MICRO",
+      "nic": "N/A",
+      "emd": "Not Accepted"
+    },
+    {
+      "name": "JAGANNATH ENGITECH TECHNOLOGY",
+      "udyam": "UDYAM-OD-03-0002771",
+      "mse": "Micro",
+      "nic": "26700",
+      "emd": "Accepted"
+    },
+    {
+      "name": "NEXTGEN ENTERPRISES",
+      "udyam": "UDYAM-UP-43-0002732",
+      "mse": "Micro",
+      "nic": "26700",
+      "emd": "Accepted"
+    },
+    {
+      "name": "M/S PRECITEX EQUIPMENTS PRIVATE LIMITED",
+      "udyam": "UDYAM-DL-03-0004475",
+      "mse": "Micro",
+      "nic": "26700",
+      "emd": "Accepted"
+    },
+    {
+      "name": "M/S SHOBHA ANO PRINTS PRIVATE LIMITED",
+      "udyam": "UDYAM-TS-20-0008626",
+      "mse": "Small",
+      "nic": "26700",
+      "emd": "Accepted"
+    },
+    {
+      "name": "SVN PRECISION ENGINEERING",
+      "udyam": "UDYAM-AP-10-0113330",
+      "mse": "Micro",
+      "nic": "26515",
+      "emd": "Accepted"
+    }
+  ],
+  "tec": {
+    "query": "TEC raised queries; bidder replies sought and re-evaluated.",
+    "pm_clause": "8.5.6",
+    "accepted": [
+      "M/s Precitex Equiments Pvt ltd",
+      "M/s Shobha and Prints Pvt"
+    ],
+    "rejected": [
+      {
+        "name": "Dellepson Infotech System",
+        "spec_slnos": "1, 4, 6, 15,17"
+      },
+      {
+        "name": "Jagannath Engitech Technology",
+        "spec_slnos": "1, 2, 6 ,15, 16"
+      },
+      {
+        "name": "NextGen Enterprises",
+        "spec_slnos": "04, 15"
+      },
+      {
+        "name": "SVN Precision Engineering",
+        "spec_slnos": "04, 15"
+      }
+    ]
+  },
+  "price_bid": {
+    "l1_vendor": "M/s Prexcitex Equipment Pvt. Ltd",
+    "l1_price": "2000000.00",
+    "ra_status": "none of two bidders participated in RA",
+    "cst_ref": "E10"
+  },
+  "lpp": {
+    "contract": "GEM-511687742674336",
+    "date": "26.06.2025",
+    "price": "1594065.00",
+    "model": "PEPL-PNVB-01"
+  },
+  "counter_offer": {
+    "price": "15,94,065.00",
+    "date": "23.04.2026",
+    "savings_amount": "4,05,935.00"
+  },
+  "pnc": {
+    "committee": [
+      "AGM(Fin) - Chairman (senior-most & Finance)",
+      "AGM(IMM) - Member Secretary",
+      "DGM(Sec & Fire) - Member (user)",
+      "DGM(Purchase) - Member"
+    ]
+  },
+  "proposal": {
+    "id": "AODCAP571",
+    "vendor": "M/s Prexcitex Equipment Pvt. Ltd",
+    "initiator": "GAURAV YADAV",
+    "initiator_desig": "CHIEF MANAGER (PURCHASE)",
+    "fca": "JAYANTA GHOSHAL",
+    "fca_desig": "DY GENERAL MANAGER (FINANCE)",
+    "cfa": "PRASHANT SUBHASHRAO DESHMUKH",
+    "cfa_desig": "ADDL GENERAL MANAGER (IMM)",
+    "dop_level": "(ANNEXURE 3)(B)(2)",
+    "value": "1594065"
+  }
+}

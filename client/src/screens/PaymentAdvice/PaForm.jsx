@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import PaDocumentView from '../../components/paDocuments/PaDocumentView.jsx';
 import StatusPill from '../../components/StatusPill.jsx';
 import Timeline from '../../components/Timeline.jsx';
 import { PA_FORM_SECTIONS, PA_MAKER_FIELDS, PA_REQUIRED_FIELDS } from '../../config/paFormFields.jsx';
@@ -197,77 +198,67 @@ export default function PaForm({ paNo }) {
 
   return (
     <section className="screen">
-      <Link className="back-link" to={backPath ?? '/payment-advice'}>
+      <Link className="back-link no-print" to={backPath ?? '/payment-advice'}>
         {backPath ? '← Back to queue' : '← All drafts'}
       </Link>
-      <div className="pa-header">
+      <div className="pa-header no-print">
         <h1 className="screen-title">Payment Advice {pa.paNo}</h1>
         <StatusPill status={pa.status} />
       </div>
-      <p className="pa-meta">
+      <p className="pa-meta no-print">
         Created {formatDate(pa.createdDate)} · RV {pa.rvNo} · {pa.vendorName}
       </p>
 
-      {!editable && (
-        <div className="banner banner-info">
-          {recordView
-            ? 'Read-only record — opened from the payment register.'
-            : 'This payment advice has moved on from maker verification — fields are read-only.'}
-        </div>
+      {editable ? (
+        // Maker verification stage — data entry stays a field grid (it captures LD
+        // switches, securities and attachments that no hand-off document carries).
+        PA_FORM_SECTIONS.map((section) => (
+          <div className="form-section" key={section.title}>
+            <div className="form-section-title">{section.title}</div>
+            {section.render ? (
+              section.render(pa, editable && !busy, { draft, onChange })
+            ) : (
+              <div className="form-grid">
+                {section.fields.map((field) => (
+                  <Field
+                    key={field.key}
+                    field={field}
+                    pa={pa}
+                    draft={draft}
+                    onChange={onChange}
+                    editable={editable && !busy}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ))
+      ) : (
+        // Once forwarded, the advice is shown (and printed) in the HAL document formats.
+        <PaDocumentView pa={pa} />
       )}
 
-      {PA_FORM_SECTIONS.map((section) => (
-        <div className="form-section" key={section.title}>
-          <div className="form-section-title">{section.title}</div>
-          {section.render ? (
-            section.render(pa, editable && !busy, { draft, onChange })
-          ) : (
-            <div className="form-grid">
-              {section.fields.map((field) => (
-                <Field
-                  key={field.key}
-                  field={field}
-                  pa={pa}
-                  draft={draft}
-                  onChange={onChange}
-                  editable={editable && !busy}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
-
       {recordView && (
-        <div className="form-section">
+        <div className="form-section no-print">
           <div className="form-section-title">History</div>
           <Timeline paNo={pa.paNo} />
         </div>
       )}
 
-      <div className="form-actions">
-        <button className="btn btn-secondary" onClick={() => window.print()}>
-          Preview Payment Advice Format
-        </button>
-        {editable && (
-          <>
-            <button className="btn btn-secondary" onClick={saveDraft} disabled={busy}>
-              Save draft
-            </button>
-            <button
-              className="btn"
-              onClick={forward}
-              disabled={busy || missingRequired.length > 0}
-            >
-              Submit to Advising Officer
-            </button>
-            {saved && <span className="action-note">Saved ✓</span>}
-            {missingRequired.length > 0 && (
-              <span className="action-note">Fill {missingLabels.join(', ')} to submit.</span>
-            )}
-          </>
-        )}
-      </div>
+      {editable && (
+        <div className="form-actions no-print">
+          <button className="btn btn-secondary" onClick={saveDraft} disabled={busy}>
+            Save draft
+          </button>
+          <button className="btn" onClick={forward} disabled={busy || missingRequired.length > 0}>
+            Submit to Advising Officer
+          </button>
+          {saved && <span className="action-note">Saved ✓</span>}
+          {missingRequired.length > 0 && (
+            <span className="action-note">Fill {missingLabels.join(', ')} to submit.</span>
+          )}
+        </div>
+      )}
     </section>
   );
 }

@@ -1,19 +1,21 @@
 // Screen 5 (HOD-IMM Approval) config. Same ApprovalQueue component as Screens 3/4.
-// HOD approval is the gate that dispatches a desk-cleared advice to CPPC and is
-// where the CPPC PPR no/date are captured. Transitions used (already on the state
-// machine): hod_approve (→ sent_to_cppc, PPR required) and hod_return (→ pa_created).
+// HOD reviews an advice the payment desk forwarded, then STAMPS it and forwards it
+// BACK to the desk for the final payment — or returns it to the purchase group.
+// Transitions used (already on the state machine): hod_stamp (→ stamped_by_hod) and
+// hod_return (→ pa_created). No PPR is captured here — the desk captures it at the
+// CPPC dispatch.
 import StatusPill from '../components/StatusPill.jsx';
 import { formatINR } from '../lib/currency.js';
 import { formatDate } from '../lib/date.js';
 import { roleLabel } from './roles.js';
 
-// When the desk cleared this PA, and by whom — read from the desk_clear step.
-const clearedByDesk = (row) => (row.history ?? []).find((h) => h.action === 'desk_clear');
+// When the desk forwarded this PA to HOD, and by whom — read from the desk_forward_hod step.
+const forwardedByDesk = (row) => (row.history ?? []).find((h) => h.action === 'desk_forward_hod');
 
 export const hodQueueConfig = {
   title: 'HOD-IMM Approval',
-  note: 'Approve a desk-cleared advice to dispatch it to CPPC (capture PPR no/date), or return it to the purchase group with a remark.',
-  state: 'cleared_by_desk',
+  note: 'Stamp a desk-forwarded advice and return it to the payment desk for final payment, or return it to the purchase group with a remark.',
+  state: 'sent_to_hod',
   backPath: '/hod-approval',
   emptyMessage: 'No payment advices awaiting HOD approval.',
   columns: [
@@ -57,10 +59,10 @@ export const hodQueueConfig = {
       render: (row) => <span className="num">{formatINR(row.finalPayment)}</span>
     },
     {
-      key: 'clearedBy',
-      label: 'Cleared by Desk',
+      key: 'forwardedBy',
+      label: 'Forwarded by Desk',
       render: (row) => {
-        const h = clearedByDesk(row);
+        const h = forwardedByDesk(row);
         return h ? (
           <div className="cell-two-line">
             <span>{roleLabel(h.by)}</span>
@@ -74,18 +76,16 @@ export const hodQueueConfig = {
   ],
   actions: [
     { key: 'review', label: 'Review', kind: 'preview' },
-    // Approve & dispatch to CPPC — captures the CPPC PPR no/date; the modal blocks
-    // submit until both are filled (the state machine requires them).
+    // Stamp & forward back to the payment desk for the final payment. Optional remark.
     {
-      key: 'approve',
-      label: 'Approve & forward to CPPC',
-      transition: 'hod_approve',
+      key: 'stamp',
+      label: 'Stamp & return to desk',
+      transition: 'hod_stamp',
       primary: true,
-      modalTitle: 'Approve & forward to CPPC',
-      submitLabel: 'Approve & forward',
+      modalTitle: 'Stamp & return to payment desk',
+      submitLabel: 'Stamp & return',
       fields: [
-        { key: 'pprNo', label: 'CPPC PPR No', type: 'text', required: true, placeholder: 'e.g. PPR/26/0231' },
-        { key: 'pprDate', label: 'PPR Date', type: 'date', required: true }
+        { key: 'remark', label: 'Remark (optional)', type: 'textarea', placeholder: 'Note for the payment desk…' }
       ]
     },
     // Return to the purchase group (back to pa_created — maker sees it again). Remark

@@ -5,7 +5,8 @@ export const STATUS_META = {
   pa_created: { label: 'PA Created', tone: 'info' },
   forwarded_to_officer: { label: 'With Officer', tone: 'info' },
   at_payment_desk: { label: 'At Payment Desk', tone: 'info' },
-  cleared_by_desk: { label: 'Cleared — At HOD', tone: 'info' },
+  sent_to_hod: { label: 'With HOD (IMM)', tone: 'info' },
+  stamped_by_hod: { label: 'Stamped — At Desk', tone: 'info' },
   sent_to_cppc: { label: 'Sent to CPPC', tone: 'success' },
   paid: { label: 'Paid', tone: 'success' },
   returned: { label: 'Returned', tone: 'danger' },
@@ -29,7 +30,8 @@ const PAYMENT_GROUP = {
   pa_created: 'With Purchase Group',
   forwarded_to_officer: 'With Purchase Group',
   at_payment_desk: 'With Payment Group',
-  cleared_by_desk: 'With HOD (IMM)',
+  sent_to_hod: 'With HOD (IMM)',
+  stamped_by_hod: 'With Payment Group',
   sent_to_cppc: 'Forwarded to CPPC',
   paid: 'Paid by CPPC'
 };

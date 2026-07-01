@@ -1,9 +1,9 @@
 // Screen 4 (Process Payment — payment desk) config. Same ApprovalQueue component
-// as Screens 3/5; the desk just watches more states and gates its actions per row.
-// The desk acts on an advice sitting at the desk: it either CLEARS it (forwards for
-// HOD approval — no PPR captured here) or SENDS IT BACK to the maker. Once cleared,
-// the PA moves on to HOD/CPPC and the desk only views it. Both desk transitions
-// already exist on the state machine (desk_clear, desk_send_back) — this wires them.
+// as Screens 3/5; the desk watches the whole desk↔HOD↔CPPC loop and gates its actions
+// per row. The desk (1) forwards a freshly-arrived advice to HOD — or sends it back
+// to the maker; then, once HOD stamps it and returns it, (2) forwards it to CPPC for
+// the final payment (capturing the PPR); and finally (3) records the CPPC payment.
+// Every transition already exists on the state machine — this only wires them.
 import StatusPill from '../components/StatusPill.jsx';
 import { formatINR } from '../lib/currency.js';
 import { formatDate } from '../lib/date.js';
@@ -15,8 +15,8 @@ const forwardedToDesk = (row) =>
 
 export const deskQueueConfig = {
   title: 'Process Payment',
-  note: 'Payment desk — check the advice, then clear it for HOD approval, or send it back to the purchase group with a remark.',
-  states: ['at_payment_desk', 'cleared_by_desk', 'sent_to_cppc'],
+  note: 'Payment desk — forward a new advice to HOD (or send it back), forward an HOD-stamped advice to CPPC for the final payment, then record the payment released.',
+  states: ['at_payment_desk', 'sent_to_hod', 'stamped_by_hod', 'sent_to_cppc', 'paid'],
   backPath: '/process-payment',
   emptyMessage: 'No payment advices at the payment desk.',
   columns: [
@@ -99,31 +99,29 @@ export const deskQueueConfig = {
     }
   ],
   actions: [
-    // Open the maker's advice read-only (reused Screen 2 form). Actionable rows get
-    // "Check advice"; once the PA has left the desk it's just "View record".
+    // Open the advice read-only (HAL document format). Actionable rows get "Check
+    // advice"; rows the desk can only watch get "View record".
     {
       key: 'check',
       label: 'Check advice',
       kind: 'preview',
-      when: (row) => row.status === 'at_payment_desk'
+      when: (row) => row.status === 'at_payment_desk' || row.status === 'stamped_by_hod'
     },
     {
       key: 'view',
       label: 'View record',
       kind: 'preview',
-      when: (row) => row.status !== 'at_payment_desk'
+      when: (row) => row.status !== 'at_payment_desk' && row.status !== 'stamped_by_hod'
     },
-    // Clear the advice and forward it for HOD approval. No PPR here — the CPPC PPR
-    // no/date are captured by HOD at the approval step.
+    // (1) Forward a freshly-arrived advice to HOD for approval.
     {
-      key: 'clear',
-      label: 'Clear & forward for approval',
-      transition: 'desk_clear',
+      key: 'forwardHod',
+      label: 'Forward to HOD',
+      transition: 'desk_forward_hod',
       primary: true,
       when: (row) => row.status === 'at_payment_desk'
     },
-    // Send back to the purchase group (returns the PA to pa_created — maker sees it
-    // again). Remark is mandatory.
+    // Send back to the purchase group (returns the PA to pa_created). Remark required.
     {
       key: 'sendback',
       label: 'Send back',
@@ -134,6 +132,28 @@ export const deskQueueConfig = {
       fields: [
         { key: 'remark', label: 'Remark', type: 'textarea', required: true, placeholder: 'Reason for sending back to the maker…' }
       ]
+    },
+    // (2) Forward an HOD-stamped advice to CPPC for the final payment (capture PPR).
+    {
+      key: 'forwardCppc',
+      label: 'Forward to CPPC (final payment)',
+      transition: 'desk_forward_cppc',
+      primary: true,
+      when: (row) => row.status === 'stamped_by_hod',
+      modalTitle: 'Forward to CPPC for final payment',
+      submitLabel: 'Forward to CPPC',
+      fields: [
+        { key: 'pprNo', label: 'CPPC PPR No', type: 'text', required: true, placeholder: 'e.g. PPR/26/0231' },
+        { key: 'pprDate', label: 'PPR Date', type: 'date', required: true }
+      ]
+    },
+    // (3) Record the final payment released by CPPC — closes the loop to 'paid'.
+    {
+      key: 'recordPaid',
+      label: 'Record payment released',
+      transition: 'cppc_pay',
+      primary: true,
+      when: (row) => row.status === 'sent_to_cppc'
     }
   ]
 };

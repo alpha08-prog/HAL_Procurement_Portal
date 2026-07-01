@@ -13,6 +13,25 @@ const twoLine = (a, b) => (
   </div>
 );
 
+// Payment-pending SLA: advices should clear within PENDING_LIMIT days; anything past
+// PENDING_WARN is flagged red as it approaches the limit. Tune the thresholds here.
+const PENDING_LIMIT = 30;
+const PENDING_WARN = 25;
+
+// A pending-days figure, rendered red once it crosses the warning threshold.
+const pendingValue = (days) => {
+  if (days == null) return <span>—</span>;
+  const over = days > PENDING_WARN;
+  return (
+    <span
+      className={over ? 'pending-over' : undefined}
+      title={over ? `Exceeds ${PENDING_WARN}-day warning (limit ${PENDING_LIMIT} days)` : undefined}
+    >
+      {days}
+    </span>
+  );
+};
+
 const BASE_COLUMNS = [
   { key: 'rvNo', label: 'RV No / Date', render: (r) => twoLine(<strong>{r.rvNo}</strong>, formatDate(r.rvDate)) },
   { key: 'gateEntryNo', label: 'Gate Entry No / Date', render: (r) => twoLine(r.gateEntryNo, formatDate(r.gateEntryDate)) },
@@ -31,11 +50,11 @@ const BASE_COLUMNS = [
   { key: 'rvValue', label: 'RV Value', align: 'right', render: (r) => <span className="num">{formatINR(r.rvValue)}</span> },
   {
     key: 'pendingDays',
-    label: 'Pending Days (RV / GE)',
+    label: 'Pending Days (RV / GE · limit 30)',
     align: 'right',
     render: (r) => (
       <span className="num">
-        {r.pendingDaysRv} / {r.pendingDaysGate}
+        {pendingValue(r.pendingDaysRv)} / {pendingValue(r.pendingDaysGate)}
       </span>
     )
   },

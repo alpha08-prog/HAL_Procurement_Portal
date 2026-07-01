@@ -257,20 +257,25 @@ A clickable React prototype with mock data — **no real IFS integration, no aut
 ### Lifecycle state machine (`server/stateMachine.js`)
 ```
 rv_pending → pa_created → forwarded_to_officer → at_payment_desk
-           → cleared_by_desk → sent_to_cppc → paid
+           → sent_to_hod → stamped_by_hod → sent_to_cppc → paid
 ```
 | Action | From → To | By | Rule |
 |---|---|---|---|
 | `forward_to_officer` | pa_created → forwarded_to_officer | maker | invoice no + date required |
 | `officer_forward` | forwarded_to_officer → at_payment_desk | officer | — |
 | `desk_send_back` | at_payment_desk → pa_created | desk | remark required |
-| `desk_clear` | at_payment_desk → cleared_by_desk | desk | — |
-| `hod_approve` | cleared_by_desk → sent_to_cppc | hod | PPR no + date required |
-| `hod_return` | cleared_by_desk → pa_created | hod | remark required |
+| `desk_forward_hod` | at_payment_desk → sent_to_hod | desk | — |
+| `hod_stamp` | sent_to_hod → stamped_by_hod | hod | — |
+| `hod_return` | sent_to_hod → pa_created | hod | remark required |
+| `desk_forward_cppc` | stamped_by_hod → sent_to_cppc | desk | PPR no + date required |
+| `cppc_pay` | sent_to_cppc → paid | cppc | — |
 
 The actor (`by`) is **stamped server-side** from the transition definition — the role
 switcher is not trusted. Each move appends a history entry and syncs `rv.paStatus`.
-The payment desk only *clears*; **HOD approval** is what dispatches to CPPC and captures the PPR.
+The desk↔HOD loop: the desk **forwards to HOD**, HOD **stamps and returns it to the desk**,
+the desk **forwards to CPPC** (capturing the PPR), and **CPPC releases the final payment**.
+Read-only advices render in the two HAL hand-off document formats
+(`client/src/components/paDocuments/`).
 
 ### LD calculation (`server/ld.js`)
 - **(a) supply delay** — 0.5% of RV value × weeks (or part thereof, `ceil`) late between

@@ -38,6 +38,7 @@ function joinPa(pa) {
     mprDate: rv.mprDate,
     vendorName: vendor.name ?? 'Unknown vendor',
     vendorCode: vendor.code ?? vendor.id,
+    vendorCity: vendor.city ?? '—',
     vendorAddress: vendor.address ?? '—',
     vendorBank: vendor.bank ?? null,
     gstin: vendor.gstin ?? '—',
@@ -78,7 +79,7 @@ function registerRow(pa) {
   const rv = rvByNo(pa.rvNo) ?? {};
   const vendor = vendorById(pa.vendorId);
   const forwardedDate = dateReached(pa, 'forwarded_to_officer');
-  const clearedDate = dateReached(pa, 'cleared_by_desk');
+  const clearedDate = dateReached(pa, 'stamped_by_hod');
   const sentDate = dateReached(pa, 'sent_to_cppc');
   return {
     paNo: pa.paNo,
@@ -130,7 +131,7 @@ function registerRow(pa) {
     createdByName: pa.createdByName ?? null,
     createdByPb: pa.createdByPb ?? null,
     forwardedBy: pa.history?.find((h) => h.action === 'officer_forward')?.by ?? null,
-    advisedBy: pa.history?.find((h) => h.action === 'hod_approve')?.by ?? null,
+    advisedBy: pa.history?.find((h) => h.action === 'hod_stamp')?.by ?? null,
     remarks: lastRemark(pa),
     // cycle-times (whole days)
     advisedFromRvDays: between(rv.rvDate, pa.createdDate),
@@ -197,7 +198,8 @@ router.get('/history', (req, res) => {
 
 // List / filter. ?state= (alias ?status=) filters by lifecycle state — accepts a
 // single value or a comma-separated set (e.g. the payment desk watches
-// at_payment_desk,cleared_by_desk,sent_to_cppc in one queue). ?pa=<paNo> fetches one
+// at_payment_desk,sent_to_hod,stamped_by_hod,sent_to_cppc,paid in one queue).
+// ?pa=<paNo> fetches one
 // (as a single-element array — paNo contains slashes, so it travels as a query param).
 router.get('/', (req, res) => {
   let rows = db.paymentAdvices;

@@ -6,3 +6,4 @@ dist/
 tokens.md
 *__pycache__*
 ai/outputs/
+server/data/

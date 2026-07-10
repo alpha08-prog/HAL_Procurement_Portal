@@ -7,6 +7,14 @@ import AiDocuments from './screens/AiDocuments/index.jsx';
 import ForwardAdvice from './screens/ForwardAdvice/index.jsx';
 import HodApproval from './screens/HodApproval/index.jsx';
 import Login from './screens/Login/index.jsx';
+import NotingHome from './screens/Noting/Home.jsx';
+import Initiate from './screens/Noting/Initiate.jsx';
+import Inbox from './screens/Noting/Inbox.jsx';
+import Files from './screens/Noting/Files.jsx';
+import Cabinet from './screens/Noting/Cabinet.jsx';
+import NoteDetail from './screens/Noting/NoteDetail.jsx';
+import Reports from './screens/Noting/Reports.jsx';
+import Organisation from './screens/Noting/Organisation.jsx';
 import PaymentAdvice from './screens/PaymentAdvice/index.jsx';
 import PaymentRegister from './screens/PaymentRegister/index.jsx';
 import ProcessPayment from './screens/ProcessPayment/index.jsx';
@@ -33,6 +41,14 @@ export default function App() {
               <Route path="/hod-approval" element={<HodApproval />} />
               <Route path="/payment-register" element={<PaymentRegister />} />
               <Route path="/ai-documents" element={<AiDocuments />} />
+              <Route path="/noting" element={<NotingHome />} />
+              <Route path="/noting/initiate" element={<Initiate />} />
+              <Route path="/noting/inbox" element={<Inbox />} />
+              <Route path="/noting/files" element={<Files />} />
+              <Route path="/noting/cabinet" element={<Cabinet />} />
+              <Route path="/noting/reports" element={<Reports />} />
+              <Route path="/noting/note/:txnId" element={<NoteDetail />} />
+              <Route path="/noting/org" element={<Organisation />} />
               <Route path="*" element={<HomeRedirect />} />
             </Route>
           </Routes>

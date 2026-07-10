@@ -63,6 +63,58 @@ export const SCREENS = [
     title: 'AI Documents',
     navLabel: 'AI Documents',
     visibleTo: ['indentor', 'purchase_maker', 'purchase_officer', 'hod_imm', 'admin']
+  },
+
+  // Module C — e-File Noting Workflow. Every HAL user can initiate/route notes, so
+  // these are visible to all roles. `group` drives the nav divider in Header.
+  {
+    path: '/noting',
+    title: 'e-File Noting',
+    navLabel: 'Noting Home',
+    group: 'Noting',
+    visibleTo: ALL_ROLES
+  },
+  {
+    path: '/noting/initiate',
+    title: 'Initiate Note',
+    navLabel: 'Initiate',
+    group: 'Noting',
+    visibleTo: ALL_ROLES
+  },
+  {
+    path: '/noting/inbox',
+    title: 'Inbox',
+    navLabel: 'Inbox',
+    group: 'Noting',
+    visibleTo: ALL_ROLES
+  },
+  {
+    path: '/noting/files',
+    title: 'Files',
+    navLabel: 'Files',
+    group: 'Noting',
+    visibleTo: ALL_ROLES
+  },
+  {
+    path: '/noting/cabinet',
+    title: 'Cabinet',
+    navLabel: 'Cabinet',
+    group: 'Noting',
+    visibleTo: ALL_ROLES
+  },
+  {
+    path: '/noting/reports',
+    title: 'Reports',
+    navLabel: 'Reports',
+    group: 'Noting',
+    visibleTo: ALL_ROLES
+  },
+  {
+    path: '/noting/org',
+    title: 'Organisation',
+    navLabel: 'Organisation',
+    group: 'Noting',
+    visibleTo: ALL_ROLES
   }
 ];
 

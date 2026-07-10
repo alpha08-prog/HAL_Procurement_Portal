@@ -48,15 +48,22 @@ export default function Header() {
       </div>
 
       <nav className="app-nav">
-        {screens.map((s) => (
-          <NavLink
-            key={s.path}
-            to={s.path}
-            className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}
-          >
-            {s.navLabel}
-          </NavLink>
-        ))}
+        {screens.map((s, i) => {
+          // Insert a divider whenever the nav group changes (e.g. Payment → Noting).
+          const prevGroup = i > 0 ? screens[i - 1].group : undefined;
+          const showDivider = i > 0 && s.group !== prevGroup;
+          return (
+            <span key={s.path} className="app-nav-item">
+              {showDivider && <span className="app-nav-divider" aria-hidden="true" />}
+              <NavLink
+                to={s.path}
+                className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}
+              >
+                {s.navLabel}
+              </NavLink>
+            </span>
+          );
+        })}
       </nav>
     </header>
   );

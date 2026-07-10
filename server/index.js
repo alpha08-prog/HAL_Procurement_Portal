@@ -2,6 +2,7 @@ import express from 'express';
 import { authMiddleware } from './middleware/auth.js';
 import aiRouter from './routes/ai.js';
 import authRouter from './routes/auth.js';
+import notingRouter from './routes/noting/index.js';
 import paymentAdvicesRouter from './routes/paymentAdvices.js';
 import rvsRouter from './routes/rvs.js';
 
@@ -16,6 +17,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/rvs', authMiddleware, rvsRouter);
 app.use('/api/payment-advices', authMiddleware, paymentAdvicesRouter);
 app.use('/api/ai', authMiddleware, aiRouter);
+app.use('/api/noting', authMiddleware, notingRouter);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Mock API listening on http://localhost:${PORT}`));

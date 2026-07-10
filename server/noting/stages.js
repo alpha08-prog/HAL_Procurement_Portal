@@ -1,0 +1,27 @@
+// Mirror of the AI pipeline's procurement stage order (ai/stages.py ORDER) — the Node
+// server cannot import the Python module, so the sequence + titles are duplicated here
+// (as server/routes/ai.js already does for STAGE_META). Used by reports (current stage)
+// and the cabinet next-action prompt (Phase 7). Keep in sync if ai/stages.py changes.
+export const STAGE_ORDER = [
+  'provisioning', 'tender_doc', 'emd', 'tec_req', 'tec_report', 'pbo', 'pnc_req', 'pnc_rec', 'pp', 'po'
+];
+
+export const STAGE_TITLE = {
+  provisioning: 'Provisioning Note',
+  tender_doc: 'Tender Document',
+  emd: 'EMD Stage Acceptance',
+  tec_req: 'TEC Request',
+  tec_report: 'TEC Report',
+  pbo: 'Price Bid Opening',
+  pnc_req: 'PNC Request',
+  pnc_rec: 'PNC Recommendation',
+  pp: 'Purchase Proposal',
+  po: 'Purchase Order + Contract'
+};
+
+export const stageTitle = (id) => STAGE_TITLE[id] || (id ? id : '—');
+
+export function nextStage(id) {
+  const i = STAGE_ORDER.indexOf(id);
+  return i >= 0 && i < STAGE_ORDER.length - 1 ? STAGE_ORDER[i + 1] : null;
+}

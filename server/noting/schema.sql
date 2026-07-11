@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS files (
   initiator_id       INTEGER REFERENCES members(id),
   initiator_unit_id  INTEGER REFERENCES org_units(id),
   parent_file_id     INTEGER REFERENCES files(id),
+  line_no            TEXT,                          -- line-wise L1 label on a child PP file
   status             TEXT NOT NULL DEFAULT 'open',  -- open|closed
   provisioning_start TEXT,
   tendering_start    TEXT,

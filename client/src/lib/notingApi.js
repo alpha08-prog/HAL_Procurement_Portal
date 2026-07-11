@@ -29,6 +29,7 @@ export const fetchFiles = () => getJson('/api/noting/files');
 export const fetchNote = (txnId, grant) =>
   getJson(`/api/noting/notes/${encodeURIComponent(txnId)}${grant ? `?grant=${encodeURIComponent(grant)}` : ''}`);
 export const initiateFile = (payload) => postJson('/api/noting/files', payload);
+export const addNote = (filePk, payload) => postJson(`/api/noting/files/${filePk}/notes`, payload);
 export const saveDraft = (txnId, payload) => postJson(`/api/noting/notes/${encodeURIComponent(txnId)}/draft`, payload);
 export const sendForCheck = (txnId, payload) => postJson(`/api/noting/notes/${encodeURIComponent(txnId)}/send-check`, payload);
 

@@ -90,7 +90,9 @@ export const INBOX_COLUMNS = [
   }
 ];
 
-export const CABINET_COLUMNS = [
+// Cabinet columns take an onAdvance(row) callback so the "Next action" cell can create the
+// next-stage note in place (multi-note lifecycle) instead of just linking to Initiate.
+export const cabinetColumns = (onAdvance) => [
   {
     key: 'file_id',
     label: 'File ID',
@@ -104,7 +106,13 @@ export const CABINET_COLUMNS = [
     key: 'next_stage_title',
     label: 'Next action',
     render: (r) =>
-      r.next_stage_title ? <Link to="/noting/initiate">Initiate {r.next_stage_title}</Link> : '—'
+      r.next_stage_title ? (
+        <button type="button" className="btn btn-secondary btn-inline" onClick={() => onAdvance(r)}>
+          Generate {r.next_stage_title}
+        </button>
+      ) : (
+        '—'
+      )
   }
 ];
 
@@ -113,6 +121,7 @@ export const LIFECYCLE_COLUMNS = [
   { key: 'file_id', label: 'File ID' },
   { key: 'title', label: 'Title' },
   { key: 'kind', label: 'Type', render: (r) => (r.standalone ? 'Standalone' : r.kind) },
+  { key: 'line_no', label: 'Line', render: (r) => r.line_no || '—' },
   { key: 'initiator', label: 'Initiator' },
   { key: 'stage_title', label: 'Current stage' },
   { key: 'note_status', label: 'Status', render: (r) => <StatusBadge value={r.note_status} /> },

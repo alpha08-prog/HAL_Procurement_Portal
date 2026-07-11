@@ -39,6 +39,40 @@ roles live during a demo.
 Accounts are seeded in `server/mock/users.json` (plaintext passwords, bcrypt-hashed in memory
 on boot). The JWT signing secret is read from `JWT_SECRET` (a dev fallback is used if unset).
 
+## Module C — e-File Noting: roles & rights
+
+The noting module (`/noting/*`) does **not** use the payment job-titles above. Any HAL user
+can initiate a note; authorization is **positional** — decided by the real signed-in member's
+relationship to each note (who holds it, who has routed it, who supervises the initiating
+unit), enforced in `server/noting/workflow.js`. The six positions and their edit (E) /
+forward (F) / view (V) rights, taken straight from the access-rights spec:
+
+| Capability | HAL User | Initiator | Routing Member (holding) | Recipient / Checker | CFA / Decider | Supervisory Head |
+|---|---|---|---|---|---|---|
+| Initiate N1 / standalone | E | — | — | — | — | — |
+| Set classification / edit draft | — | E | E (holding draft) | — | — | — |
+| Send draft for check | — | F | F | — | — | — |
+| Comment (auto "Concurred & Forwarded") | — | E+F | E+F | — | E+F | — |
+| Raise / answer clarification | — | E | E | E | E | — |
+| Attach reference doc | — | E | E | — | E | — |
+| Attach **stamping** doc / add **DoP** ref | — | E (only) | — | — | — | — |
+| Send back to user / previous member | — | F | F | — | F | — |
+| Add self / next member / member twice | — | F | F | — | F | — |
+| Retract just-sent (before open) | — | F | F | — | F | — |
+| Approve / Reject | — | — | — | — | E (only) | — |
+| Retrieve from cabinet after decision | — | — | — | — | F (decider) | — |
+| Share restricted link to a person | — | F | F | — | F | — |
+| View note — Normal | V | V | V | V | V | V |
+| View note — Restricted (graded) | ✗ | V | V | grantee | V | V (tenure) |
+| View subordinates' / predecessor files | — | — | — | — | — | V (tenure) |
+| Reports + lifecycle summary | own files | own files | own files | — | — | V (subtree) |
+| Create next-stage note (N2..final) | — | E (case owner) | E (participant) | — | — | — |
+
+PM references are automatic. Restricted levels are graded: Confidential (participants + any
+supervising head) < Secret (+ the direct unit/dept head only) < Top Secret (participants +
+explicit grant only). Supervisory visibility is tenure-bounded via the `postings` table (a
+sitting head sees his subtree's whole history; a former head only his tenure window).
+
 ## Layout
 
 ```

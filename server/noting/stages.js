@@ -21,6 +21,10 @@ export const STAGE_TITLE = {
 
 export const stageTitle = (id) => STAGE_TITLE[id] || (id ? id : '—');
 
+// The stage at which the tendering phase begins — stamps files.tendering_start so the
+// live-status report can show "time since tendering" (email point 27).
+export const TENDERING_START_STAGE = 'tender_doc';
+
 export function nextStage(id) {
   const i = STAGE_ORDER.indexOf(id);
   return i >= 0 && i < STAGE_ORDER.length - 1 ? STAGE_ORDER[i + 1] : null;

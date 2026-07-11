@@ -55,9 +55,12 @@ router.get('/cabinet', (req, res) => {
      WHERE c.member_id = ? ORDER BY c.placed_at DESC, f.id DESC`,
     me.id
   );
-  // Next-action prompt: on closure the cabinet suggests the next stage's note.
+  // Next-action prompt: only when the latest note is approved and the case is still open
+  // (a rejected or fully-closed case offers no next stage). The client turns this into a
+  // one-click "create the next note" action.
   const cabinet = rows.map((r) => {
-    const next = nextStage(r.last_stage);
+    const advance = r.last_status === 'approved' && r.status === 'open';
+    const next = advance ? nextStage(r.last_stage) : null;
     return { ...r, next_stage: next, next_stage_title: next ? stageTitle(next) : null };
   });
   res.json({ cabinet, meId: me.id });

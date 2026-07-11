@@ -22,6 +22,7 @@ function FileNode({ file }) {
       <span className="org-node-label">
         <Link to={`/noting/note/${file.first_txn}`}>{file.file_id}</Link>
         <span>{file.title}</span>
+        {file.line_no && <span className="org-code">{file.line_no}</span>}
         {file.car_no && <span className="org-code">{file.car_no}</span>}
       </span>
       {file.children?.length > 0 && (
@@ -57,7 +58,7 @@ export default function Reports() {
   return (
     <section className="screen">
       <h1 className="screen-title">Reports</h1>
-      <p className="screen-sub">Procurement pipeline oversight — for User, Section Head, Department Head and GM.</p>
+      <p className="screen-sub">Procurement pipeline oversight — shows the files you initiated, routed, or supervise as a unit head.</p>
 
       <div className="ai-doc-modes report-tabs" role="group" aria-label="Report">
         {TABS.map((t) => (

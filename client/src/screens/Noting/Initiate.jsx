@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CLASSIFICATIONS, REFERENCE_KINDS } from '../../config/notingColumns.jsx';
-import { fetchAiNotes, initiateFile } from '../../lib/notingApi.js';
+import { fetchAiNotes, fetchFiles, initiateFile } from '../../lib/notingApi.js';
 
 // Initiate a new file + its first note (N1). Source is either the AI pipeline's
 // generated note or a standalone/manual draft (administrative approvals, no requisition).
@@ -9,6 +9,7 @@ export default function Initiate() {
   const navigate = useNavigate();
   const [source, setSource] = useState('ai');
   const [ai, setAi] = useState(null); // { exists, item, notes } | null
+  const [files, setFiles] = useState([]);
   const [form, setForm] = useState({
     title: '',
     kind: 'CAR',
@@ -16,7 +17,9 @@ export default function Initiate() {
     classification: 'normal',
     noteTitle: '',
     stageId: '',
-    body: ''
+    body: '',
+    parentFileId: '',
+    lineNo: ''
   });
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -26,6 +29,9 @@ export default function Initiate() {
     fetchAiNotes()
       .then((d) => !cancelled && setAi(d))
       .catch(() => !cancelled && setAi({ exists: false, notes: [] }));
+    fetchFiles()
+      .then((d) => !cancelled && setFiles(d.files))
+      .catch(() => !cancelled && setFiles([]));
     return () => {
       cancelled = true;
     };
@@ -54,13 +60,15 @@ export default function Initiate() {
     try {
       const res = await initiateFile({
         title: form.title,
-        kind: source === 'ai' ? form.kind : form.kind,
+        kind: form.kind,
         carNo: form.kind === 'standalone' ? undefined : form.carNo,
         source,
         stageId: source === 'ai' ? form.stageId : undefined,
         body: form.body,
         classification: form.classification,
-        noteTitle: form.noteTitle
+        noteTitle: form.noteTitle,
+        parentFileId: form.parentFileId ? Number(form.parentFileId) : undefined,
+        lineNo: form.parentFileId ? form.lineNo || undefined : undefined
       });
       navigate(`/noting/note/${res.note.txn_id}`);
     } catch (err) {
@@ -183,6 +191,34 @@ export default function Initiate() {
                 ))}
               </select>
             </label>
+
+            <label>
+              <span className="field-label">Line-wise child of (optional)</span>
+              <select
+                className="field-input"
+                value={form.parentFileId}
+                onChange={(e) => set({ parentFileId: e.target.value })}
+              >
+                <option value="">— none (top-level file) —</option>
+                {files.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.file_id} — {f.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {form.parentFileId && (
+              <label>
+                <span className="field-label">Line / L1 label</span>
+                <input
+                  className="field-input"
+                  value={form.lineNo}
+                  onChange={(e) => set({ lineNo: e.target.value })}
+                  placeholder="e.g. Line 1 — M/s Optic Systems"
+                />
+              </label>
+            )}
           </div>
         </div>
 

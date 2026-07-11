@@ -56,11 +56,12 @@ export default function NotingHome() {
         <h2 className="section-heading">Workflow</h2>
         <ul className="roadmap-list">
           <li><Link to="/noting/org">Organisation directory</Link> — Corporate › Complex › Division › Department › Section › member <span className="tag tag-live">Live</span></li>
-          <li>Initiate Note (N1) — AI-drafted or standalone, with connected File / Reference / Transaction IDs <span className="tag">Next</span></li>
-          <li>Route to members — inbox, forward, add member, send back, retract <span className="tag">Planned</span></li>
-          <li>Classification &amp; need-to-know access <span className="tag">Planned</span></li>
-          <li>Comments &amp; clarifications <span className="tag">Planned</span></li>
-          <li>Cabinet, reports &amp; org-wide visibility <span className="tag">Planned</span></li>
+          <li><Link to="/noting/initiate">Initiate Note (N1)</Link> — AI-drafted or standalone, with connected File / Reference / Transaction IDs <span className="tag tag-live">Live</span></li>
+          <li><Link to="/noting/inbox">Route to members</Link> — forward, add member, send back to previous, retract, draft check <span className="tag tag-live">Live</span></li>
+          <li>Multi-note lifecycle — approve a stage, then generate the next note from the <Link to="/noting/cabinet">Cabinet</Link> <span className="tag tag-live">Live</span></li>
+          <li>Classification &amp; graded need-to-know access, share links &amp; anti-leak alerts <span className="tag tag-live">Live</span></li>
+          <li>Comments &amp; clarifications <span className="tag tag-live">Live</span></li>
+          <li><Link to="/noting/reports">Reports</Link> &amp; tenure-based org visibility (subordinate &amp; predecessor files) <span className="tag tag-live">Live</span></li>
         </ul>
       </div>
     </section>

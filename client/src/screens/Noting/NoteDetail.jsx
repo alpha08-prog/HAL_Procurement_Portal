@@ -109,6 +109,14 @@ export default function NoteDetail() {
   });
   const people = members.filter((m) => partIds.has(m.id));
 
+  // Send-back may only target the initiator or a previous holder (email: "user or previous
+  // member") — the server enforces this too.
+  const priorIds = new Set([note.initiator_id].filter(Boolean));
+  steps.forEach((s) => {
+    if (s.from_id) priorIds.add(s.from_id);
+  });
+  const priorMembers = members.filter((m) => priorIds.has(m.id) && m.id !== note.custodian_id);
+
   const run = async (fn) => {
     setBusy(true);
     setError(null);
@@ -239,7 +247,7 @@ export default function NoteDetail() {
             className={'btn' + (panel === 'summary' ? '' : ' btn-secondary')}
             onClick={() => {
               toggle('summary');
-              if (!summary) fetchSummary(txnId).then((d) => setSummary(d.summary)).catch(() => setSummary({ lead: '', facts: [] }));
+              if (!summary) fetchSummary(txnId).then((d) => setSummary(d.summary)).catch(() => setSummary({ lead: '', facts: [], meta: [] }));
             }}
           >
             Summary
@@ -256,6 +264,15 @@ export default function NoteDetail() {
               <div className="grid-empty">Generating…</div>
             ) : (
               <>
+                {summary.meta?.length > 0 && (
+                  <ul className="summary-facts summary-meta">
+                    {summary.meta.map(([k, v]) => (
+                      <li key={k}>
+                        <strong>{k}:</strong> {v}
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 {summary.lead && <p className="note-para">{summary.lead}</p>}
                 {summary.facts.length > 0 && (
                   <ul className="summary-facts">
@@ -264,7 +281,9 @@ export default function NoteDetail() {
                     ))}
                   </ul>
                 )}
-                {!summary.lead && summary.facts.length === 0 && <div className="grid-empty">No content to summarise.</div>}
+                {!summary.lead && summary.facts.length === 0 && !summary.meta?.length && (
+                  <div className="grid-empty">No content to summarise.</div>
+                )}
               </>
             )}
           </div>
@@ -310,8 +329,8 @@ export default function NoteDetail() {
                 <MemberSelect
                   value={pick.toMemberId}
                   onChange={(v) => setPick({ ...pick, toMemberId: v })}
-                  members={members}
-                  exclude={panel === 'sendback' ? [note.custodian_id] : []}
+                  members={panel === 'sendback' ? priorMembers : members}
+                  exclude={[]}
                 />
               </label>
               <label className="field-wide">
@@ -337,6 +356,7 @@ export default function NoteDetail() {
                 {busy ? 'Sending…' : panel === 'check' ? 'Send for check' : panel === 'forward' ? 'Forward' : 'Send back'}
               </button>
               {panel === 'forward' && <span className="action-note">Add anyone as the next member — including yourself.</span>}
+              {panel === 'sendback' && <span className="action-note">Return only to the initiator or a member who held this note before.</span>}
             </div>
           </div>
         )}

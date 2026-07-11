@@ -5,7 +5,8 @@ import { Router } from 'express';
 import { all, get, nowISO, run } from '../../noting/db.js';
 import { currentMember } from '../../noting/identity.js';
 import { deptCodeFor, nextFileId, nextTxnId, noteRefNo } from '../../noting/refs.js';
-import { canView, openIfRecipient, participants, supervises } from '../../noting/workflow.js';
+import { addNote, canView, openIfRecipient } from '../../noting/workflow.js';
+import { TENDERING_START_STAGE } from '../../noting/stages.js';
 import { summarize } from '../../noting/summarize.js';
 
 const router = Router();
@@ -17,22 +18,24 @@ router.post('/files', (req, res) => {
   const me = currentMember(req);
   if (!me) return res.status(403).json({ error: 'No noting member mapped to this account' });
 
-  const { title, kind = 'CAR', carNo, source = 'manual', stageId, body = '', classification = 'normal' } = req.body || {};
+  const { title, kind = 'CAR', carNo, source = 'manual', stageId, body = '', classification = 'normal', parentFileId = null, lineNo = null } = req.body || {};
   const noteTitle = (req.body?.noteTitle || '').trim() || 'Note Sheet (N1)';
   if (!title || !String(title).trim()) return res.status(422).json({ error: 'title is required' });
   if (!KINDS.includes(kind)) return res.status(422).json({ error: `kind must be one of ${KINDS.join(', ')}` });
   if (!CLASSES.includes(classification)) return res.status(422).json({ error: 'invalid classification' });
+  if (parentFileId != null && !get('SELECT id FROM files WHERE id = ?', Number(parentFileId))) return res.status(422).json({ error: 'Unknown parent file' });
 
   const today = nowISO();
   const standalone = kind === 'standalone' ? 1 : 0;
   const fileId = nextFileId(deptCodeFor(me.section_id));
   const provStart = stageId === 'provisioning' ? today : null;
+  const tendStart = stageId === TENDERING_START_STAGE ? today : null;
 
   const f = run(
-    `INSERT INTO files(file_id,title,kind,car_no,standalone,initiator_id,initiator_unit_id,status,provisioning_start,created_at)
-     VALUES(?,?,?,?,?,?,?, 'open', ?, ?)`,
+    `INSERT INTO files(file_id,title,kind,car_no,standalone,initiator_id,initiator_unit_id,parent_file_id,line_no,status,provisioning_start,tendering_start,created_at)
+     VALUES(?,?,?,?,?,?,?,?,?, 'open', ?,?, ?)`,
     fileId, String(title).trim(), kind, standalone ? null : carNo || null, standalone,
-    me.id, me.section_id, provStart, today
+    me.id, me.section_id, parentFileId != null ? Number(parentFileId) : null, lineNo || null, provStart, tendStart, today
   );
   const filePk = f.lastInsertRowid;
 
@@ -55,6 +58,21 @@ router.post('/files', (req, res) => {
   res.status(201).json({ fileId, filePk, note: noteRow });
 });
 
+// Add the next note (N2..final) to an existing open file — the multi-note lifecycle. Called
+// from the Cabinet next-action prompt or the file view. Connected ref/txn continue the File ID.
+router.post('/files/:filePk/notes', (req, res) => {
+  const me = currentMember(req);
+  const file = get('SELECT * FROM files WHERE id = ?', Number(req.params.filePk));
+  if (!file) return res.status(404).json({ error: 'File not found' });
+  const { stageId = null, title, body = '', classification = 'normal' } = req.body || {};
+  if (!CLASSES.includes(classification)) return res.status(422).json({ error: 'invalid classification' });
+  try {
+    res.status(201).json({ note: addNote(file, me, { stageId, title, body, classification }) });
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
 // List files with initiator, note count and latest note status. Restricted files are
 // hidden from members outside their routing (need-to-know).
 router.get('/files', (req, res) => {
@@ -72,9 +90,9 @@ router.get('/files', (req, res) => {
   const visible = files.filter((f) => {
     if (f.classification === 'normal') return true;
     if (!me) return false;
-    if (supervises(me, f.initiator_unit_id)) return true; // head sees subordinates' restricted files
-    const noteId = get('SELECT id FROM notes WHERE file_pk = ? ORDER BY seq DESC LIMIT 1', f.id)?.id;
-    return noteId ? participants(noteId).has(me.id) : false;
+    // Graded need-to-know on the file's latest note (participant or supervising head).
+    const note = get('SELECT id, classification, file_pk FROM notes WHERE file_pk = ? ORDER BY seq DESC LIMIT 1', f.id);
+    return note ? canView(note, me) : false;
   });
   res.json({ files: visible });
 });
@@ -120,7 +138,9 @@ router.get('/notes/:txnId/summary', (req, res) => {
   const note = get('SELECT * FROM notes WHERE txn_id = ?', req.params.txnId);
   if (!note) return res.status(404).json({ error: 'Note not found' });
   if (!canView(note, currentMember(req))) return res.status(403).json({ error: 'Not authorised for this note' });
-  res.json({ summary: summarize(note.body) });
+  const file = get('SELECT * FROM files WHERE id = ?', note.file_pk);
+  const custodian = get('SELECT name FROM members WHERE id = ?', note.custodian_id);
+  res.json({ summary: summarize(note, file, custodian) });
 });
 
 // Edit the draft — only the custodian, only while still a draft.

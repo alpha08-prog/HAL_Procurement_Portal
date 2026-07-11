@@ -2,6 +2,8 @@
 // payment state machine. The actor is always the real signed-in member (never a role),
 // and the recipient is chosen at runtime. Each hand-off appends a routing_steps row.
 import { all, get, nowISO, run } from './db.js';
+import { nextTxnId, noteRefNo } from './refs.js';
+import { nextStage, stageTitle, TENDERING_START_STAGE } from './stages.js';
 
 const fail = (status, message) => {
   throw Object.assign(new Error(message), { status });
@@ -26,29 +28,95 @@ export function participants(noteId) {
 
 export const isParticipant = (noteId, memberId) => participants(noteId).has(memberId);
 
-// Does `me` head a unit that is an ancestor-or-equal of `unitId`? (Phase 7) — a section
-// head / HOD / GM supervises everyone initiating within their org subtree, so they retain
-// access to subordinates' (and a predecessor's) files even after transfer.
-export function supervises(me, unitId) {
-  if (!me?.heads_unit_id || !unitId) return false;
+// Members the note has already passed through — the initiator plus everyone who has sent it
+// onward. Send-back is only allowed to one of these (email: "to user or previous member").
+export function priorHolders(noteId) {
+  const note = get('SELECT initiator_id FROM notes WHERE id = ?', noteId);
+  const ids = new Set([note?.initiator_id].filter(Boolean));
+  for (const s of all('SELECT from_member_id FROM routing_steps WHERE note_id = ?', noteId)) {
+    if (s.from_member_id) ids.add(s.from_member_id);
+  }
+  return ids;
+}
+
+// Is `ancestorId` an ancestor-or-equal of `unitId` in the org tree?
+export function isAncestorOrSelf(ancestorId, unitId) {
+  if (!ancestorId || !unitId) return false;
   let u = unitId;
   while (u) {
-    if (u === me.heads_unit_id) return true;
+    if (u === ancestorId) return true;
     u = get('SELECT parent_id FROM org_units WHERE id = ?', u)?.parent_id;
   }
   return false;
 }
 
-// Need-to-know: a Normal note is visible to any signed-in member; a Restricted note
-// (confidential/secret/top_secret) is visible only to its routed members or a supervising
-// head — a link or transaction id alone grants nothing (that is what access grants + the
-// leak check are for).
+// Tenure-aware supervision (email points 19 & 20). `me` may view `file` if `me` held a HEAD
+// posting over an ancestor-or-equal of the file's FROZEN initiator unit:
+//   • a CURRENT head (to_date NULL) sees every file in his subtree regardless of date —
+//     so a sitting HOD sees a predecessor's older files ("pb mapped to dept"), and still
+//     sees a subordinate's file after the subordinate transfers (unit id is frozen);
+//   • a FORMER head sees only files whose active window overlaps his tenure — he keeps
+//     access to what he dealt with, even after transfer/superannuation.
+export function canSupervise(me, file) {
+  if (!me || !file?.initiator_unit_id) return false;
+  const start = file.created_at;
+  const end = file.closed_at || nowISO();
+  const heads = all(
+    `SELECT org_unit_id, from_date, to_date FROM postings WHERE member_id = ? AND role_in_unit = 'head'`,
+    me.id
+  );
+  for (const p of heads) {
+    if (!isAncestorOrSelf(p.org_unit_id, file.initiator_unit_id)) continue;
+    if (!p.to_date) return true;                                  // current head — all subtree files
+    if (p.from_date <= end && p.to_date >= start) return true;    // former head — tenure overlap
+  }
+  return false;
+}
+
+// The "direct" head of a unit (for the stricter Secret level): a current head of the unit
+// itself or its immediate parent — deliberately excludes distant heads (division GM, complex).
+export function isDirectHead(me, unitId) {
+  if (!me || !unitId) return false;
+  const parent = get('SELECT parent_id FROM org_units WHERE id = ?', unitId)?.parent_id;
+  const targets = new Set([unitId, parent].filter(Boolean));
+  const heads = all(`SELECT org_unit_id FROM postings WHERE member_id = ? AND role_in_unit = 'head' AND to_date IS NULL`, me.id);
+  return heads.some((p) => targets.has(p.org_unit_id));
+}
+
+// Need-to-know with graded restriction (email point 3). Normal = any signed-in member.
+// Routed members always pass. Otherwise the supervisory bypass narrows as the level rises:
+//   confidential → any supervising head (tenure-aware);
+//   secret       → only the direct unit/dept head;
+//   top_secret   → routed members (+ an explicit share grant) only — no head bypass at all.
+// A bare link or transaction id grants nothing (see the grant + leak check in notes.js).
 export function canView(note, me) {
-  if (note.classification === 'normal') return true;
+  const cls = note.classification || 'normal';
+  if (cls === 'normal') return true;
   if (!me) return false;
   if (participants(note.id).has(me.id)) return true;
-  const file = get('SELECT initiator_unit_id FROM files WHERE id = ?', note.file_pk);
-  return supervises(me, file?.initiator_unit_id);
+  if (cls === 'top_secret') return false;
+  const file = get('SELECT initiator_unit_id, created_at, closed_at FROM files WHERE id = ?', note.file_pk);
+  if (cls === 'secret') return isDirectHead(me, file?.initiator_unit_id);
+  return canSupervise(me, file); // confidential
+}
+
+// Files a member is entitled to see in the management reports, as a set of file ids. Unlike
+// the Files browser (normal = visible to all), reports are an oversight tool scoped to the
+// member's own cases + supervised subtree: a routed member of ANY note retains access
+// (email 18), otherwise a head may see it subject to the latest note's classification grade
+// (same grading as canView, so restricted metadata never leaks — email 24–27).
+export function visibleFileIds(me) {
+  if (!me) return new Set();
+  const ids = new Set();
+  for (const file of all('SELECT id, initiator_unit_id, created_at, closed_at FROM files')) {
+    const noteIds = all('SELECT id FROM notes WHERE file_pk = ?', file.id).map((n) => n.id);
+    if (noteIds.some((nid) => participants(nid).has(me.id))) { ids.add(file.id); continue; }
+    const cls = get('SELECT classification FROM notes WHERE file_pk = ? ORDER BY seq DESC LIMIT 1', file.id)?.classification || 'normal';
+    if (cls === 'top_secret') continue;                                          // no head bypass
+    if (cls === 'secret') { if (isDirectHead(me, file.initiator_unit_id)) ids.add(file.id); continue; }
+    if (canSupervise(me, file)) ids.add(file.id);                                // normal / confidential → supervising head
+  }
+  return ids;
 }
 
 const latestStep = (noteId) =>
@@ -106,7 +174,7 @@ export function forward(note, me, toId, comment) {
 export function sendBack(note, me, toId, comment) {
   requireHolder(note, me);
   if (!toId || toId === me.id) fail(422, 'Choose a different member to send back to');
-  if (!get('SELECT id FROM members WHERE id = ?', toId)) fail(422, 'Unknown member');
+  if (!priorHolders(note.id).has(toId)) fail(422, 'Send back only to the initiator or a previous member');
   closeInbound(note.id, me.id, 'send_back');
   run(
     `INSERT INTO routing_steps(note_id,seq,from_member_id,to_member_id,purpose,state,action,comment,sent_at)
@@ -131,23 +199,66 @@ export function retract(note, me) {
   return get('SELECT * FROM notes WHERE id = ?', note.id);
 }
 
-// Approve / reject — closes the file and files it into the cabinets of every routed member.
+// A minimal input-seeking skeleton for a freshly generated stage note (email point 23:
+// "auto-generate next note and seek inputs/documents for next stage").
+function stageSkeleton(stageId) {
+  const t = stageTitle(stageId);
+  return `${t}\n\n(Draft auto-created for the next stage. Provide the inputs and documents required for "${t}", then route for approval.)`;
+}
+
+// Add the next note (N2..final) to an OPEN file — the multi-note lifecycle (email 13, 21, 23).
+// The connected Reference/Transaction ids continue the same File ID; the note opens as a
+// draft held by its author. Only a member of the case may add it. Reaching the tendering
+// stage stamps files.tendering_start. Creating the next note clears the cabinet prompt.
+export function addNote(file, me, { stageId = null, title, body = '', classification = 'normal' } = {}) {
+  if (!me) fail(403, 'No noting member mapped to this account');
+  if (file.status !== 'open') fail(409, 'File is closed — retrieve it before adding a note');
+  const isCaseMember =
+    file.initiator_id === me.id ||
+    all('SELECT id FROM notes WHERE file_pk = ?', file.id).some((n) => participants(n.id).has(me.id));
+  if (!isCaseMember) fail(403, 'Only a member of this case can add the next note');
+
+  const today = nowISO();
+  const seq = (get('SELECT MAX(seq) AS m FROM notes WHERE file_pk = ?', file.id).m || 0) + 1;
+  run(
+    `INSERT INTO notes(file_pk,seq,ref_no,txn_id,title,stage_id,source,body,classification,status,initiator_id,custodian_id,created_at)
+     VALUES(?,?,?,?,?,?, 'manual', ?,?, 'draft', ?, ?, ?)`,
+    file.id, seq, noteRefNo(file.file_id, seq), nextTxnId(), (title || '').trim() || stageTitle(stageId),
+    stageId, (body || '').trim() || stageSkeleton(stageId), classification, me.id, me.id, today
+  );
+  const note = get('SELECT * FROM notes WHERE file_pk = ? AND seq = ?', file.id, seq);
+  run(`INSERT INTO attachments(note_id,kind,name,ref,uploaded_by_id,created_at) VALUES(?, 'pm', ?, ?, NULL, ?)`, note.id, 'Purchase Manual Issue-4', 'PM/Issue-4', today);
+  if (stageId === TENDERING_START_STAGE && !file.tendering_start) run(`UPDATE files SET tendering_start = ? WHERE id = ?`, today, file.id);
+  run(`DELETE FROM cabinet WHERE file_pk = ?`, file.id); // next action taken — leaves the cabinet
+  return note;
+}
+
+// Approve / reject a note. Approving an INTERMEDIATE stage advances the case and leaves the
+// file OPEN; approving the FINAL stage (no next stage) or any rejection CLOSES the file. The
+// closed note is filed into the cabinet of every routed member and the file initiator, tagged
+// by role (email points 16, 17, 23). Cabinet rows are refreshed per decision.
 export function decide(note, me, decision, comment) {
   requireHolder(note, me);
   if (!['approve', 'reject'].includes(decision)) fail(422, 'decision must be approve or reject');
   const today = nowISO();
+  const approved = decision === 'approve';
+  const isFinal = nextStage(note.stage_id) == null;
   closeInbound(note.id, me.id, decision);
   run(
     `INSERT INTO routing_steps(note_id,seq,from_member_id,to_member_id,purpose,state,action,comment,sent_at,actioned_at)
      VALUES(?,?,?,?, 'approve', 'actioned', ?, ?, ?, ?)`,
     note.id, nextSeq(note.id), me.id, me.id, decision, (comment || '').trim() || null, today, today
   );
-  const status = decision === 'approve' ? 'approved' : 'rejected';
+  const status = approved ? 'approved' : 'rejected';
   run(`UPDATE notes SET status = ?, decision = ?, decided_by = ?, closed_at = ? WHERE id = ?`, status, status, me.id, today, note.id);
-  run(`UPDATE files SET status = 'closed', closed_at = ? WHERE id = ?`, today, note.file_pk);
+  if (!approved || isFinal) run(`UPDATE files SET status = 'closed', closed_at = ? WHERE id = ?`, today, note.file_pk);
 
-  for (const pid of participants(note.id)) {
-    const reason = pid === note.initiator_id ? 'initiator' : pid === me.id ? 'approver' : 'router';
+  const fileInit = get('SELECT initiator_id FROM files WHERE id = ?', note.file_pk)?.initiator_id;
+  const recipients = new Set(participants(note.id));
+  if (fileInit) recipients.add(fileInit);
+  run(`DELETE FROM cabinet WHERE file_pk = ?`, note.file_pk);
+  for (const pid of recipients) {
+    const reason = pid === fileInit ? 'initiator' : pid === me.id ? 'approver' : 'router';
     run(`INSERT INTO cabinet(member_id,file_pk,reason,placed_at) VALUES(?,?,?,?)`, pid, note.file_pk, reason, today);
   }
   return get('SELECT * FROM notes WHERE id = ?', note.id);

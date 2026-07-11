@@ -15,6 +15,14 @@ export const db = new DatabaseSync(dbPath);
 db.exec('PRAGMA foreign_keys = ON;');
 db.exec(readFileSync(join(here, 'schema.sql'), 'utf8'));
 
+// Forward-migrate columns added after a DB already exists on disk. schema.sql is
+// CREATE ... IF NOT EXISTS, so it never alters an existing table — add new columns here.
+function ensureColumn(table, column, decl) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!cols.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${decl}`);
+}
+ensureColumn('files', 'line_no', 'TEXT');
+
 // Thin helpers. Params are positional `?` bound via spread (node:sqlite anonymous params).
 export const all = (sql, ...p) => db.prepare(sql).all(...p);
 export const get = (sql, ...p) => db.prepare(sql).get(...p);

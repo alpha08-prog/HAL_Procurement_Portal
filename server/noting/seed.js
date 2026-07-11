@@ -38,18 +38,30 @@ const MEMBERS = [
   [8, 'PB-47210', 'S. Kulkarni', 'stores@hal.local', 'Stores & Inspection', 'stores_inspection', 14, 14],
   [9, 'PB-51002', 'Indent Cell', 'indentor@hal.local', 'Indentor', 'indentor', 15, null],
   [10, 'PB-40000', 'Administrator', 'admin@hal.local', 'System Administrator', 'admin', 16, 16],
-  [11, 'PB-49999', 'QA Test', 'test@hal.local', 'QA / Demo', 'admin', 16, null]
+  [11, 'PB-49999', 'QA Test', 'test@hal.local', 'QA / Demo', 'admin', 16, null],
+  // Predecessor HOD (IMM), superannuated — no current posting (section/heads NULL). Powers
+  // the tenure/predecessor visibility demo: he headed IMM (unit 4) in 2021–2024.
+  [12, 'PB-40010', 'K. Nair (Retd.)', null, 'Former HOD (IMM)', null, null, null]
 ];
 
-// [member_id, org_unit_id, role_in_unit, from_date, to_date]
-const POSTINGS = MEMBERS.map((m) => [m[0], m[6], m[7] ? 'head' : 'member', '2024-06-01', null]);
+// [member_id, org_unit_id, role_in_unit, from_date, to_date]. Current staff get an open
+// posting; the predecessor gets a CLOSED head posting so tenure-window visibility can be
+// exercised (a former head still sees files from his tenure; a current head sees all).
+const POSTINGS = [
+  ...MEMBERS.filter((m) => m[6] != null).map((m) => [m[0], m[6], m[7] ? 'head' : 'member', '2024-06-01', null]),
+  [12, 4, 'head', '2021-01-01', '2024-05-31']
+];
 
 // [id, file_id, title, kind, car_no, standalone, initiator_id, initiator_unit_id,
-//  parent_file_id, status, provisioning_start, tendering_start, created_at, closed_at]
+//  parent_file_id, line_no, status, provisioning_start, tendering_start, created_at, closed_at]
+// Files 3 & 5 are line-wise child PPs of the NVB case (file 1) — one MPR/CAR, many L1 lines.
+// File 4 is the predecessor-era historical case (initiated by the former HOD, id 12).
 const FILES = [
-  [1, 'AOD/IMM/2026/0001', 'Procurement of Night Vision Binocular (NVB)', 'CAR', 'CAR/25/229', 0, 5, 9, null, 'open', '2026-05-02', '2026-05-18', '2026-05-02', null],
-  [2, 'AOD/IMM/2026/0002', 'Purchase of office furniture — administrative approval', 'standalone', null, 1, 6, 9, null, 'open', null, null, '2026-06-10', null],
-  [3, 'AOD/IMM/2026/0003', 'NVB — Purchase Proposal (L1: M/s Optic Systems)', 'CAR', 'CAR/25/229', 0, 5, 9, 1, 'open', '2026-05-02', '2026-05-18', '2026-06-01', null]
+  [1, 'AOD/IMM/2026/0001', 'Procurement of Night Vision Binocular (NVB)', 'CAR', 'CAR/25/229', 0, 5, 9, null, null, 'open', '2026-05-02', '2026-05-18', '2026-05-02', null],
+  [2, 'AOD/IMM/2026/0002', 'Purchase of office furniture — administrative approval', 'standalone', null, 1, 6, 9, null, null, 'open', null, null, '2026-06-10', null],
+  [3, 'AOD/IMM/2026/0003', 'NVB — Purchase Proposal (Line 1: M/s Optic Systems)', 'CAR', 'CAR/25/229', 0, 5, 9, 1, 'Line 1 — M/s Optic Systems', 'open', '2026-05-02', '2026-05-18', '2026-06-01', null],
+  [4, 'AOD/IMM/2023/0001', 'IMM predecessor-era procurement (historical)', 'CAR', 'CAR/23/101', 0, 12, 4, null, null, 'closed', '2023-06-01', '2023-06-20', '2023-06-01', '2023-09-01'],
+  [5, 'AOD/IMM/2026/0004', 'NVB — Purchase Proposal (Line 2: M/s Bharat Optics)', 'CAR', 'CAR/25/229', 0, 6, 9, 1, 'Line 2 — M/s Bharat Optics', 'open', '2026-05-02', '2026-05-18', '2026-06-05', null]
 ];
 
 // [id, file_pk, seq, ref_no, txn_id, title, stage_id, source, body, classification,
@@ -63,7 +75,13 @@ const NOTES = [
     'normal', 'draft', 6, 6, null, null, '2026-06-10', null],
   [3, 3, 1, 'AOD/IMM/2026/0003/N1', 'TXN-2026-000003', 'Purchase Proposal Note', 'pp', 'ai',
     'Purchase Proposal for the Night Vision Binocular case, line-wise L1 M/s Optic Systems. Spun off from CAR/25/229 as a child file.',
-    'normal', 'routed', 5, 6, null, null, '2026-06-01', null]
+    'normal', 'routed', 5, 6, null, null, '2026-06-01', null],
+  [4, 4, 1, 'AOD/IMM/2023/0001/N1', 'TXN-2023-000001', 'Provisioning Note (historical)', 'provisioning', 'manual',
+    'Historical provisioning note initiated under the previous HOD (IMM). Retained for predecessor-tenure visibility.',
+    'normal', 'approved', 12, 12, 'approved', 12, '2023-06-01', '2023-09-01'],
+  [5, 5, 1, 'AOD/IMM/2026/0004/N1', 'TXN-2026-000004', 'Purchase Proposal Note (Line 2)', 'pp', 'manual',
+    'Second line-wise Purchase Proposal for the NVB case — Line 2, L1 M/s Bharat Optics. Spun off from CAR/25/229 as a child file.',
+    'normal', 'draft', 6, 6, null, null, '2026-06-05', null]
 ];
 
 const TABLES = [
@@ -75,7 +93,7 @@ function insertAll() {
   for (const r of ORG) run('INSERT INTO org_units(id,name,kind,code,parent_id) VALUES(?,?,?,?,?)', ...r);
   for (const r of MEMBERS) run('INSERT INTO members(id,pb,name,email,designation,app_role,section_id,heads_unit_id) VALUES(?,?,?,?,?,?,?,?)', ...r);
   for (const r of POSTINGS) run('INSERT INTO postings(member_id,org_unit_id,role_in_unit,from_date,to_date) VALUES(?,?,?,?,?)', ...r);
-  for (const r of FILES) run('INSERT INTO files(id,file_id,title,kind,car_no,standalone,initiator_id,initiator_unit_id,parent_file_id,status,provisioning_start,tendering_start,created_at,closed_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)', ...r);
+  for (const r of FILES) run('INSERT INTO files(id,file_id,title,kind,car_no,standalone,initiator_id,initiator_unit_id,parent_file_id,line_no,status,provisioning_start,tendering_start,created_at,closed_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', ...r);
   for (const r of NOTES) run('INSERT INTO notes(id,file_pk,seq,ref_no,txn_id,title,stage_id,source,body,classification,status,initiator_id,custodian_id,decision,decided_by,created_at,closed_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', ...r);
 }
 

@@ -6,16 +6,16 @@
 import { Router } from 'express';
 import { all, get, nowISO, run } from '../../noting/db.js';
 import { currentMember } from '../../noting/identity.js';
-import { canView, noteByTxn, participants } from '../../noting/workflow.js';
+import { noteByTxn, participants } from '../../noting/workflow.js';
+import { requireNoteAccess } from './access.js';
 
 const router = Router();
 const KINDS = ['doc', 'stamping', 'dop', 'pm'];
 
 router.get('/notes/:txnId/attachments', (req, res) => {
-  const me = currentMember(req);
   const note = noteByTxn(req.params.txnId);
   if (!note) return res.status(404).json({ error: 'Note not found' });
-  if (!canView(note, me)) return res.status(403).json({ error: 'Not authorised for this note' });
+  if (!requireNoteAccess(req, res, note)) return;
   const attachments = all(
     `SELECT a.id, a.kind, a.name, a.ref, a.created_at, m.name AS uploaded_by
      FROM attachments a LEFT JOIN members m ON m.id = a.uploaded_by_id

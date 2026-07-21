@@ -13,20 +13,40 @@ await import('../routes/noting/index.js');
 const { reseed } = await import('./seed.js');
 reseed();
 const { get } = await import('./db.js');
+const { deptCodeFor, nextFileId, nextTxnId } = await import('./refs.js');
 const {
-  addNote, canSupervise, canView, decide, forward, isDirectHead, priorHolders, sendBack, visibleFileIds
+  addNote, canSupervise, canView, decide, forward, isDirectHead, normComment,
+  priorHolders, retrieve, sendBack, visibleFileIds
 } = await import('./workflow.js');
 
 const m = (id) => get('SELECT * FROM members WHERE id = ?', id);
 const f = (id) => get('SELECT * FROM files WHERE id = ?', id);
 const n = (id) => get('SELECT * FROM notes WHERE id = ?', id);
+const cabinetOf = (filePk) =>
+  new Set(
+    (get(`SELECT GROUP_CONCAT(member_id) AS ids FROM cabinet WHERE file_pk = ?`, filePk).ids || '')
+      .split(',').filter(Boolean).map(Number)
+  );
 
 // --- Seed sanity ---
 assert.equal(get('SELECT COUNT(*) AS c FROM members').c, 12, 'members seeded');
-assert.equal(get('SELECT COUNT(*) AS c FROM files').c, 5, 'files seeded');
+assert.equal(get('SELECT COUNT(*) AS c FROM files').c, 10, 'files seeded');
+assert.equal(get('SELECT COUNT(*) AS c FROM notes').c, 12, 'notes seeded');
 assert.equal(get('SELECT COUNT(*) AS c FROM org_units').c, 16, 'org units seeded');
 
-// --- Tenure-aware supervision (email 19/20) ---
+// --- Connected id generators (MAX-based, not COUNT) + dept resolution ---
+assert.equal(deptCodeFor(9), 'IMM', 'section resolves to its department');
+assert.equal(deptCodeFor(16), 'SYS', 'a department resolves to itself');
+assert.equal(deptCodeFor(3), 'AOD', 'a division falls back to its own code (not its parent complex)');
+assert.ok(nextFileId('IMM').endsWith('/0009'), 'file id = max existing suffix + 1');
+assert.ok(nextTxnId().endsWith('-000012'), 'txn id = max existing suffix + 1');
+
+// --- Comment normalisation (email: "." "," "*" count as no comment) ---
+assert.equal(normComment(' . ', 'Concurred & Forwarded'), 'Concurred & Forwarded', 'symbols-only comment auto-fills');
+assert.equal(normComment('', 'Concurred & Forwarded'), 'Concurred & Forwarded', 'empty comment auto-fills');
+assert.equal(normComment('Noted, pl. expedite.', 'X'), 'Noted, pl. expedite.', 'a real comment stands');
+
+// --- Tenure-aware supervision (email 19/20/21) ---
 const rao = m(2);      // current HOD(IMM), heads unit 4
 const former = m(12);  // predecessor HOD, headed unit 4 during 2021–2024
 const stores = m(8);   // heads unit 14 (Stores) — unrelated to IMM
@@ -37,45 +57,66 @@ assert.equal(canSupervise(former, f(4)), true, 'former HOD sees a file from his 
 assert.equal(canSupervise(former, f(1)), false, 'former HOD does NOT see a post-tenure file');
 assert.equal(canSupervise(stores, f(1)), false, 'an unrelated head does not supervise');
 
-// --- Graded classification (email 3), on file 1 (unit 9), before any routing ---
-const base = n(1); // normal, initiator 5, participants = {5}
+// --- Graded classification (email 3), on file 3's note (participants = maker+officer) ---
+const base = n(4);
 assert.equal(canView({ ...base, classification: 'normal' }, stores), true, 'normal → anyone');
 assert.equal(canView({ ...base, classification: 'confidential' }, gm), true, 'confidential → ancestor head (GM)');
 assert.equal(canView({ ...base, classification: 'confidential' }, rao), true, 'confidential → dept head');
 assert.equal(canView({ ...base, classification: 'secret' }, gm), false, 'secret → distant GM blocked');
 assert.equal(canView({ ...base, classification: 'secret' }, rao), true, 'secret → direct dept head');
-assert.equal(isDirectHead(rao, f(1).initiator_unit_id), true, 'dept head is a direct head of the section');
+assert.equal(isDirectHead(rao, f(3).initiator_unit_id), true, 'dept head is a direct head of the section');
 assert.equal(canView({ ...base, classification: 'top_secret' }, rao), false, 'top_secret → no head bypass');
 assert.equal(canView({ ...base, classification: 'top_secret' }, m(5)), true, 'top_secret → participant passes');
+assert.equal(canView(n(8), rao), false, 'seeded top_secret file hidden even from HOD');
+assert.equal(canView(n(8), m(4)), true, 'seeded top_secret file visible to routed CM');
 
-// --- Report visibility set (email 24–27) ---
-assert.equal(visibleFileIds(rao).size, 5, 'dept head sees the whole IMM subtree');
+// --- Report visibility set, graded per note (email 24–27) ---
+assert.equal(visibleFileIds(rao).size, 8, 'HOD sees the IMM subtree except the top_secret case');
+assert.equal(visibleFileIds(gm).size, 9, 'GM sees the whole division except the top_secret case');
 assert.equal(visibleFileIds(stores).size, 0, 'uninvolved member sees nothing in reports');
+assert.equal(visibleFileIds(former).size, 1, 'former HOD sees only his tenure');
 const mine = visibleFileIds(m(5));
-assert.ok(mine.has(1) && mine.has(3) && !mine.has(2), 'a plain user sees only files he is in');
+assert.ok(mine.has(1) && mine.has(3) && mine.has(7) && !mine.has(2), 'a plain user sees exactly his own cases');
+const admins = visibleFileIds(m(10));
+assert.ok(admins.size === 1 && admins.has(8), 'SYS head sees only the SYS-dept file');
 
-// --- Routing: forward, send-back-to-previous-only, reopen draft ---
-forward(n(1), m(5), 6, ''); // initiator 5 -> officer 6
-assert.ok(priorHolders(1).has(5), 'send-back targets include a prior holder');
-assert.throws(() => sendBack(n(1), m(6), 8, ''), /previous member/, 'send-back to a non-prior member is rejected');
-sendBack(n(1), m(6), 5, ''); // back to the initiator (a prior holder)
-assert.equal(n(1).custodian_id, 5, 'send-back moves custody');
-assert.equal(n(1).status, 'draft', 'send-back to the initiator reopens the draft');
+// --- Routing: forward (symbols-only comment), send-back-to-previous-only, reopen draft ---
+forward(n(6), m(6), 5, ' . '); // officer's draft (file 5) -> maker, symbols-only comment
+const lastStep = get('SELECT * FROM routing_steps WHERE note_id = 6 ORDER BY seq DESC LIMIT 1');
+assert.equal(lastStep.comment, 'Concurred & Forwarded', 'symbols-only forward comment auto-fills');
+assert.ok(priorHolders(6).has(6), 'send-back targets include a prior holder');
+assert.throws(() => sendBack(n(6), m(5), 8, ''), /previous member/, 'send-back to a non-prior member is rejected');
+sendBack(n(6), m(5), 6, ''); // back to the initiator (a prior holder)
+assert.equal(n(6).custodian_id, 6, 'send-back moves custody');
+assert.equal(n(6).status, 'draft', 'send-back to the initiator reopens the draft');
 
-// --- Multi-note lifecycle (email 13, 21, 23) ---
-forward(n(1), m(5), 6, '');
-decide(n(1), m(6), 'approve'); // provisioning approved — NOT final
+// --- Decision guard: an unrouted draft cannot be decided ---
+assert.throws(() => decide(n(6), m(6), 'approve'), /draft/, 'self-approval of an unrouted draft is blocked');
+
+// --- Stage validation ---
+assert.throws(() => addNote(f(3), m(5), { stageId: 'bogus_stage' }), /Unknown stage/, 'unknown stage id is rejected');
+
+// --- Multi-note lifecycle + cabinet union (email 13, 16, 17, 21, 23) ---
+assert.equal(cabinetOf(1).size, 3, 'seeded cabinet rows for the open NVB case');
+const n3 = addNote(f(1), m(5), { stageId: 'emd', title: 'EMD Stage Acceptance' });
+assert.equal(n3.seq, 3, 'next note is N3');
+assert.ok(n3.ref_no.endsWith('/N3'), 'connected reference continues the File ID');
+assert.equal(cabinetOf(1).size, 0, 'creating the next note clears the cabinet prompt');
+forward(n(n3.id), m(5), 2, '');
+decide(n(n3.id), m(2), 'approve'); // emd approved — NOT final
 assert.equal(f(1).status, 'open', 'intermediate approval keeps the file open');
-assert.ok(get('SELECT COUNT(*) AS c FROM cabinet WHERE file_pk = 1').c > 0, 'closure fills the cabinet');
+assert.ok(cabinetOf(1).has(6), 'cabinet keeps earlier-note routers (union across notes)');
 
-const n2 = addNote(f(1), m(5), { stageId: 'tender_doc', title: 'Tender Document' });
-assert.equal(n2.seq, 2, 'next note is N2');
-assert.ok(n2.ref_no.endsWith('/N2'), 'connected reference continues the File ID');
-assert.ok(f(1).tendering_start, 'reaching tendering stamps tendering_start');
-assert.equal(get('SELECT COUNT(*) AS c FROM cabinet WHERE file_pk = 1').c, 0, 'creating the next note clears the prompt');
+// --- Retrieve: only the latest note of the file ---
+assert.throws(() => retrieve(n(11), m(2)), /later note/, 'retrieving a superseded note is blocked');
 
-const n3 = addNote(f(1), m(5), { stageId: 'po', title: 'Purchase Order' });
-decide(n(n3.id), m(5), 'approve'); // final stage (po → no next stage)
-assert.equal(f(1).status, 'closed', 'final-stage approval closes the file');
+// --- PO amendment: the one note addable to a CLOSED file, reopening it ---
+assert.throws(() => addNote(f(10), m(5), { stageId: 'emd' }), /closed/, 'a closed file takes no ordinary note');
+const amd = addNote(f(10), m(5), { stageId: 'po_amendment', title: 'PO Amendment 1' });
+assert.equal(f(10).status, 'open', 'PO amendment reopens the closed case');
+forward(n(amd.id), m(5), 2, '');
+decide(n(amd.id), m(2), 'approve'); // po_amendment has no next stage
+assert.equal(f(10).status, 'closed', 'approving the amendment closes the file again');
+assert.ok(cabinetOf(10).has(6), 'final cabinet still includes the N1/N2-only router');
 
 console.log('noting.check: all assertions passed ✓');

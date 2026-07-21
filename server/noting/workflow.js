@@ -3,13 +3,20 @@
 // and the recipient is chosen at runtime. Each hand-off appends a routing_steps row.
 import { all, get, nowISO, run } from './db.js';
 import { nextTxnId, noteRefNo } from './refs.js';
-import { nextStage, stageTitle, TENDERING_START_STAGE } from './stages.js';
+import { nextStage, stageTitle, TENDERING_START_STAGE, VALID_STAGES } from './stages.js';
 
 const fail = (status, message) => {
   throw Object.assign(new Error(message), { status });
 };
 
 const active = new Set(['draft', 'in_check', 'routed']);
+
+// Email rule: an empty comment — or one that is just symbols ("." "," "*" …) — becomes
+// the auto comment at send time. Anything with at least one letter/digit stands as written.
+export const normComment = (comment, fallback) => {
+  const c = (comment || '').trim();
+  return c.replace(/[^\p{L}\p{N}]/gu, '') === '' ? fallback : c;
+};
 
 export function noteByTxn(txnId) {
   return get('SELECT * FROM notes WHERE txn_id = ?', txnId);
@@ -105,16 +112,34 @@ export function canView(note, me) {
 // member's own cases + supervised subtree: a routed member of ANY note retains access
 // (email 18), otherwise a head may see it subject to the latest note's classification grade
 // (same grading as canView, so restricted metadata never leaks — email 24–27).
+// Does a supervising head's bypass pass this classification grade? (Same ladder as
+// canView, minus the participant branch — used to grade heads per NOTE, not per file,
+// so a single restricted note never hides or exposes the rest of the case.)
+export function headGradePasses(me, file, cls) {
+  if (cls === 'top_secret') return false;                                        // no head bypass
+  if (cls === 'secret') return isDirectHead(me, file?.initiator_unit_id);
+  return canSupervise(me, file);                                                 // normal / confidential
+}
+
+// May this member see this NOTE inside the management reports? Participant of the note,
+// or a head passing the note's own grade. (Reports are an oversight tool — "normal" here
+// does NOT mean visible to everyone, unlike the Files browser.)
+export function mayViewInReports(note, file, me) {
+  if (!me) return false;
+  if (participants(note.id).has(me.id)) return true;
+  return headGradePasses(me, file, note.classification || 'normal');
+}
+
+// Files a member is entitled to see in the management reports, as a set of file ids:
+// a routed member of ANY note retains access (email 18), and a head sees the file if ANY
+// of its notes passes his grade — graded note-by-note, so an early normal note keeps the
+// case listed while a later top_secret note stays out of the per-note reports (email 24–27).
 export function visibleFileIds(me) {
   if (!me) return new Set();
   const ids = new Set();
   for (const file of all('SELECT id, initiator_unit_id, created_at, closed_at FROM files')) {
-    const noteIds = all('SELECT id FROM notes WHERE file_pk = ?', file.id).map((n) => n.id);
-    if (noteIds.some((nid) => participants(nid).has(me.id))) { ids.add(file.id); continue; }
-    const cls = get('SELECT classification FROM notes WHERE file_pk = ? ORDER BY seq DESC LIMIT 1', file.id)?.classification || 'normal';
-    if (cls === 'top_secret') continue;                                          // no head bypass
-    if (cls === 'secret') { if (isDirectHead(me, file.initiator_unit_id)) ids.add(file.id); continue; }
-    if (canSupervise(me, file)) ids.add(file.id);                                // normal / confidential → supervising head
+    const notes = all('SELECT id, classification FROM notes WHERE file_pk = ?', file.id);
+    if (notes.some((n) => mayViewInReports(n, file, me))) ids.add(file.id);
   }
   return ids;
 }
@@ -154,7 +179,7 @@ export function openIfRecipient(note, me) {
 }
 
 // Forward to the next member (also covers "add self" and "add a member twice" — the
-// recipient is unrestricted). Empty comment auto-fills "Concurred & Forwarded".
+// recipient is unrestricted). Empty or symbols-only comment auto-fills "Concurred & Forwarded".
 export function forward(note, me, toId, comment) {
   requireHolder(note, me);
   if (!toId) fail(422, 'Choose a member to forward to');
@@ -163,7 +188,7 @@ export function forward(note, me, toId, comment) {
   run(
     `INSERT INTO routing_steps(note_id,seq,from_member_id,to_member_id,purpose,state,action,comment,sent_at)
      VALUES(?,?,?,?, 'forward', 'sent', 'forward', ?, ?)`,
-    note.id, nextSeq(note.id), me.id, toId, (comment || '').trim() || 'Concurred & Forwarded', nowISO()
+    note.id, nextSeq(note.id), me.id, toId, normComment(comment, 'Concurred & Forwarded'), nowISO()
   );
   run(`UPDATE notes SET custodian_id = ?, status = 'routed' WHERE id = ?`, toId, note.id);
   return get('SELECT * FROM notes WHERE id = ?', note.id);
@@ -179,7 +204,7 @@ export function sendBack(note, me, toId, comment) {
   run(
     `INSERT INTO routing_steps(note_id,seq,from_member_id,to_member_id,purpose,state,action,comment,sent_at)
      VALUES(?,?,?,?, 'forward', 'sent', 'send_back', ?, ?)`,
-    note.id, nextSeq(note.id), me.id, toId, (comment || '').trim() || 'Returned', nowISO()
+    note.id, nextSeq(note.id), me.id, toId, normComment(comment, 'Returned'), nowISO()
   );
   const status = toId === note.initiator_id ? 'draft' : 'routed';
   run(`UPDATE notes SET custodian_id = ?, status = ? WHERE id = ?`, toId, status, note.id);
@@ -212,7 +237,17 @@ function stageSkeleton(stageId) {
 // stage stamps files.tendering_start. Creating the next note clears the cabinet prompt.
 export function addNote(file, me, { stageId = null, title, body = '', classification = 'normal' } = {}) {
   if (!me) fail(403, 'No noting member mapped to this account');
-  if (file.status !== 'open') fail(409, 'File is closed — retrieve it before adding a note');
+  stageId = (stageId || '').trim() || null;
+  if (stageId && !VALID_STAGES.has(stageId)) fail(422, `Unknown stage "${stageId}"`);
+  if (file.status !== 'open') {
+    // PO amendment (email: "PO placement, PO amendments"): the one note that may be added
+    // to a CLOSED file — only after the PO (or a previous amendment) was approved. It
+    // reopens the case; its own approval closes it again (no next stage).
+    const last = get('SELECT stage_id, status FROM notes WHERE file_pk = ? ORDER BY seq DESC LIMIT 1', file.id);
+    const amendable = stageId === 'po_amendment' && last?.status === 'approved' && ['po', 'po_amendment'].includes(last.stage_id);
+    if (!amendable) fail(409, 'File is closed — retrieve it before adding a note');
+    run(`UPDATE files SET status = 'open', closed_at = NULL WHERE id = ?`, file.id);
+  }
   const isCaseMember =
     file.initiator_id === me.id ||
     all('SELECT id FROM notes WHERE file_pk = ?', file.id).some((n) => participants(n.id).has(me.id));
@@ -239,6 +274,9 @@ export function addNote(file, me, { stageId = null, title, body = '', classifica
 // by role (email points 16, 17, 23). Cabinet rows are refreshed per decision.
 export function decide(note, me, decision, comment) {
   requireHolder(note, me);
+  // An unrouted draft cannot be decided — the initiator would be approving his own note
+  // with zero hand-offs on record. At least one routing step must have happened first.
+  if (note.status === 'draft') fail(409, 'Route the note before a decision — a draft cannot be approved/rejected');
   if (!['approve', 'reject'].includes(decision)) fail(422, 'decision must be approve or reject');
   const today = nowISO();
   const approved = decision === 'approve';
@@ -253,8 +291,13 @@ export function decide(note, me, decision, comment) {
   run(`UPDATE notes SET status = ?, decision = ?, decided_by = ?, closed_at = ? WHERE id = ?`, status, status, me.id, today, note.id);
   if (!approved || isFinal) run(`UPDATE files SET status = 'closed', closed_at = ? WHERE id = ?`, today, note.file_pk);
 
+  // Cabinet recipients = the union of EVERY note's participants (a member who routed only
+  // an earlier note keeps his cabinet copy at a later decision) + the file initiator.
   const fileInit = get('SELECT initiator_id FROM files WHERE id = ?', note.file_pk)?.initiator_id;
-  const recipients = new Set(participants(note.id));
+  const recipients = new Set();
+  for (const n of all('SELECT id FROM notes WHERE file_pk = ?', note.file_pk)) {
+    for (const pid of participants(n.id)) recipients.add(pid);
+  }
   if (fileInit) recipients.add(fileInit);
   run(`DELETE FROM cabinet WHERE file_pk = ?`, note.file_pk);
   for (const pid of recipients) {
@@ -269,6 +312,8 @@ export function retrieve(note, me) {
   if (!me) fail(403, 'No noting member mapped to this account');
   if (!['approved', 'rejected'].includes(note.status)) fail(409, 'Only a closed note can be retrieved');
   if (note.decided_by !== me.id) fail(403, 'Only the deciding authority can retrieve it');
+  const latest = get('SELECT id FROM notes WHERE file_pk = ? ORDER BY seq DESC LIMIT 1', note.file_pk);
+  if (latest?.id !== note.id) fail(409, 'A later note exists on this file — only the latest note can be retrieved');
   run(`UPDATE notes SET status = 'routed', custodian_id = ?, decision = NULL, decided_by = NULL, closed_at = NULL WHERE id = ?`, me.id, note.id);
   run(`UPDATE files SET status = 'open', closed_at = NULL WHERE id = ?`, note.file_pk);
   run(`DELETE FROM cabinet WHERE file_pk = ?`, note.file_pk);

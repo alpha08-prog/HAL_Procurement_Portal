@@ -6,8 +6,9 @@ import { all, get, nowISO, run } from '../../noting/db.js';
 import { currentMember } from '../../noting/identity.js';
 import { deptCodeFor, nextFileId, nextTxnId, noteRefNo } from '../../noting/refs.js';
 import { addNote, canView, openIfRecipient } from '../../noting/workflow.js';
-import { TENDERING_START_STAGE } from '../../noting/stages.js';
+import { TENDERING_START_STAGE, VALID_STAGES } from '../../noting/stages.js';
 import { summarize } from '../../noting/summarize.js';
+import { requireNoteAccess } from './access.js';
 
 const router = Router();
 const KINDS = ['MPR', 'CAR', 'SPR', 'CPR', 'standalone'];
@@ -18,17 +19,26 @@ router.post('/files', (req, res) => {
   const me = currentMember(req);
   if (!me) return res.status(403).json({ error: 'No noting member mapped to this account' });
 
-  const { title, kind = 'CAR', carNo, source = 'manual', stageId, body = '', classification = 'normal', parentFileId = null, lineNo = null } = req.body || {};
+  const { title, kind = 'CAR', carNo, source = 'manual', body = '', classification = 'normal', parentFileId = null, lineNo = null } = req.body || {};
+  const stageId = (req.body?.stageId || '').trim() || null;
   const noteTitle = (req.body?.noteTitle || '').trim() || 'Note Sheet (N1)';
   if (!title || !String(title).trim()) return res.status(422).json({ error: 'title is required' });
   if (!KINDS.includes(kind)) return res.status(422).json({ error: `kind must be one of ${KINDS.join(', ')}` });
   if (!CLASSES.includes(classification)) return res.status(422).json({ error: 'invalid classification' });
-  if (parentFileId != null && !get('SELECT id FROM files WHERE id = ?', Number(parentFileId))) return res.status(422).json({ error: 'Unknown parent file' });
+  if (stageId && !VALID_STAGES.has(stageId)) return res.status(422).json({ error: `Unknown stage "${stageId}"` });
+  if (parentFileId != null) {
+    // The parent must exist AND be visible to the initiator — same message either way, so
+    // a restricted file's numeric id cannot be probed via 404-vs-422.
+    const parent = get('SELECT id FROM files WHERE id = ?', Number(parentFileId));
+    const parentVisible = parent &&
+      all('SELECT * FROM notes WHERE file_pk = ? ORDER BY seq DESC', parent.id).some((n) => canView(n, me));
+    if (!parentVisible) return res.status(422).json({ error: 'Unknown parent file' });
+  }
 
   const today = nowISO();
   const standalone = kind === 'standalone' ? 1 : 0;
   const fileId = nextFileId(deptCodeFor(me.section_id));
-  const provStart = stageId === 'provisioning' ? today : null;
+  const provStart = today; // every case's clock starts at initiation (live-status report)
   const tendStart = stageId === TENDERING_START_STAGE ? today : null;
 
   const f = run(
@@ -74,56 +84,38 @@ router.post('/files/:filePk/notes', (req, res) => {
 });
 
 // List files with initiator, note count and latest note status. Restricted files are
-// hidden from members outside their routing (need-to-know).
+// hidden from members outside their routing (need-to-know). Visibility is graded per
+// NOTE: the file is listed if ANY of its notes is viewable, and the status/classification
+// shown come from the latest VIEWABLE note — so a later restricted note neither hides the
+// case from an earlier note's routed members nor leaks its own metadata to outsiders.
 router.get('/files', (req, res) => {
   const me = currentMember(req);
   const files = all(
     `SELECT f.id, f.file_id, f.title, f.kind, f.car_no, f.standalone, f.status, f.created_at, f.initiator_unit_id,
             im.name AS initiator,
             (SELECT COUNT(*) FROM notes n WHERE n.file_pk = f.id) AS note_count,
-            (SELECT n.classification FROM notes n WHERE n.file_pk = f.id ORDER BY n.seq DESC LIMIT 1) AS classification,
-            (SELECT n.status FROM notes n WHERE n.file_pk = f.id ORDER BY n.seq DESC LIMIT 1) AS latest_status,
             (SELECT n.txn_id FROM notes n WHERE n.file_pk = f.id ORDER BY n.seq ASC LIMIT 1) AS first_txn
      FROM files f LEFT JOIN members im ON im.id = f.initiator_id
      ORDER BY f.id DESC`
   );
-  const visible = files.filter((f) => {
-    if (f.classification === 'normal') return true;
-    if (!me) return false;
-    // Graded need-to-know on the file's latest note (participant or supervising head).
-    const note = get('SELECT id, classification, file_pk FROM notes WHERE file_pk = ? ORDER BY seq DESC LIMIT 1', f.id);
-    return note ? canView(note, me) : false;
-  });
+  const visible = [];
+  for (const f of files) {
+    const shown = all('SELECT * FROM notes WHERE file_pk = ? ORDER BY seq DESC', f.id).find((n) => canView(n, me));
+    if (!shown) continue;
+    visible.push({ ...f, classification: shown.classification, latest_status: shown.status });
+  }
   res.json({ files: visible });
 });
 
 // One note in full context (file + initiator + custodian), gated by classification.
+// Access (incl. the ?grant= link + anti-leak revocation) is resolved in ./access.js —
+// the same rule guards the summary, attachments and history reads.
 router.get('/notes/:txnId', (req, res) => {
   const note = get('SELECT * FROM notes WHERE txn_id = ?', req.params.txnId);
   if (!note) return res.status(404).json({ error: 'Note not found' });
-  const me = currentMember(req);
-
-  // Restricted access: routed members pass; others need a valid share link addressed to
-  // them. A link presented by anyone else is a re-share leak — revoke it for both and
-  // alert the custodian with the offending PB (email's anti-leak rule).
-  if (!canView(note, me)) {
-    const token = req.query.grant;
-    const grant = token && get(`SELECT * FROM access_grants WHERE token = ? AND note_id = ? AND state = 'active'`, token, note.id);
-    if (grant && me && grant.granted_to_id === me.id) {
-      // authorised via a valid grant — fall through
-    } else if (grant) {
-      run(`UPDATE access_grants SET state = 'revoked', revoked_at = ?, revoke_reason = 'reshared' WHERE id = ?`, nowISO(), grant.id);
-      run(
-        `INSERT INTO access_alerts(note_id,grant_id,custodian_id,offender_pb,message,created_at) VALUES(?,?,?,?,?,?)`,
-        note.id, grant.id, note.custodian_id, me?.pb || 'unknown',
-        `Restricted note ${note.ref_no} link re-shared — access attempted by PB ${me?.pb || 'unknown'}. Grant revoked.`,
-        nowISO()
-      );
-      return res.status(403).json({ error: 'Restricted note — this link was re-shared and has been revoked.' });
-    } else {
-      return res.status(403).json({ error: 'Restricted note — you are not a routed member.' });
-    }
-  }
+  const a = requireNoteAccess(req, res, note);
+  if (!a) return;
+  const me = a.me;
 
   // Viewing as the recipient locks the sender out of retracting it.
   openIfRecipient(note, me);
@@ -137,7 +129,7 @@ router.get('/notes/:txnId', (req, res) => {
 router.get('/notes/:txnId/summary', (req, res) => {
   const note = get('SELECT * FROM notes WHERE txn_id = ?', req.params.txnId);
   if (!note) return res.status(404).json({ error: 'Note not found' });
-  if (!canView(note, currentMember(req))) return res.status(403).json({ error: 'Not authorised for this note' });
+  if (!requireNoteAccess(req, res, note)) return;
   const file = get('SELECT * FROM files WHERE id = ?', note.file_pk);
   const custodian = get('SELECT name FROM members WHERE id = ?', note.custodian_id);
   res.json({ summary: summarize(note, file, custodian) });
@@ -161,10 +153,12 @@ router.post('/notes/:txnId/draft', (req, res) => {
 });
 
 // Send the draft for a pre-routing check to a chosen member (not an approval).
+// Draft-only: a routed/decided note can never be pulled back through the check channel.
 router.post('/notes/:txnId/send-check', (req, res) => {
   const me = currentMember(req);
   const note = get('SELECT * FROM notes WHERE txn_id = ?', req.params.txnId);
   if (!note) return res.status(404).json({ error: 'Note not found' });
+  if (note.status !== 'draft') return res.status(409).json({ error: `Note is ${note.status} — only a draft can be sent for check` });
   if (!me || note.custodian_id !== me.id) return res.status(403).json({ error: 'Only the current holder can send for check' });
 
   const toId = Number(req.body?.toMemberId);

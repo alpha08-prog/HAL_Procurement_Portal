@@ -35,6 +35,8 @@ roles live during a demo.
 | `hod@hal.local`      | HOD (IMM)           | HOD Approval, Register |
 | `stores@hal.local`   | Stores & Inspection | Register |
 | `indentor@hal.local` | Indentor            | Register |
+| `gm@hal.local`       | HOD (payment side)  | GM (AOD) in the noting module — division-wide supervision demo |
+| `cm@hal.local`       | HOD (payment side)  | CM (Purchase) in the noting module — direct-head "Secret" grade + top-secret participant demo |
 
 Accounts are seeded in `server/mock/users.json` (plaintext passwords, bcrypt-hashed in memory
 on boot). The JWT signing secret is read from `JWT_SECRET` (a dev fallback is used if unset).
@@ -72,6 +74,17 @@ PM references are automatic. Restricted levels are graded: Confidential (partici
 supervising head) < Secret (+ the direct unit/dept head only) < Top Secret (participants +
 explicit grant only). Supervisory visibility is tenure-bounded via the `postings` table (a
 sitting head sees his subtree's whole history; a former head only his tenure window).
+A forward comment that is empty **or symbols-only** (`.` `,` `*`) is auto-replaced with
+"Concurred & Forwarded" at send time. After a Purchase Order is approved and the case
+closes, the cabinet offers a need-based **PO Amendment** note that reopens the case (its
+own approval closes it again); amendment counts appear in the lifecycle report.
+
+The seed (`node server/noting/seed.js` force-reseeds) ships a full demo storyline: an
+in-progress NVB case with a cabinet next-stage prompt, an unopened hop for the Retract demo
+(officer@ on the furniture file, test@ on the SYS file), line-wise child PPs, a predecessor-era
+file, a rejected case, a closed PO case offering a PO Amendment, a confidential case with an
+active need-to-know grant (`?grant=demo-grant-active-desk` for desk@) plus a revoked re-shared
+grant and its leak alert (visible to officer@), and a top-secret case visible only to maker@ and cm@.
 
 ## Layout
 

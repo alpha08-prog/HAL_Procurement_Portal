@@ -37,17 +37,27 @@ function IdChip({ label, value }) {
   );
 }
 
+// Members grouped by their org placement (Department › Section) so picking the next
+// member follows the nesting sequence Corporate › Complex › Division › Dept › Section › user.
 function MemberSelect({ value, onChange, members, exclude }) {
+  const groups = new Map();
+  for (const m of members.filter((m) => !exclude?.includes(m.id))) {
+    const label = m.unit ? (m.parent_unit ? `${m.parent_unit} › ${m.unit}` : m.unit) : 'No current posting';
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label).push(m);
+  }
   return (
     <select className="field-input" value={value} onChange={(e) => onChange(e.target.value)}>
       <option value="">— select member —</option>
-      {members
-        .filter((m) => !exclude?.includes(m.id))
-        .map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.name} — {m.designation}
-          </option>
-        ))}
+      {[...groups].map(([label, ms]) => (
+        <optgroup key={label} label={label}>
+          {ms.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name} — {m.designation}
+            </option>
+          ))}
+        </optgroup>
+      ))}
     </select>
   );
 }

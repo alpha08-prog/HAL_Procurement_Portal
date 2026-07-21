@@ -30,7 +30,9 @@ router.post('/notes/:txnId/clarifications', (req, res) => {
   res.status(201).json({ id: c.lastInsertRowid });
 });
 
-// Clarifications on a note that I'm party to (asker / asked / initiator).
+// Clarifications on a note that I'm party to. Strictly the two parties (email: the
+// sub-note window is visible ONLY to the member who sought it and the member asked) —
+// even the note initiator sees nothing of a thread between two other members.
 router.get('/notes/:txnId/clarifications', (req, res) => {
   const me = currentMember(req);
   const note = noteByTxn(req.params.txnId);
@@ -43,9 +45,9 @@ router.get('/notes/:txnId/clarifications', (req, res) => {
      FROM clarifications c
      LEFT JOIN members ab ON ab.id = c.asked_by_id
      LEFT JOIN members at ON at.id = c.asked_to_id
-     WHERE c.note_id = ? AND (c.asked_by_id = ? OR c.asked_to_id = ? OR ? = ?)
+     WHERE c.note_id = ? AND (c.asked_by_id = ? OR c.asked_to_id = ?)
      ORDER BY c.id DESC`,
-    note.id, me.id, me.id, me.id, note.initiator_id
+    note.id, me.id, me.id
   ).map((c) => ({
     ...c,
     messages: all(

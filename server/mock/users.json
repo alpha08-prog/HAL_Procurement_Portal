@@ -70,5 +70,23 @@
     "role": "admin",
     "pb": "PB-49999",
     "department": "Quality Assurance / Demo"
+  },
+  {
+    "id": "U009",
+    "name": "A. K. Sharma",
+    "email": "gm@hal.local",
+    "password": "hal@1234",
+    "role": "hod_imm",
+    "pb": "PB-40001",
+    "department": "Aircraft Overhaul Division (GM)"
+  },
+  {
+    "id": "U010",
+    "name": "Gaurav Yadav",
+    "email": "cm@hal.local",
+    "password": "hal@1234",
+    "role": "hod_imm",
+    "pb": "PB-41060",
+    "department": "Purchase (IMM) — Chief Manager"
   }
 ]

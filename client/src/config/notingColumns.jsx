@@ -126,6 +126,7 @@ export const LIFECYCLE_COLUMNS = [
   { key: 'stage_title', label: 'Current stage' },
   { key: 'note_status', label: 'Status', render: (r) => <StatusBadge value={r.note_status} /> },
   { key: 'notes', label: 'Notes', align: 'right' },
+  { key: 'amendments', label: 'PO amds.', align: 'right', render: (r) => r.amendments || '—' },
   { key: 'status', label: 'File', render: (r) => (r.status === 'closed' ? 'Closed' : 'Open') },
   { key: 'elapsed_days', label: 'Elapsed (d)', align: 'right' }
 ];
@@ -137,7 +138,8 @@ export const STAGE_TIME_COLUMNS = [
   { key: 'initiator', label: 'Initiator' },
   { key: 'created_at', label: 'Initiated' },
   { key: 'closed_at', label: 'Closed', render: (r) => r.closed_at || '—' },
-  { key: 'duration_days', label: 'Duration (d)', align: 'right' }
+  { key: 'duration_days', label: 'Duration (d)', align: 'right' },
+  { key: 'total_elapsed_days', label: 'Total since prov. (d)', align: 'right', render: (r) => r.total_elapsed_days ?? '—' }
 ];
 
 export const LIVE_STATUS_COLUMNS = [

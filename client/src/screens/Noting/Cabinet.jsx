@@ -23,6 +23,7 @@ export default function Cabinet() {
   }, []);
 
   const advance = async (row) => {
+    if (busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -44,7 +45,7 @@ export default function Cabinet() {
       {error && <div className="banner banner-error">{error}</div>}
       <DataGrid
         columns={cabinetColumns(advance)}
-        rows={busy ? null : rows}
+        rows={rows}
         rowKey="file_pk"
         emptyMessage="Your cabinet is empty."
       />

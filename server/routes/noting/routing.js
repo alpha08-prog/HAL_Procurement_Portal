@@ -7,6 +7,7 @@ import { nextStage, stageTitle } from '../../noting/stages.js';
 import {
   decide, forward, history, noteByTxn, retract, retrieve, sendBack
 } from '../../noting/workflow.js';
+import { requireNoteAccess } from './access.js';
 
 const router = Router();
 
@@ -55,12 +56,16 @@ router.get('/cabinet', (req, res) => {
      WHERE c.member_id = ? ORDER BY c.placed_at DESC, f.id DESC`,
     me.id
   );
-  // Next-action prompt: only when the latest note is approved and the case is still open
-  // (a rejected or fully-closed case offers no next stage). The client turns this into a
-  // one-click "create the next note" action.
+  // Next-action prompt: when the latest note is approved and the case is still open, offer
+  // the next linear stage; when the case CLOSED at an approved PO (or amendment), offer a
+  // need-based PO Amendment (which reopens it). A rejection offers nothing. The client
+  // turns this into a one-click "create the next note" action.
   const cabinet = rows.map((r) => {
-    const advance = r.last_status === 'approved' && r.status === 'open';
-    const next = advance ? nextStage(r.last_stage) : null;
+    let next = null;
+    if (r.last_status === 'approved') {
+      if (r.status === 'open') next = nextStage(r.last_stage);
+      else if (['po', 'po_amendment'].includes(r.last_stage)) next = 'po_amendment';
+    }
     return { ...r, next_stage: next, next_stage_title: next ? stageTitle(next) : null };
   });
   res.json({ cabinet, meId: me.id });
@@ -72,9 +77,12 @@ router.post('/notes/:txnId/retract', action((note, me) => retract(note, me)));
 router.post('/notes/:txnId/decision', action((note, me, b) => decide(note, me, b.decision, b.comment)));
 router.post('/notes/:txnId/retrieve', action((note, me) => retrieve(note, me)));
 
+// The routing trail carries member names + comments — gated exactly like the note body
+// (a bare link/txn id must reveal nothing about a restricted note).
 router.get('/notes/:txnId/history', (req, res) => {
   const note = noteByTxn(req.params.txnId);
   if (!note) return res.status(404).json({ error: 'Note not found' });
+  if (!requireNoteAccess(req, res, note)) return;
   res.json({ history: history(note.id) });
 });
 

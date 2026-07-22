@@ -115,6 +115,31 @@ export const SCREENS = [
     navLabel: 'Organisation',
     group: 'Noting',
     visibleTo: ALL_ROLES
+  },
+
+  // Module D — Contract Generation. The register and the STC library are readable by
+  // everyone (library amendment is admin-only, enforced server-side); generation is for
+  // the purchase chain. /contracts/view/:id is a detail route, deliberately not listed.
+  {
+    path: '/contracts/generate',
+    title: 'Contract Generation',
+    navLabel: 'Generate Contract',
+    group: 'Contracts',
+    visibleTo: ['purchase_maker', 'purchase_officer', 'hod_imm', 'admin']
+  },
+  {
+    path: '/contracts/register',
+    title: 'Contract Register',
+    navLabel: 'Contract Register',
+    group: 'Contracts',
+    visibleTo: ALL_ROLES
+  },
+  {
+    path: '/contracts/library',
+    title: 'Contract Terms & Conditions Library',
+    navLabel: 'Clause Library',
+    group: 'Contracts',
+    visibleTo: ALL_ROLES
   }
 ];
 

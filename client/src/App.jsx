@@ -15,6 +15,10 @@ import Cabinet from './screens/Noting/Cabinet.jsx';
 import NoteDetail from './screens/Noting/NoteDetail.jsx';
 import Reports from './screens/Noting/Reports.jsx';
 import Organisation from './screens/Noting/Organisation.jsx';
+import Generate from './screens/Contracts/Generate.jsx';
+import ContractRegister from './screens/Contracts/Register.jsx';
+import ContractView from './screens/Contracts/ContractView.jsx';
+import ClauseLibrary from './screens/Contracts/ClauseLibrary.jsx';
 import PaymentAdvice from './screens/PaymentAdvice/index.jsx';
 import PaymentRegister from './screens/PaymentRegister/index.jsx';
 import ProcessPayment from './screens/ProcessPayment/index.jsx';
@@ -49,6 +53,10 @@ export default function App() {
               <Route path="/noting/reports" element={<Reports />} />
               <Route path="/noting/note/:txnId" element={<NoteDetail />} />
               <Route path="/noting/org" element={<Organisation />} />
+              <Route path="/contracts/generate" element={<Generate />} />
+              <Route path="/contracts/register" element={<ContractRegister />} />
+              <Route path="/contracts/view/:id" element={<ContractView />} />
+              <Route path="/contracts/library" element={<ClauseLibrary />} />
               <Route path="*" element={<HomeRedirect />} />
             </Route>
           </Routes>

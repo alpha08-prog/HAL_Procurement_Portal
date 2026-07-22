@@ -1,0 +1,208 @@
+[
+  {
+    "tenderNo": "GEM/2025/B/6638737",
+    "tenderDate": "2025-09-03",
+    "carNo": "CAR/25/229",
+    "cfaDopRef": "DOP-2025 Annexure-3(B)(2) — CFA: AGM(IMM)",
+    "modeOfTendering": "GeM Custom Bid (Open) — Two-bid with Reverse Auction",
+    "pos": [
+      {
+        "poNo": "IMM/PO/25-26/0533",
+        "poDate": "2026-05-08",
+        "vendorId": "V003",
+        "description": "Supply of Night Vision Binoculars — security & fire section",
+        "suggestedType": "supply_other",
+        "scopeOfWork": "Supply of 5 Nos Night Vision Binoculars (passive, Gen-III image intensifier) against CAR/25/229 dated 17 July 2025 for the Security & Fire section, Aircraft Overhaul Division, Nashik. The stores shall conform in all respects to the technical specification annexed to tender GEM/2025/B/6638737 and shall be delivered complete with carry case, eyepiece assembly, IR illuminator and operator manual. Pre-despatch inspection at the supplier's works; final acceptance at HAL Nashik after joint receipt inspection.",
+        "techSpecs": "Passive night vision binocular, Gen-III image intensifier tube; magnification 4x; field of view >= 9 deg; detection range >= 300 m (starlight); built-in IR illuminator; battery life >= 40 h on 2x AA; weight <= 1.2 kg; operating temperature -20 C to +55 C; IP67 sealing; supplied with carry case, lens caps, and calibration certificate.",
+        "deliveryPeriod": "120 days from date of Purchase Order",
+        "items": [
+          {
+            "partNo": "PEPL-PNVB-01",
+            "description": "Night Vision Binocular, passive, Gen-III (complete with accessories)",
+            "hsn": "90051000",
+            "qty": 5,
+            "uom": "Nos",
+            "unitPrice": 270180,
+            "gstType": "IGST",
+            "gstPct": 18
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tenderNo": "GEM/2025/B/7104412",
+    "tenderDate": "2025-08-12",
+    "carNo": "CAR/25/188",
+    "cfaDopRef": "DOP-2025 Annexure-3(A)(1) — CFA: GM(AOD)",
+    "modeOfTendering": "GeM Open Tender — Single Stage, Two Bid",
+    "pos": [
+      {
+        "poNo": "IMM/PO/25-26/0512",
+        "poDate": "2025-12-18",
+        "vendorId": "V002",
+        "description": "Forged steel brackets — undercarriage assembly jigs",
+        "suggestedType": "supply_lru",
+        "scopeOfWork": "Manufacture and supply of forged steel brackets and clamp forgings for undercarriage assembly jigs against CAR/25/188. Forgings shall be from EN-24 stock with test certificates for each heat lot; machining allowance and normalising per the enclosed drawings. Stage inspection of first-article forgings at the supplier's works before bulk clearance.",
+        "techSpecs": "Material EN-24 (BS 970: 817M40), normalised and tempered; forging tolerance per IS 3469 Class 1; ultrasonic testing 100% per ASTM A388; hardness 248-302 BHN; each lot accompanied by heat-wise test certificate and dimensional report against drawings UC-JIG-114 to 121.",
+        "deliveryPeriod": "90 days from date of Purchase Order",
+        "items": [
+          {
+            "partNo": "UC-BRKT-114",
+            "description": "Forged steel bracket, machined, undercarriage jig",
+            "hsn": "73261910",
+            "qty": 500,
+            "uom": "Nos",
+            "unitPrice": 1790,
+            "gstType": "CGST+SGST",
+            "gstPct": 18
+          },
+          {
+            "partNo": "UC-CLMP-118",
+            "description": "Clamp forging, semi-finished",
+            "hsn": "73261910",
+            "qty": 250,
+            "uom": "Nos",
+            "unitPrice": 652,
+            "gstType": "CGST+SGST",
+            "gstPct": 18
+          }
+        ]
+      },
+      {
+        "poNo": "IMM/PO/25-26/0402",
+        "poDate": "2025-11-05",
+        "vendorId": "V002",
+        "description": "Forged undercarriage fittings — machine shop jigs",
+        "suggestedType": "supply_lru",
+        "scopeOfWork": "Manufacture and supply of forged undercarriage fittings and locating pins for machine-shop jigs against CAR/25/188 (second lot). Scope includes forging, rough machining, heat treatment and magnetic particle inspection; final machining is by HAL. Fixtures and dies remain the supplier's scope.",
+        "techSpecs": "Material EN-24 forgings per IS 2004 Class 3; magnetic particle inspection per ASTM E1444 on 100% of fittings; locating pins case-hardened to 58-62 HRC; dimensional inspection against drawings MS-JIG-081 to 088 with CMM report per lot.",
+        "deliveryPeriod": "75 days from date of Purchase Order",
+        "items": [
+          {
+            "partNo": "MS-FITT-081",
+            "description": "Forged undercarriage fitting, rough machined",
+            "hsn": "73261990",
+            "qty": 120,
+            "uom": "Nos",
+            "unitPrice": 21400,
+            "gstType": "CGST+SGST",
+            "gstPct": 18
+          },
+          {
+            "partNo": "MS-PIN-085",
+            "description": "Locating pin, case hardened",
+            "hsn": "73181500",
+            "qty": 400,
+            "uom": "Nos",
+            "unitPrice": 1095,
+            "gstType": "CGST+SGST",
+            "gstPct": 18
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tenderNo": "GEM/2025/B/6811205",
+    "tenderDate": "2025-09-22",
+    "carNo": "CAR/25/144",
+    "cfaDopRef": "DOP-2025 Annexure-3(B)(1) — CFA: HOD(IMM)",
+    "modeOfTendering": "GeM Bid — Open Tender, Single Bid",
+    "pos": [
+      {
+        "poNo": "IMM/PO/25-26/0457",
+        "poDate": "2025-11-20",
+        "vendorId": "V001",
+        "description": "Ergonomic office seating — assembly shop & design office",
+        "suggestedType": "supply_general",
+        "scopeOfWork": "Supply and installation of ergonomic office seating and workstation furniture for the assembly shop supervisory cabins and the design office against CAR/25/144. Scope includes delivery to site, assembly, placement per the seating layout issued by Plant Engineering, and removal of packing debris. Warranty 36 months on-site including gas-lift and mechanism replacement.",
+        "techSpecs": "High-back ergonomic chairs: BIFMA X5.1 certified, Class-4 gas lift, synchro-tilt mechanism, 4D armrests, breathable mesh back, moulded PU foam seat >= 45 density; workstation tables: 25 mm pre-laminated board with PVC edge banding, powder-coated MS understructure; stools: PU seat, footring, Class-3 gas lift. All fabrics fire-retardant per BS 5852 Crib 5.",
+        "deliveryPeriod": "150 days from date of Purchase Order, phased in two lots",
+        "items": [
+          {
+            "partNo": "SSI-EC-450",
+            "description": "High-back ergonomic chair, mesh, synchro-tilt",
+            "hsn": "94013000",
+            "qty": 180,
+            "uom": "Nos",
+            "unitPrice": 38500,
+            "gstType": "CGST+SGST",
+            "gstPct": 18
+          },
+          {
+            "partNo": "SSI-WT-220",
+            "description": "Workstation table 1500x750, pre-laminated with understructure",
+            "hsn": "94031090",
+            "qty": 55,
+            "uom": "Nos",
+            "unitPrice": 22300,
+            "gstType": "CGST+SGST",
+            "gstPct": 18
+          },
+          {
+            "partNo": "SSI-ST-110",
+            "description": "Ergonomic high stool with footring, PU seat",
+            "hsn": "94013000",
+            "qty": 100,
+            "uom": "Nos",
+            "unitPrice": 2380,
+            "gstType": "CGST+SGST",
+            "gstPct": 18
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tenderNo": "IFS/AOD/25-26/RM-044",
+    "tenderDate": "2025-07-30",
+    "carNo": "CAR/25/097",
+    "cfaDopRef": "DOP-2025 Annexure-3(A)(2) — CFA: GM(AOD)",
+    "modeOfTendering": "Open Tender (HAL IFS) — Limited to approved mills",
+    "pos": [
+      {
+        "poNo": "IMM/PO/25-26/0341",
+        "poDate": "2025-10-14",
+        "vendorId": "V005",
+        "description": "Aluminium alloy sheets AA2024 — raw material stores",
+        "suggestedType": "supply_raw",
+        "scopeOfWork": "Supply of aerospace-grade aluminium alloy sheets and bars against CAR/25/097 for raw material stores, Aircraft Overhaul Division. Material shall be mill-fresh with manufacturer's test certificates traceable to heat number; each sheet indelibly marked with alloy, temper, gauge and heat number. Shelf-life stores to carry not less than 85% residual life on receipt.",
+        "techSpecs": "AA2024-T3 bare sheet per AMS-QQ-A-250/4: 2.0 mm and 1.2 mm gauges, flatness per AMS 2202; AA7075-T651 rolled bar per AMS-QQ-A-225/9; 100% ultrasonic inspection of bar stock per AMS-STD-2154 Class A; mill test certificate + third-party lab correlation per lot.",
+        "deliveryPeriod": "60 days from date of Purchase Order",
+        "items": [
+          {
+            "partNo": "AA2024-T3-2.0",
+            "description": "Aluminium alloy sheet AA2024-T3, 2.0 mm, bare",
+            "hsn": "76061190",
+            "qty": 8400,
+            "uom": "Kg",
+            "unitPrice": 985,
+            "gstType": "CGST+SGST",
+            "gstPct": 18
+          },
+          {
+            "partNo": "AA2024-T3-1.2",
+            "description": "Aluminium alloy sheet AA2024-T3, 1.2 mm, bare",
+            "hsn": "76061190",
+            "qty": 4500,
+            "uom": "Kg",
+            "unitPrice": 1010,
+            "gstType": "CGST+SGST",
+            "gstPct": 18
+          },
+          {
+            "partNo": "AA7075-T651-BAR",
+            "description": "Aluminium alloy bar AA7075-T651, rolled",
+            "hsn": "76042910",
+            "qty": 420,
+            "uom": "Kg",
+            "unitPrice": 1005,
+            "gstType": "CGST+SGST",
+            "gstPct": 18
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -86,6 +86,42 @@ file, a rejected case, a closed PO case offering a PO Amendment, a confidential 
 active need-to-know grant (`?grant=demo-grant-active-desk` for desk@) plus a revoked re-shared
 grant and its leak alert (visible to officer@), and a top-secret case visible only to maker@ and cm@.
 
+## Module D — Contract Generation (`/contracts/*`)
+
+Generates a full HAL contract from a Purchase Order. The user supplies only the
+Requisition/HAL IFS **tender no** (try `GEM/2025/B/6638737`, or `GEM/2025/B/7104412`
+for a tender with two POs); the app prompts for the PO, **crawls the Standard Contract
+Terms & Conditions automatically from the Contract Clauses Matrix** (71 clauses × 8
+contract types, seeded verbatim from the client's xlsx + 72 clause documents), and pulls
+value, item lines (with server-computed GST and landed value) and party details from the
+HAL PO, and the scope of work from the Provisioning Note.
+
+- **Generate Contract** — tender → PO dropdown → type of purchase (auto clauses locked,
+  conditional clauses tickable, extra STC + user-written "Additional Clauses" + standard
+  proformas to annex), 5-level classification (Normal / Restricted / Confidential /
+  Secret / Top Secret). Visible to the purchase chain + admin.
+- **Contract Register** — every generated contract with number, parties, value, CAR,
+  tender, CFA & DOP reference, mode of tendering and the generator's name/PB/designation/
+  dept/division; CSV export. Visible to all.
+- **Contract view** — cover page, table of contents, numbered clauses, price-schedule
+  annexure (amount in words), signature block. Drafts can be edited and **finalised**:
+  finalisation locks the content, computes a SHA-256 integrity hash and stamps a
+  scannable **QR code** (contract no + hash + date-time + signer credentials); printing
+  adds a classification watermark and a running footer on every page. "Verify integrity"
+  recomputes the hash; an optional smart-contract toggle anchors the hash to a clearly
+  labelled **simulated** blockchain (demo stub). Print via the browser's Save-as-PDF
+  (enable "Headers and footers" for page numbers).
+- **Clause Library** — the 72 STC + the matrix grid. Read-only for everyone; **amending
+  a clause is admin-only** (server-enforced on the real account role) and every amendment
+  records the superseded text, who changed it, a change note and the legal-vetting
+  reference doc. Amendments never alter already-generated contracts (clause bodies are
+  snapshotted at generation).
+
+Store: SQLite at `server/data/contracts.db` (`node server/contracts/seed.js` force-reseeds
+the demo — one finalised "Restricted" NVB contract, one draft, one pre-seeded clause
+amendment). PO/tender source data: `server/mock/pos.json`. Checks:
+`node server/contracts/contracts.check.mjs`.
+
 ## Layout
 
 ```

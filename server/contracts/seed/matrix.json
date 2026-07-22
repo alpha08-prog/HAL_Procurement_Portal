@@ -1,0 +1,756 @@
+{
+  "contractTypes": [
+    {
+      "id": "supply_general",
+      "label": "Supply — General Purchases",
+      "sort": 1
+    },
+    {
+      "id": "supply_lru",
+      "label": "Supply — LRU's/BOI & SP",
+      "sort": 2
+    },
+    {
+      "id": "supply_raw",
+      "label": "Supply — Raw Materials",
+      "sort": 3
+    },
+    {
+      "id": "supply_other",
+      "label": "Supply — All Other Items",
+      "sort": 4
+    },
+    {
+      "id": "tot",
+      "label": "Transfer of Technology",
+      "sort": 5
+    },
+    {
+      "id": "services",
+      "label": "Services (incl. MRO)",
+      "sort": 6
+    },
+    {
+      "id": "ltba",
+      "label": "Long Term Business Agreements",
+      "sort": 7
+    },
+    {
+      "id": "licence",
+      "label": "Licence Agreements",
+      "sort": 8
+    }
+  ],
+  "cells": {
+    "1": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "2": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "3": {
+      "supply_general": "N",
+      "supply_lru": "N",
+      "supply_raw": "N",
+      "supply_other": "N",
+      "tot": "N",
+      "services": "N",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "4": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "TBD"
+    },
+    "5": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "6": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "TBD"
+    },
+    "7": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "TBD"
+    },
+    "8": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "9": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "N",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "10": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "N",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "11": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "N",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "N"
+    },
+    "12": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "TBD"
+    },
+    "13": {
+      "supply_general": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V.",
+      "supply_lru": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V.",
+      "supply_raw": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V.",
+      "supply_other": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V.",
+      "tot": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V.",
+      "services": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V.",
+      "ltba": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V.",
+      "licence": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V."
+    },
+    "14": {
+      "supply_general": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V.",
+      "supply_lru": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V.",
+      "supply_raw": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V.",
+      "supply_other": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V.",
+      "tot": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V.",
+      "services": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V.",
+      "ltba": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V.",
+      "licence": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V."
+    },
+    "15": {
+      "supply_general": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V.",
+      "supply_lru": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V.",
+      "supply_raw": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V.",
+      "supply_other": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V.",
+      "tot": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V.",
+      "services": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V.",
+      "ltba": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V.",
+      "licence": "Need to include on case to case basis, as per requirement and in line with Purchase Manual Chapter V."
+    },
+    "16": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "17": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "N",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "18": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "N",
+      "supply_other": "N",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "19": {
+      "supply_general": "Need to include on case to case basis, as per requirement",
+      "supply_lru": "Need to include on case to case basis, as per requirement",
+      "supply_raw": "Need to include on case to case basis, as per requirement",
+      "supply_other": "Need to include on case to case basis, as per requirement",
+      "tot": "Need to include on case to case basis, as per requirement",
+      "services": "Need to include on case to case basis, as per requirement",
+      "ltba": "Need to include on case to case basis, as per requirement",
+      "licence": "Need to include on case to case basis, as per requirement"
+    },
+    "20": {
+      "supply_general": "General clause applicable to all types of contracts",
+      "supply_lru": "General clause applicable to all types of contracts",
+      "supply_raw": "General clause applicable to all types of contracts",
+      "supply_other": "General clause applicable to all types of contracts",
+      "tot": "General clause applicable to all types of contracts",
+      "services": "General clause applicable to all types of contracts",
+      "ltba": "General clause applicable to all types of contracts",
+      "licence": "General clause applicable to all types of contracts"
+    },
+    "21": {
+      "supply_general": "Need to include on case to case basis, as per requirement",
+      "supply_lru": "Need to include on case to case basis, as per requirement",
+      "supply_raw": "Need to include on case to case basis, as per requirement",
+      "supply_other": "Need to include on case to case basis, as per requirement",
+      "tot": "Need to include on case to case basis, as per requirement",
+      "services": "Need to include on case to case basis, as per requirement",
+      "ltba": "Need to include on case to case basis, as per requirement",
+      "licence": "Need to include on case to case basis, as per requirement"
+    },
+    "22": {
+      "supply_general": "Need to include on case to case basis, as per requirement",
+      "supply_lru": "Need to include on case to case basis, as per requirement",
+      "supply_raw": "Need to include on case to case basis, as per requirement",
+      "supply_other": "Need to include on case to case basis, as per requirement",
+      "tot": "Need to include on case to case basis, as per requirement",
+      "services": "Need to include on case to case basis, as per requirement",
+      "ltba": "Need to include on case to case basis, as per requirement",
+      "licence": "Need to include on case to case basis, as per requirement"
+    },
+    "23": {
+      "supply_general": "Need to include on case to case basis, as per requirement",
+      "supply_lru": "Need to include on case to case basis, as per requirement",
+      "supply_raw": "Need to include on case to case basis, as per requirement",
+      "supply_other": "Need to include on case to case basis, as per requirement",
+      "tot": "Need to include on case to case basis, as per requirement",
+      "services": "Need to include on case to case basis, as per requirement",
+      "ltba": "Need to include on case to case basis, as per requirement",
+      "licence": "Need to include on case to case basis, as per requirement"
+    },
+    "24": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "25": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "26": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "N",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "N"
+    },
+    "27": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "TBD"
+    },
+    "28": {
+      "supply_general": "General clause applicable to all types of contracts",
+      "supply_lru": "General clause applicable to all types of contracts",
+      "supply_raw": "General clause applicable to all types of contracts",
+      "supply_other": "General clause applicable to all types of contracts",
+      "tot": "General clause applicable to all types of contracts",
+      "services": "General clause applicable to all types of contracts",
+      "ltba": "General clause applicable to all types of contracts",
+      "licence": "General clause applicable to all types of contracts"
+    },
+    "29": {
+      "supply_general": "General clause applicable to all types of contracts",
+      "supply_lru": "General clause applicable to all types of contracts",
+      "supply_raw": "General clause applicable to all types of contracts",
+      "supply_other": "General clause applicable to all types of contracts",
+      "tot": "General clause applicable to all types of contracts",
+      "services": "General clause applicable to all types of contracts",
+      "ltba": "General clause applicable to all types of contracts",
+      "licence": "General clause applicable to all types of contracts"
+    },
+    "30": {
+      "supply_general": "General clause applicable to all types of contracts",
+      "supply_lru": "General clause applicable to all types of contracts",
+      "supply_raw": "General clause applicable to all types of contracts",
+      "supply_other": "General clause applicable to all types of contracts",
+      "tot": "General clause applicable to all types of contracts",
+      "services": "General clause applicable to all types of contracts",
+      "ltba": "General clause applicable to all types of contracts",
+      "licence": "General clause applicable to all types of contracts"
+    },
+    "31": {
+      "supply_general": "General clause applicable to all types of contracts",
+      "supply_lru": "General clause applicable to all types of contracts",
+      "supply_raw": "General clause applicable to all types of contracts",
+      "supply_other": "General clause applicable to all types of contracts",
+      "tot": "General clause applicable to all types of contracts",
+      "services": "General clause applicable to all types of contracts",
+      "ltba": "General clause applicable to all types of contracts",
+      "licence": "General clause applicable to all types of contracts"
+    },
+    "32": {
+      "supply_general": "Need to include on case to case basis, as per requirement",
+      "supply_lru": "Need to include on case to case basis, as per requirement",
+      "supply_raw": "Need to include on case to case basis, as per requirement",
+      "supply_other": "Need to include on case to case basis, as per requirement",
+      "tot": "Need to include on case to case basis, as per requirement",
+      "services": "Need to include on case to case basis, as per requirement",
+      "ltba": "Need to include on case to case basis, as per requirement",
+      "licence": "Need to include on case to case basis, as per requirement"
+    },
+    "33": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "34": {
+      "supply_general": "Need to include on case to case basis, as per requirement",
+      "supply_lru": "Need to include on case to case basis, as per requirement",
+      "supply_raw": "Need to include on case to case basis, as per requirement",
+      "supply_other": "Need to include on case to case basis, as per requirement",
+      "tot": "Need to include on case to case basis, as per requirement",
+      "services": "Need to include on case to case basis, as per requirement",
+      "ltba": "Need to include on case to case basis, as per requirement",
+      "licence": "Need to include on case to case basis, as per requirement"
+    },
+    "35": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "N"
+    },
+    "36": {
+      "supply_general": "Applicable to all types of contracts",
+      "supply_lru": "Applicable to all types of contracts",
+      "supply_raw": "Applicable to all types of contracts",
+      "supply_other": "Applicable to all types of contracts",
+      "tot": "Applicable to all types of contracts",
+      "services": "Applicable to all types of contracts",
+      "ltba": "Applicable to all types of contracts",
+      "licence": "Applicable to all types of contracts"
+    },
+    "37": {
+      "supply_general": "Need to include on case to case basis, as per the guidelines provided in Purchase Manual",
+      "supply_lru": "Need to include on case to case basis, as per the guidelines provided in Purchase Manual",
+      "supply_raw": "Need to include on case to case basis, as per the guidelines provided in Purchase Manual",
+      "supply_other": "Need to include on case to case basis, as per the guidelines provided in Purchase Manual",
+      "tot": "Need to include on case to case basis, as per the guidelines provided in Purchase Manual",
+      "services": "Need to include on case to case basis, as per the guidelines provided in Purchase Manual",
+      "ltba": "Need to include on case to case basis, as per the guidelines provided in Purchase Manual",
+      "licence": "Need to include on case to case basis, as per the guidelines provided in Purchase Manual"
+    },
+    "38": {
+      "supply_general": "General clause applicable to all types of contracts",
+      "supply_lru": "General clause applicable to all types of contracts",
+      "supply_raw": "General clause applicable to all types of contracts",
+      "supply_other": "General clause applicable to all types of contracts",
+      "tot": "General clause applicable to all types of contracts",
+      "services": "General clause applicable to all types of contracts",
+      "ltba": "General clause applicable to all types of contracts",
+      "licence": "General clause applicable to all types of contracts"
+    },
+    "39": {
+      "supply_general": "General clause applicable to all types of contracts",
+      "supply_lru": "General clause applicable to all types of contracts",
+      "supply_raw": "General clause applicable to all types of contracts",
+      "supply_other": "General clause applicable to all types of contracts",
+      "tot": "General clause applicable to all types of contracts",
+      "services": "General clause applicable to all types of contracts",
+      "ltba": "General clause applicable to all types of contracts",
+      "licence": "General clause applicable to all types of contracts"
+    },
+    "40": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "N",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "N"
+    },
+    "41": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "42": {
+      "supply_general": "General clause applicable to all types of contracts",
+      "supply_lru": "General clause applicable to all types of contracts",
+      "supply_raw": "General clause applicable to all types of contracts",
+      "supply_other": "General clause applicable to all types of contracts",
+      "tot": "General clause applicable to all types of contracts",
+      "services": "General clause applicable to all types of contracts",
+      "ltba": "General clause applicable to all types of contracts",
+      "licence": "General clause applicable to all types of contracts"
+    },
+    "43": {
+      "supply_general": "General clause applicable to all types of contracts",
+      "supply_lru": "General clause applicable to all types of contracts",
+      "supply_raw": "General clause applicable to all types of contracts",
+      "supply_other": "General clause applicable to all types of contracts",
+      "tot": "General clause applicable to all types of contracts",
+      "services": "General clause applicable to all types of contracts",
+      "ltba": "General clause applicable to all types of contracts",
+      "licence": "General clause applicable to all types of contracts"
+    },
+    "44": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "45": {
+      "supply_general": "N",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "N"
+    },
+    "46": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "47": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "48": {
+      "supply_general": "Need to include on case to case basis, as per requirement",
+      "supply_lru": "Need to include on case to case basis, as per requirement",
+      "supply_raw": "Need to include on case to case basis, as per requirement",
+      "supply_other": "Need to include on case to case basis, as per requirement",
+      "tot": "Need to include on case to case basis, as per requirement",
+      "services": "Need to include on case to case basis, as per requirement",
+      "ltba": "Need to include on case to case basis, as per requirement",
+      "licence": "Need to include on case to case basis, as per requirement"
+    },
+    "49": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "50": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "N",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "51": {
+      "supply_general": "Need to include on case to case basis, as per requirement",
+      "supply_lru": "Need to include on case to case basis, as per requirement",
+      "supply_raw": "Need to include on case to case basis, as per requirement",
+      "supply_other": "Need to include on case to case basis, as per requirement",
+      "tot": "Need to include on case to case basis, as per requirement",
+      "services": "Need to include on case to case basis, as per requirement",
+      "ltba": "Need to include on case to case basis, as per requirement",
+      "licence": "Need to include on case to case basis, as per requirement"
+    },
+    "52": {
+      "supply_general": "Need to include in contracts with overseas vendors in unavoidable circumstances only",
+      "supply_lru": "Need to include in contracts with overseas vendors in unavoidable circumstances only",
+      "supply_raw": "Need to include in contracts with overseas vendors in unavoidable circumstances only",
+      "supply_other": "Need to include in contracts with overseas vendors in unavoidable circumstances only",
+      "tot": "Need to include in contracts with overseas vendors in unavoidable circumstances only",
+      "services": "Need to include in contracts with overseas vendors in unavoidable circumstances only",
+      "ltba": "Need to include in contracts with overseas vendors in unavoidable circumstances only",
+      "licence": "Need to include in contracts with overseas vendors in unavoidable circumstances only"
+    },
+    "53": {
+      "supply_general": "General clause applicable to all types of contracts",
+      "supply_lru": "General clause applicable to all types of contracts",
+      "supply_raw": "General clause applicable to all types of contracts",
+      "supply_other": "General clause applicable to all types of contracts",
+      "tot": "General clause applicable to all types of contracts",
+      "services": "General clause applicable to all types of contracts",
+      "ltba": "General clause applicable to all types of contracts",
+      "licence": "General clause applicable to all types of contracts"
+    },
+    "54": {
+      "supply_general": "General clause applicable to all types of contracts",
+      "supply_lru": "General clause applicable to all types of contracts",
+      "supply_raw": "General clause applicable to all types of contracts",
+      "supply_other": "General clause applicable to all types of contracts",
+      "tot": "General clause applicable to all types of contracts",
+      "services": "General clause applicable to all types of contracts",
+      "ltba": "General clause applicable to all types of contracts",
+      "licence": "General clause applicable to all types of contracts"
+    },
+    "55": {
+      "supply_general": "General clause applicable to all types of contracts",
+      "supply_lru": "General clause applicable to all types of contracts",
+      "supply_raw": "General clause applicable to all types of contracts",
+      "supply_other": "General clause applicable to all types of contracts",
+      "tot": "General clause applicable to all types of contracts",
+      "services": "General clause applicable to all types of contracts",
+      "ltba": "General clause applicable to all types of contracts",
+      "licence": "General clause applicable to all types of contracts"
+    },
+    "56": {
+      "supply_general": "General clause applicable to all types of contracts",
+      "supply_lru": "General clause applicable to all types of contracts",
+      "supply_raw": "General clause applicable to all types of contracts",
+      "supply_other": "General clause applicable to all types of contracts",
+      "tot": "General clause applicable to all types of contracts",
+      "services": "General clause applicable to all types of contracts",
+      "ltba": "General clause applicable to all types of contracts",
+      "licence": "General clause applicable to all types of contracts"
+    },
+    "57": {
+      "supply_general": "Need to include on case to case basis, as per requirement (preferable in ToT contracts/ Licence Agreements etc)",
+      "supply_lru": "Need to include on case to case basis, as per requirement (preferable in ToT contracts/ Licence Agreements etc)",
+      "supply_raw": "Need to include on case to case basis, as per requirement (preferable in ToT contracts/ Licence Agreements etc)",
+      "supply_other": "Need to include on case to case basis, as per requirement (preferable in ToT contracts/ Licence Agreements etc)",
+      "tot": "Need to include on case to case basis, as per requirement (preferable in ToT contracts/ Licence Agreements etc)",
+      "services": "Need to include on case to case basis, as per requirement (preferable in ToT contracts/ Licence Agreements etc)",
+      "ltba": "Need to include on case to case basis, as per requirement (preferable in ToT contracts/ Licence Agreements etc)",
+      "licence": "Need to include on case to case basis, as per requirement (preferable in ToT contracts/ Licence Agreements etc)"
+    },
+    "58": {
+      "supply_general": "Need to include on case to case basis, as per requirement (preferable in R&D contracts)",
+      "supply_lru": "Need to include on case to case basis, as per requirement (preferable in R&D contracts)",
+      "supply_raw": "Need to include on case to case basis, as per requirement (preferable in R&D contracts)",
+      "supply_other": "Need to include on case to case basis, as per requirement (preferable in R&D contracts)",
+      "tot": "Need to include on case to case basis, as per requirement (preferable in R&D contracts)",
+      "services": "Need to include on case to case basis, as per requirement (preferable in R&D contracts)",
+      "ltba": "Need to include on case to case basis, as per requirement (preferable in R&D contracts)",
+      "licence": "Need to include on case to case basis, as per requirement (preferable in R&D contracts)"
+    },
+    "59": {
+      "supply_general": "N",
+      "supply_lru": "Y",
+      "supply_raw": "N",
+      "supply_other": "N",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "TBD"
+    },
+    "60": {
+      "supply_general": "General clause applicable to all types of contracts",
+      "supply_lru": "General clause applicable to all types of contracts",
+      "supply_raw": "General clause applicable to all types of contracts",
+      "supply_other": "General clause applicable to all types of contracts",
+      "tot": "General clause applicable to all types of contracts",
+      "services": "General clause applicable to all types of contracts",
+      "ltba": "General clause applicable to all types of contracts",
+      "licence": "General clause applicable to all types of contracts"
+    },
+    "61": {
+      "supply_general": "General clause applicable to all types of contracts",
+      "supply_lru": "General clause applicable to all types of contracts",
+      "supply_raw": "General clause applicable to all types of contracts",
+      "supply_other": "General clause applicable to all types of contracts",
+      "tot": "General clause applicable to all types of contracts",
+      "services": "General clause applicable to all types of contracts",
+      "ltba": "General clause applicable to all types of contracts",
+      "licence": "General clause applicable to all types of contracts"
+    },
+    "62": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "N",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "N"
+    },
+    "63": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "64": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "65": {
+      "supply_general": "Generally included in competitive tenders/contracts",
+      "supply_lru": "Generally included in competitive tenders/contracts",
+      "supply_raw": "Generally included in competitive tenders/contracts",
+      "supply_other": "Generally included in competitive tenders/contracts",
+      "tot": "Generally included in competitive tenders/contracts",
+      "services": "Generally included in competitive tenders/contracts",
+      "ltba": "Generally included in competitive tenders/contracts",
+      "licence": "Generally included in competitive tenders/contracts"
+    },
+    "66": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "67": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "Y"
+    },
+    "68": {
+      "supply_general": "Generally included in Tenders, other than Proprietary.",
+      "supply_lru": "Generally included in Tenders, other than Proprietary.",
+      "supply_raw": "Generally included in Tenders, other than Proprietary.",
+      "supply_other": "Generally included in Tenders, other than Proprietary.",
+      "tot": "Generally included in Tenders, other than Proprietary.",
+      "services": "Generally included in Tenders, other than Proprietary.",
+      "ltba": "Generally included in Tenders, other than Proprietary.",
+      "licence": "N"
+    },
+    "69": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "N"
+    },
+    "70": {
+      "supply_general": "Y",
+      "supply_lru": "Y",
+      "supply_raw": "Y",
+      "supply_other": "Y",
+      "tot": "Y",
+      "services": "Y",
+      "ltba": "Y",
+      "licence": "N"
+    },
+    "71": {
+      "supply_general": "Generally included in all overseas contracts (even indigenous vendor quoting with foreign content)",
+      "supply_lru": "Generally included in all overseas contracts (even indigenous vendor quoting with foreign content)",
+      "supply_raw": "Generally included in all overseas contracts (even indigenous vendor quoting with foreign content)",
+      "supply_other": "Generally included in all overseas contracts (even indigenous vendor quoting with foreign content)",
+      "tot": "Generally included in all overseas contracts (even indigenous vendor quoting with foreign content)",
+      "services": "Generally included in all overseas contracts (even indigenous vendor quoting with foreign content)",
+      "ltba": "Generally included in all overseas contracts (even indigenous vendor quoting with foreign content)",
+      "licence": "Generally included in all overseas contracts (even indigenous vendor quoting with foreign content)"
+    }
+  }
+}

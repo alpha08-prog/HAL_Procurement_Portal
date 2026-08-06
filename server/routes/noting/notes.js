@@ -12,7 +12,7 @@ import { requireNoteAccess } from './access.js';
 
 const router = Router();
 const KINDS = ['MPR', 'CAR', 'SPR', 'CPR', 'standalone'];
-const CLASSES = ['normal', 'confidential', 'secret', 'top_secret'];
+const CLASSES = ['normal', 'restricted', 'confidential', 'secret', 'top_secret'];
 
 // Initiate a new file + its first note (N1). Any HAL member can do this.
 router.post('/files', (req, res) => {

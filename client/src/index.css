@@ -2295,6 +2295,9 @@ body {
   color: var(--muted);
   text-align: center;
 }
+.contract-page-footer::after {
+  content: " · Page " counter(page);
+}
 
 @media print {
   .contract-doc { overflow: visible; }

@@ -7,12 +7,17 @@ import { computeItems } from '../../contracts/money.js';
 import { clausesForType } from '../../contracts/matrix.js';
 import { get } from '../../contracts/db.js';
 import { FORMATS } from '../../contracts/generate.js';
+import { requireRoles } from '../../middleware/requireRoles.js';
 
 const router = Router();
+const contractWorkflowRole = requireRoles(
+  ['purchase_maker', 'purchase_officer', 'hod_imm', 'admin'],
+  'Contract generation lookups are available only to the purchase approval chain'
+);
 
-router.get('/tenders', (_req, res) => res.json({ tenders: allTenders() }));
+router.get('/tenders', contractWorkflowRole, (_req, res) => res.json({ tenders: allTenders() }));
 
-router.get('/lookup', (req, res) => {
+router.get('/lookup', contractWorkflowRole, (req, res) => {
   const tender = findTender(req.query.tender);
   if (!tender) return res.status(404).json({ error: 'No tender found for that Requisition/HAL IFS tender no' });
   res.json({
@@ -21,7 +26,7 @@ router.get('/lookup', (req, res) => {
   });
 });
 
-router.get('/lookup/po', (req, res) => {
+router.get('/lookup/po', contractWorkflowRole, (req, res) => {
   const src = findPo(req.query.tender, req.query.po);
   if (!src) return res.status(404).json({ error: 'No PO found for that tender/PO combination' });
   const { tender, po, vendor } = src;
@@ -35,12 +40,12 @@ router.get('/lookup/po', (req, res) => {
   });
 });
 
-router.get('/clause-plan', (req, res) => {
+router.get('/clause-plan', contractWorkflowRole, (req, res) => {
   const typeId = req.query.type;
   if (!get('SELECT id FROM contract_types WHERE id = ?', typeId)) return res.status(422).json({ error: 'Unknown contract type' });
   res.json({ typeId, ...clausesForType(typeId) });
 });
 
-router.get('/formats', (_req, res) => res.json({ formats: FORMATS }));
+router.get('/formats', contractWorkflowRole, (_req, res) => res.json({ formats: FORMATS }));
 
 export default router;

@@ -6,9 +6,14 @@ import { Router } from 'express';
 import { all } from '../../contracts/db.js';
 import { contractActor } from '../../contracts/identity.js';
 import { generateContract, patchDraft, finaliseContract, verifyContract, fullContract, CLASSIFICATIONS } from '../../contracts/generate.js';
+import { requireRoles } from '../../middleware/requireRoles.js';
 
 const router = Router();
 const boom = (res, e) => res.status(e.status || 500).json({ error: e.message });
+const contractWorkflowRole = requireRoles(
+  ['purchase_maker', 'purchase_officer', 'hod_imm', 'admin'],
+  'Contract generation and finalisation are available only to the purchase approval chain'
+);
 
 // The register: every field the client listed, denormalised — no joins needed client-side.
 router.get('/', (_req, res) => {
@@ -20,7 +25,7 @@ router.get('/', (_req, res) => {
   res.json({ contracts, classifications: CLASSIFICATIONS });
 });
 
-router.post('/', (req, res) => {
+router.post('/', contractWorkflowRole, (req, res) => {
   try {
     res.status(201).json(generateContract(req.body || {}, contractActor(req)));
   } catch (e) { boom(res, e); }
@@ -32,13 +37,13 @@ router.get('/:id', (req, res) => {
   res.json(doc);
 });
 
-router.patch('/:id', (req, res) => {
+router.patch('/:id', contractWorkflowRole, (req, res) => {
   try {
     res.json(patchDraft(req.params.id, req.body || {}, contractActor(req)));
   } catch (e) { boom(res, e); }
 });
 
-router.post('/:id/finalise', (req, res) => {
+router.post('/:id/finalise', contractWorkflowRole, (req, res) => {
   try {
     res.json(finaliseContract(req.params.id, contractActor(req)));
   } catch (e) { boom(res, e); }

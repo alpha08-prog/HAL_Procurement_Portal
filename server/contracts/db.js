@@ -22,6 +22,11 @@ function ensureColumn(table, column, decl) {
   if (!cols.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${decl}`);
 }
 
+ensureColumn('contracts', 'encrypted_payload', 'TEXT');
+ensureColumn('contracts', 'encryption_iv', 'TEXT');
+ensureColumn('contracts', 'encryption_tag', 'TEXT');
+ensureColumn('contracts', 'encryption_alg', 'TEXT');
+
 export const all = (sql, ...p) => db.prepare(sql).all(...p);
 export const get = (sql, ...p) => db.prepare(sql).get(...p);
 export const run = (sql, ...p) => db.prepare(sql).run(...p);

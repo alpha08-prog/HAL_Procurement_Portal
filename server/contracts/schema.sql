@@ -90,6 +90,10 @@ CREATE TABLE IF NOT EXISTS contracts (
   content_hash         TEXT,                           -- SHA-256 of the canonical content, set at finalise
   qr_payload           TEXT,                           -- JSON string the QR encodes
   smart_contract       INTEGER NOT NULL DEFAULT 0,     -- user opted in to the (simulated) smart-contract anchor
+  encrypted_payload    TEXT,                           -- AES-256-GCM encrypted canonical contract content
+  encryption_iv        TEXT,
+  encryption_tag       TEXT,
+  encryption_alg       TEXT,
   smart_contract_sim   TEXT,                           -- JSON of the simulated anchor, always simulated:true
   created_at           TEXT NOT NULL
 );

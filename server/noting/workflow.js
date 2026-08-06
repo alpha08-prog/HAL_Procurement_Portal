@@ -90,21 +90,16 @@ export function isDirectHead(me, unitId) {
   return heads.some((p) => targets.has(p.org_unit_id));
 }
 
-// Need-to-know with graded restriction (email point 3). Normal = any signed-in member.
-// Routed members always pass. Otherwise the supervisory bypass narrows as the level rises:
-//   confidential → any supervising head (tenure-aware);
-//   secret       → only the direct unit/dept head;
-//   top_secret   → routed members (+ an explicit share grant) only — no head bypass at all.
-// A bare link or transaction id grants nothing (see the grant + leak check in notes.js).
+// Need-to-know restriction. Normal = any signed-in member. Any restricted class
+// (Restricted / Confidential / Secret / Top Secret) is visible only to routed members
+// here; explicit share grants are resolved in routes/noting/access.js. A bare link or
+// transaction id grants nothing.
 export function canView(note, me) {
   const cls = note.classification || 'normal';
   if (cls === 'normal') return true;
   if (!me) return false;
   if (participants(note.id).has(me.id)) return true;
-  if (cls === 'top_secret') return false;
-  const file = get('SELECT initiator_unit_id, created_at, closed_at FROM files WHERE id = ?', note.file_pk);
-  if (cls === 'secret') return isDirectHead(me, file?.initiator_unit_id);
-  return canSupervise(me, file); // confidential
+  return false;
 }
 
 // Files a member is entitled to see in the management reports, as a set of file ids. Unlike
@@ -116,9 +111,8 @@ export function canView(note, me) {
 // canView, minus the participant branch — used to grade heads per NOTE, not per file,
 // so a single restricted note never hides or exposes the rest of the case.)
 export function headGradePasses(me, file, cls) {
-  if (cls === 'top_secret') return false;                                        // no head bypass
-  if (cls === 'secret') return isDirectHead(me, file?.initiator_unit_id);
-  return canSupervise(me, file);                                                 // normal / confidential
+  if (cls !== 'normal') return false;                                            // no head bypass for restricted notes
+  return canSupervise(me, file);
 }
 
 // May this member see this NOTE inside the management reports? Participant of the note,

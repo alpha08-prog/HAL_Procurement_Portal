@@ -42,7 +42,7 @@ function IdChip({ label, value }) {
 function MemberSelect({ value, onChange, members, exclude }) {
   const groups = new Map();
   for (const m of members.filter((m) => !exclude?.includes(m.id))) {
-    const label = m.unit ? (m.parent_unit ? `${m.parent_unit} › ${m.unit}` : m.unit) : 'No current posting';
+    const label = m.unit_path || (m.unit ? (m.parent_unit ? `${m.parent_unit} › ${m.unit}` : m.unit) : 'No current posting');
     if (!groups.has(label)) groups.set(label, []);
     groups.get(label).push(m);
   }

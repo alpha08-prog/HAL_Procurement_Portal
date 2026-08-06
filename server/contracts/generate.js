@@ -3,7 +3,7 @@
 // Doctrine: clause bodies + item money are SNAPSHOTTED at generation; the actor is
 // always stamped server-side; hashing happens over a canonical stable-key JSON so a
 // finalised contract's SHA-256 can be recomputed (and tampering detected) later.
-import { createHash } from 'node:crypto';
+import { createCipheriv, createHash, randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,6 +27,28 @@ const fail = (status, message) => {
 };
 
 const sha256 = (s) => createHash('sha256').update(s).digest('hex');
+
+function encryptionKey() {
+  const configured = process.env.CONTRACT_ENCRYPTION_KEY;
+  if (configured) {
+    const raw = Buffer.from(configured, /^[0-9a-f]{64}$/i.test(configured) ? 'hex' : 'base64');
+    if (raw.length !== 32) fail(500, 'CONTRACT_ENCRYPTION_KEY must decode to 32 bytes');
+    return raw;
+  }
+  return createHash('sha256').update('hal-contract-demo-encryption-key-change-me').digest();
+}
+
+function encryptContent(plainText) {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', encryptionKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(plainText, 'utf8'), cipher.final()]);
+  return {
+    alg: 'AES-256-GCM',
+    payload: encrypted.toString('base64'),
+    iv: iv.toString('base64'),
+    tag: cipher.getAuthTag().toString('base64')
+  };
+}
 
 function validateExtras(extraClauseIds, autoIds) {
   const ids = [...new Set((extraClauseIds || []).map(Number))].filter((id) => !autoIds.has(id));
@@ -199,23 +221,36 @@ export function finaliseContract(contractId, actor) {
   if (!doc) fail(404, 'Contract not found');
   if (doc.contract.status !== 'draft') fail(409, 'Contract is already finalised');
 
-  const hash = sha256(canonicalContent(doc));
+  const canonical = canonicalContent(doc);
+  const hash = sha256(canonical);
   const at = nowStamp();
   const signer = [actor?.name, actor?.pb, actor?.designation].filter(Boolean).join(' / ') || 'HAL Authorised Signatory';
-  const qrPayload = JSON.stringify({ v: 1, contract: doc.contract.contract_no, sha256: hash, at, signer });
+  const encrypted = doc.contract.smart_contract ? encryptContent(canonical) : null;
+  const qrPayload = JSON.stringify({
+    v: 1,
+    contract: doc.contract.contract_no,
+    sha256: hash,
+    at,
+    signer,
+    encrypted: !!encrypted,
+    alg: encrypted?.alg || null
+  });
   const sim = doc.contract.smart_contract
     ? JSON.stringify({
         simulated: true,
         network: 'HAL-DemoChain (SIMULATED — no real blockchain)',
         block: parseInt(hash.slice(0, 6), 16),
         txHash: sha256(hash + at),
-        anchoredAt: at
+        anchoredAt: at,
+        encrypted: true,
+        encryptionAlg: encrypted.alg
       })
     : null;
   run(
     `UPDATE contracts SET status='finalised', finalised_at=?, finalised_by_name=?, finalised_by_pb=?, finalised_by_desig=?,
-       content_hash=?, qr_payload=?, smart_contract_sim=? WHERE id = ?`,
-    at, actor?.name || null, actor?.pb || null, actor?.designation || null, hash, qrPayload, sim, doc.contract.id
+       content_hash=?, qr_payload=?, encrypted_payload=?, encryption_iv=?, encryption_tag=?, encryption_alg=?, smart_contract_sim=? WHERE id = ?`,
+    at, actor?.name || null, actor?.pb || null, actor?.designation || null, hash, qrPayload,
+    encrypted?.payload || null, encrypted?.iv || null, encrypted?.tag || null, encrypted?.alg || null, sim, doc.contract.id
   );
   return fullContract(doc.contract.id);
 }

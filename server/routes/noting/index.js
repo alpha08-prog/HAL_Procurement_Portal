@@ -46,6 +46,7 @@ router.get('/members', (_req, res) => {
   const members = all(
     `SELECT m.id, m.pb, m.name, m.email, m.designation, m.app_role,
             u.name AS unit, u.kind AS unit_kind,
+            u.id AS unit_id,
             p.name AS parent_unit,
             h.name AS heads_unit
      FROM members m
@@ -54,6 +55,19 @@ router.get('/members', (_req, res) => {
      LEFT JOIN org_units h ON h.id = m.heads_unit_id
      ORDER BY m.id`
   );
+  const units = new Map(all('SELECT id, name, parent_id FROM org_units').map((u) => [u.id, u]));
+  const pathFor = (unitId) => {
+    const names = [];
+    let u = units.get(unitId);
+    while (u) {
+      names.unshift(u.name);
+      u = units.get(u.parent_id);
+    }
+    return names.join(' › ');
+  };
+  for (const m of members) {
+    m.unit_path = m.unit_id ? pathFor(m.unit_id) : null;
+  }
   res.json({ members });
 });
 

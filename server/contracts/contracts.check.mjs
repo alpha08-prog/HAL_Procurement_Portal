@@ -2,6 +2,7 @@
 // Runs against a throwaway DB (CONTRACTS_DB env), so it never touches the dev store.
 //   node server/contracts/contracts.check.mjs
 import assert from 'node:assert';
+import { createDecipheriv, createHash } from 'node:crypto';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -104,6 +105,18 @@ assert.deepEqual(positions, positions.map((_, i) => i + 1), 'clause positions ar
 const qr = JSON.parse(nvb.contract.qr_payload);
 assert.ok(qr.contract === nvb.contract.contract_no && qr.sha256 === nvb.contract.content_hash && qr.at && qr.signer, 'QR payload carries no/hash/time/signer');
 assert.equal(nvb.contract.smart_contract_sim.simulated, true, 'smart-contract anchor is honestly simulated');
+assert.equal(nvb.contract.encryption_alg, 'AES-256-GCM', 'smart-contract mode encrypts canonical content');
+assert.ok(nvb.contract.encrypted_payload && nvb.contract.encryption_iv && nvb.contract.encryption_tag, 'encrypted payload stores payload/iv/tag');
+{
+  const key = createHash('sha256').update('hal-contract-demo-encryption-key-change-me').digest();
+  const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(nvb.contract.encryption_iv, 'base64'));
+  decipher.setAuthTag(Buffer.from(nvb.contract.encryption_tag, 'base64'));
+  const plain = Buffer.concat([
+    decipher.update(Buffer.from(nvb.contract.encrypted_payload, 'base64')),
+    decipher.final()
+  ]).toString('utf8');
+  assert.equal(createHash('sha256').update(plain).digest('hex'), nvb.contract.content_hash, 'encrypted payload decrypts to hashed canonical content');
+}
 assert.equal(verifyContract(nvb.contract.id).match, true, 'stored hash verifies');
 assert.throws(() => finaliseContract(nvb.contract.id, null), (e) => e.status === 409, 're-finalise → 409');
 assert.throws(() => patchDraft(nvb.contract.id, { description: 'x' }, null), (e) => e.status === 409, 'patch after finalise → 409');
@@ -151,6 +164,7 @@ assert.deepEqual(auto1, auto0, 'auto clause set is immutable through a patch');
 const fin = finaliseContract(draft.contract.id, { name: 'Asha Mhatre', pb: 'PB-44731', designation: 'Purchase Maker' });
 assert.ok(fin.contract.content_hash && fin.contract.qr_payload, 'finalise stamps hash + QR');
 assert.equal(fin.contract.smart_contract_sim, null, 'no smart anchor unless opted in');
+assert.equal(fin.contract.encrypted_payload, null, 'no encrypted payload unless smart-contract mode is opted in');
 assert.equal(verifyContract(fin.contract.id).match, true);
 
 // --- requireAdmin: real account role only ---

@@ -2,15 +2,19 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import ContractDocument from '../../components/contracts/ContractDocument.jsx';
 import { CONTRACT_CLASSIFICATIONS, ContractClassificationBadge, ContractStatusBadge } from '../../config/contractColumns.jsx';
+import { useRole } from '../../context/RoleContext.jsx';
 import {
   fetchClausePlan, fetchContract, fetchFormats, finaliseContract, patchContract, verifyContract
 } from '../../lib/contractsApi.js';
+
+const CONTRACT_WORKFLOW_ROLES = new Set(['purchase_maker', 'purchase_officer', 'hod_imm', 'admin']);
 
 // One contract: the printable document plus a .no-print action rail. Draft → edit
 // selections / finalise; finalised → verify integrity + print. The document itself is
 // isolated in .note-print-area so window.print() yields the HAL contract alone.
 export default function ContractView() {
   const { id } = useParams();
+  const { accountRole } = useRole();
   const [doc, setDoc] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -32,6 +36,7 @@ export default function ContractView() {
   }, [id]);
 
   const c = doc?.contract;
+  const canUseContractWorkflow = CONTRACT_WORKFLOW_ROLES.has(accountRole);
 
   const openEdit = async () => {
     try {
@@ -121,7 +126,7 @@ export default function ContractView() {
             {c.contract_no} <ContractStatusBadge value={c.status} /> <ContractClassificationBadge value={c.classification} />
           </h1>
           <div className="pill-row">
-            {c.status === 'draft' && (
+            {c.status === 'draft' && canUseContractWorkflow && (
               <>
                 <button type="button" className="btn btn-secondary" onClick={edit ? () => setEdit(null) : openEdit}>
                   {edit ? 'Close editor' : 'Edit selections'}
@@ -152,7 +157,8 @@ export default function ContractView() {
         )}
         {sim && (
           <div className="banner banner-restricted">
-            ⛓ Smart-contract anchor (<strong>{sim.network}</strong> — this is a demo simulation, not a real
+            Smart-contract encryption enabled: canonical contract content encrypted with{' '}
+            <strong>{c.encryption_alg}</strong>. Demo anchor (<strong>{sim.network}</strong> — this is not a real
             blockchain): block #{sim.block}, tx {sim.txHash.slice(0, 24)}…, anchored {sim.anchoredAt?.slice(0, 19).replace('T', ' ')} UTC.
           </div>
         )}

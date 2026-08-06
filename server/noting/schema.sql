@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS notes (
   stage_id       TEXT,                              -- maps to ai/stages.py (provisioning, tec_req ...)
   source         TEXT NOT NULL DEFAULT 'manual',    -- ai|manual
   body           TEXT,
-  classification TEXT NOT NULL DEFAULT 'normal',    -- normal|confidential|secret|top_secret
+  classification TEXT NOT NULL DEFAULT 'normal',    -- normal|restricted|confidential|secret|top_secret
   status         TEXT NOT NULL DEFAULT 'draft',     -- draft|in_check|routed|approved|rejected|closed
   initiator_id   INTEGER REFERENCES members(id),
   custodian_id   INTEGER REFERENCES members(id),    -- who currently holds it

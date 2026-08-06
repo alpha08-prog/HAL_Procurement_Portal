@@ -57,13 +57,14 @@ assert.equal(canSupervise(former, f(4)), true, 'former HOD sees a file from his 
 assert.equal(canSupervise(former, f(1)), false, 'former HOD does NOT see a post-tenure file');
 assert.equal(canSupervise(stores, f(1)), false, 'an unrelated head does not supervise');
 
-// --- Graded classification (email 3), on file 3's note (participants = maker+officer) ---
+// --- Restricted classification (email 3), on file 3's note (participants = maker+officer) ---
 const base = n(4);
 assert.equal(canView({ ...base, classification: 'normal' }, stores), true, 'normal → anyone');
-assert.equal(canView({ ...base, classification: 'confidential' }, gm), true, 'confidential → ancestor head (GM)');
-assert.equal(canView({ ...base, classification: 'confidential' }, rao), true, 'confidential → dept head');
+assert.equal(canView({ ...base, classification: 'restricted' }, rao), false, 'restricted → no head bypass');
+assert.equal(canView({ ...base, classification: 'confidential' }, gm), false, 'confidential → no head bypass');
+assert.equal(canView({ ...base, classification: 'confidential' }, rao), false, 'confidential → no dept-head bypass');
 assert.equal(canView({ ...base, classification: 'secret' }, gm), false, 'secret → distant GM blocked');
-assert.equal(canView({ ...base, classification: 'secret' }, rao), true, 'secret → direct dept head');
+assert.equal(canView({ ...base, classification: 'secret' }, rao), false, 'secret → direct dept head blocked unless routed');
 assert.equal(isDirectHead(rao, f(3).initiator_unit_id), true, 'dept head is a direct head of the section');
 assert.equal(canView({ ...base, classification: 'top_secret' }, rao), false, 'top_secret → no head bypass');
 assert.equal(canView({ ...base, classification: 'top_secret' }, m(5)), true, 'top_secret → participant passes');
@@ -71,12 +72,12 @@ assert.equal(canView(n(8), rao), false, 'seeded top_secret file hidden even from
 assert.equal(canView(n(8), m(4)), true, 'seeded top_secret file visible to routed CM');
 
 // --- Report visibility set, graded per note (email 24–27) ---
-assert.equal(visibleFileIds(rao).size, 8, 'HOD sees the IMM subtree except the top_secret case');
-assert.equal(visibleFileIds(gm).size, 9, 'GM sees the whole division except the top_secret case');
+assert.equal(visibleFileIds(rao).size, 7, 'HOD sees normal IMM-subtree files, not restricted files unless routed');
+assert.equal(visibleFileIds(gm).size, 8, 'GM sees normal division files, not restricted files unless routed');
 assert.equal(visibleFileIds(stores).size, 0, 'uninvolved member sees nothing in reports');
 assert.equal(visibleFileIds(former).size, 1, 'former HOD sees only his tenure');
 const mine = visibleFileIds(m(5));
-assert.ok(mine.has(1) && mine.has(3) && mine.has(7) && !mine.has(2), 'a plain user sees exactly his own cases');
+assert.ok(mine.has(1) && mine.has(3) && mine.has(6) && mine.has(7) && !mine.has(2), 'a plain user sees his own restricted cases as a participant');
 const admins = visibleFileIds(m(10));
 assert.ok(admins.size === 1 && admins.has(8), 'SYS head sees only the SYS-dept file');
 

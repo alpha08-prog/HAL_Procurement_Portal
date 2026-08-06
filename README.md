@@ -18,6 +18,10 @@ npm run dev   # starts mock API on :3001 and Vite on :5173
 
 Open http://localhost:5173. The Vite dev server proxies `/api` to Express.
 
+**New here?** `WORKFLOW_GUIDE.md` walks through every screen and button of the AI
+Documents viewer, the e-File Noting workflow and Contract Generation — including which
+demo account shows which feature and a suggested 15-minute demo order.
+
 ## Test credentials
 
 All accounts share the password **`hal@1234`**. Each maps to one role; sign in to see only

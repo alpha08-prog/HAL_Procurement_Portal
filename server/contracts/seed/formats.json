@@ -10,5 +10,21 @@
   { "id": "land_border", "label": "Land-Border Sharing Countries Declaration (GFR Rule 144(xi))" },
   { "id": "bidder_declaration", "label": "Declaration from the Bidder (HAL Format)" },
   { "id": "anti_poaching", "label": "Anti-poaching & Non-Solicitation of Identified Personnel" },
-  { "id": "proprietary_cert", "label": "Proprietary Article Certificate Format" }
+  { "id": "proprietary_cert", "label": "Proprietary Article Certificate Format" },
+  { "id": "vendor_undertaking", "label": "Vendor Undertaking / Acceptance of Terms" },
+  { "id": "deviation_statement", "label": "Technical & Commercial Deviation Statement" },
+  { "id": "price_bid_format", "label": "Price Bid Format / Schedule of Rates" },
+  { "id": "delivery_schedule", "label": "Delivery Schedule Format" },
+  { "id": "inspection_plan", "label": "Inspection & Quality Assurance Plan Format" },
+  { "id": "warranty_cert", "label": "Warranty Certificate Format" },
+  { "id": "ld_acceptance", "label": "Liquidated Damages Acceptance Format" },
+  { "id": "arbitration_acceptance", "label": "Arbitration & Jurisdiction Acceptance Format" },
+  { "id": "gst_tax_declaration", "label": "GST / Tax Compliance Declaration" },
+  { "id": "msme_declaration", "label": "MSME / Udyam Declaration" },
+  { "id": "conflict_interest", "label": "Conflict of Interest Declaration" },
+  { "id": "blacklisting_declaration", "label": "Debarment / Blacklisting Declaration" },
+  { "id": "export_control", "label": "Export Control / Re-export Compliance Declaration" },
+  { "id": "counterfeit_undertaking", "label": "Counterfeit Parts Prevention Undertaking" },
+  { "id": "service_level", "label": "Service Level Agreement Format" },
+  { "id": "tot_ipr_schedule", "label": "Transfer of Technology / IPR Schedule" }
 ]

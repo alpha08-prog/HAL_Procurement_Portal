@@ -14,6 +14,7 @@ export const REFERENCE_KINDS = ['MPR', 'CAR', 'SPR', 'CPR', 'standalone'];
 
 export const CLASSIFICATIONS = [
   { id: 'normal', label: 'Normal' },
+  { id: 'restricted', label: 'Restricted' },
   { id: 'confidential', label: 'Confidential' },
   { id: 'secret', label: 'Secret' },
   { id: 'top_secret', label: 'Top Secret' }
@@ -50,7 +51,7 @@ export const MEMBER_COLUMNS = [
   { key: 'pb', label: 'PB No' },
   { key: 'name', label: 'Member' },
   { key: 'designation', label: 'Designation' },
-  { key: 'unit', label: 'Unit' },
+  { key: 'unit', label: 'Unit', render: (r) => r.unit_path || r.unit || '—' },
   { key: 'parent_unit', label: 'Under', render: (r) => r.parent_unit || '—' },
   { key: 'heads_unit', label: 'Heads', render: (r) => r.heads_unit || '—' }
 ];

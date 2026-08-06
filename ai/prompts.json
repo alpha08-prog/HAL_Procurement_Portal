@@ -29,5 +29,20 @@
   },
   "po": {
     "user": "You are a tendering officer at HAL Aircraft Overhaul Division, Nashik. Write the covering note for the Purchase Order and HAL Standard Contract. Formal HAL house style. Include: (1) PO number and vendor, (2) Security Deposit and Performance Bank Guarantee amounts as enclosed, (3) warranty terms, (4) delivery terms, (5) statement that SD/PBG/indemnity are being collected per the standard contract. Plain text only, no headings.\n\nData:\n{delta_json}\n{annexures}"
+  },
+  "retender": {
+    "user": "You are a tendering officer at HAL Aircraft Overhaul Division, Nashik. Write the body of a Retender Note in formal HAL house style. Include: (1) the tender reference and enquiry number being closed, (2) the number of bids received against it, (3) the reason retendering is necessary, (4) a request for approval to float a fresh tender against the same requisition. Plain text only, no headings.\n\nData:\n{delta_json}\n{annexures}"
+  },
+  "short_closure": {
+    "user": "You are a tendering officer at HAL Aircraft Overhaul Division, Nashik. Write ONLY the NEW Short Closure section to be appended after the carry-forward body. Formal HAL house style. Include: (1) the requisition/CAR reference and item, (2) the reason the case is being short closed, (3) a statement that the requirement stands closed and no further action is warranted on this requisition, (4) a request for approval of the short closure. Do NOT repeat the carry-forward body. Plain text only, no headings.\n\nNew data only:\n{delta_json}\n{annexures}"
+  },
+  "tec_query": {
+    "user": "You are a member of the indenting agency / Technical Evaluation Committee at HAL Aircraft Overhaul Division, Nashik. Write the body of a TEC Query Note in formal HAL house style. Include: (1) the bidders to whom the query is addressed, (2) the technical clarification sought, (3) the date by which replies are required, (4) a statement that technical evaluation is held pending receipt of replies. Plain text only, no headings.\n\nData:\n{delta_json}\n{annexures}"
+  },
+  "advance_payment": {
+    "user": "You are a tendering officer at HAL Aircraft Overhaul Division, Nashik. Write ONLY the NEW Advance Payment section to be appended after the carry-forward body. Formal HAL house style. Include: (1) the vendor and the advance percentage sought, (2) the advance amount, (3) the bank guarantee to be obtained against the advance, (4) the justification for releasing an advance, (5) a request for concurrence of Finance and approval of the competent authority. Do NOT repeat the carry-forward body. Plain text only, no headings.\n\nNew data only:\n{delta_json}\n{annexures}"
+  },
+  "po_amendment": {
+    "user": "You are a tendering officer at HAL Aircraft Overhaul Division, Nashik. Write ONLY the NEW PO Amendment section to be appended after the carry-forward body. Formal HAL house style. Include: (1) the purchase order number and vendor being amended, (2) the amendment number, (3) the reason for the amendment, (4) the revised value where applicable, (5) a request for approval of the amendment. Do NOT repeat the carry-forward body. Plain text only, no headings.\n\nNew data only:\n{delta_json}\n{annexures}"
   }
 }

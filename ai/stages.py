@@ -35,8 +35,36 @@ STAGES = {
 
 NEEDBASED = ["retender","short_closure","tec_query","due_date_ext","addendum","advance_payment","po_amendment"]
 
+# The five need-based notes that the responsibility-cascading sheet actually places
+# in the post-tender-opening cascade (see cascade.NODES). Same shape as STAGES, so
+# pipeline.run_stage() can execute them; they are NOT in ORDER, so the automatic
+# full-graph run (run.py --auto) and validate.py are untouched. carry "$last" means
+# "carry forward whatever note was raised last", since these are reached out of order.
+NEEDBASED_STAGES = {
+ "retender": {"seq":10,"phase":"TENDERING","note":"Retender Note","file":None,"resp":"Tendering",
+   "new":["retender_reason","tender_no","tender_enquiry","total_bids","retender_approval"],
+   "formats":[],"carry":None,"cond":None,"ref":False},
+ "short_closure": {"seq":11,"phase":"ANY","note":"Short Closure Note","file":None,"resp":"Tendering",
+   "new":["short_closure_reason","reference_no","car_no","item_description"],
+   "formats":[],"carry":"$last","cond":None,"ref":False},
+ "tec_query": {"seq":12,"phase":"TECHNICAL","note":"TEC Query Note","file":None,"resp":"Indenting",
+   "new":["tec_query","tec_query_bidders","tec_query_reply_due"],
+   "formats":[],"carry":None,"cond":None,"ref":False},
+ "advance_payment": {"seq":13,"phase":"COMMERCIAL","note":"Advance Payment Note","file":None,"resp":"Tendering",
+   "new":["recommended_vendor","advance_pct","advance_amount","advance_bg_amount","advance_justification"],
+   "formats":["advance_payment"],"carry":"$last","cond":None,"ref":True},
+ "po_amendment": {"seq":14,"phase":"COMMERCIAL","note":"PO Amendment Note","file":None,"resp":"Tendering",
+   "new":["po_no","amendment_no","amendment_reason","revised_value","recommended_vendor"],
+   "formats":[],"carry":"$last","cond":None,"ref":True},
+}
+
+# Every note the pipeline can execute: the linear ORDER plus the need-based ones.
+ALL_STAGES = {**STAGES, **NEEDBASED_STAGES}
+
 REF = {
  "provisioning":"Provisioning_Note","tender_doc":"Tender_Document","emd":"EMD_Stage_Acceptance",
  "tec_req":"TEC_Req","tec_report":"TEC_Report","pbo":"PBO_Req","pnc_req":"PNC_Req",
  "pnc_rec":"PNC_Recc","pp":"Purchase_Proposal","po":"PO_HAL_Contract",
+ "retender":"Retender_Note","short_closure":"Short_Closure_Note","tec_query":"TEC_Query_Note",
+ "advance_payment":"Advance_Payment_Note","po_amendment":"PO_Amendment_Note",
 }

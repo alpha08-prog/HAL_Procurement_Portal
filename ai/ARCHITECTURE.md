@@ -11,19 +11,34 @@ Run everything from the repo root (`HAL_Procurement_Portal/`). Python deps live 
    ```
 2. **Install Python deps into the `hal` env** (one-time):
    ```bash
-   conda run -n hal pip install pymupdf python-docx requests reportlab
+   conda run -n hal pip install pymupdf python-docx requests reportlab openpyxl
    ```
-3. **Run the pipeline:**
+3. **Run the pipeline — interactively (default on a terminal):**
    ```bash
-   conda run -n hal python ai/run.py
+   conda run --no-capture-output -n hal python ai/run.py
    ```
-   Reads `ai/case_input.json` → walks the 10-stage graph → SLM drafts each new section → writes `ai/outputs/`.
+   Walks the **responsibility cascade** one decision at a time: at every stage it offers only
+   the notes that stage allows, enforces which of the two agencies (Indenting / Tendering) may
+   raise them, and generates whichever note you pick. See [CASCADE.md](CASCADE.md) for the flow
+   diagram and every condition. `--no-capture-output` is needed because plain `conda run`
+   buffers stdio and the prompts never appear; `conda activate hal && python ai/run.py` also works.
+
+   **Unattended full-graph run** (the original behaviour — also the automatic fallback when
+   stdin is not a terminal, so scripts and CI are unaffected):
+   ```bash
+   conda run --no-capture-output -n hal python ai/run.py --auto
+   ```
+   Reads `ai/case_input.json` → walks the 10-stage ORDER → SLM drafts each new section → writes `ai/outputs/`.
 4. **Inspect outputs** (`ai/outputs/`, gitignored):
    - `case_full.json` — full case object (data, deltas, generated, carry_forward, formats, path, skipped)
    - `pdf/NN_<Ref>.pdf` — one HAL house-style PDF per executed note
 5. **(Optional) Score the run** against gold facts from `sampleData/`:
    ```bash
    conda run -n hal python ai/validate.py
+   ```
+   And verify the cascade encoding still matches the spreadsheet it came from (59 assertions):
+   ```bash
+   conda run --no-capture-output -n hal python ai/cascade_check.py
    ```
 6. **(Optional) Rebuild `case_input.json`** from the approved sample notes (seeding aid only — off the run path):
    ```bash

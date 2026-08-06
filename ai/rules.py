@@ -8,6 +8,14 @@ def _num(s):
     t="".join(ch for ch in str(s) if ch.isdigit() or ch==".")
     return float(t) if t else None
 
+# Case fields each branch rule needs before its answer means anything. The
+# interactive cascade shows a rule as "pending" rather than advising off absent
+# data (e.g. retender_required() reads EMD facts that stage 1 has not ingested).
+RULE_INPUTS = {
+    "pnc_required": ["l1_price"],
+    "retender_required": ["total_bids"],
+}
+
 def pnc_required(c):
     l1=_num(c.get("l1_price")); est=_num(c.get("budget_estimate")) or _num(c.get("amount_figures"))
     ra=str(c.get("ra_status") or "").lower()

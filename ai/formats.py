@@ -16,10 +16,11 @@ def pnc_recommendation(c): return {"format":"Annex 21F PNC Recommendation","vend
 def purchase_proposal(c): return {"format":"Annex 21 Purchase Proposal","proposal_id":c.get("proposal_id"),"vendor":c.get("recommended_vendor") or c.get("l1_vendor"),"value":c.get("final_value") or _f(c.get("final_price")),"initiator":c.get("initiator"),"fca":c.get("fca_name"),"cfa":c.get("cfa_name"),"dop_level":c.get("dop_level")}
 def purchase_order(c): return {"format":"Purchase Order","po_no":c.get("po_no"),"vendor":c.get("recommended_vendor") or c.get("l1_vendor"),"value":c.get("final_value") or _f(c.get("final_price")),"sd":c.get("sd_amount"),"pbg":c.get("pbg_amount"),"warranty":c.get("warranty"),"delivery":c.get("delivery_terms")}
 def hal_contract(c): return {"format":"HAL Standard Contract","vendor":c.get("recommended_vendor") or c.get("l1_vendor"),"sd":c.get("sd_amount"),"pbg":c.get("pbg_amount"),"warranty":c.get("warranty")}
+def advance_payment(c): return {"format":"Advance Payment Format","vendor":c.get("recommended_vendor") or c.get("l1_vendor"),"pct":c.get("advance_pct"),"advance":_f(c.get("advance_amount")),"bg_amount":_f(c.get("advance_bg_amount")),"justification":c.get("advance_justification")}
 def sd_format(c): return {"format":"Bank Guarantee (Security Deposit)","pct":"5% of PO basic value"}
 def pbg_format(c): return {"format":"Bank Guarantee (Performance)","pct":"10% of PO basic value"}
 
-REG={"mpr_car":mpr_car,"tec_statement":tec_statement,"comparative_statement":comparative_statement,"commercial_eval":commercial_eval,"price_justification":price_justification,"pnc_agenda":pnc_agenda,"pnc_recommendation":pnc_recommendation,"purchase_proposal":purchase_proposal,"purchase_order":purchase_order,"hal_contract":hal_contract,"sd_format":sd_format,"pbg_format":pbg_format}
+REG={"mpr_car":mpr_car,"tec_statement":tec_statement,"comparative_statement":comparative_statement,"commercial_eval":commercial_eval,"price_justification":price_justification,"pnc_agenda":pnc_agenda,"pnc_recommendation":pnc_recommendation,"purchase_proposal":purchase_proposal,"purchase_order":purchase_order,"hal_contract":hal_contract,"advance_payment":advance_payment,"sd_format":sd_format,"pbg_format":pbg_format}
 
 def build(fid,c):
     fn=REG.get(fid)

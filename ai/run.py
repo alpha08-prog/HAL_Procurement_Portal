@@ -1,3 +1,4 @@
+import argparse
 import sys
 from pathlib import Path
 
@@ -35,7 +36,7 @@ def print_outputs(case):
     for fid, d in case.formats.items():
         print(f"  [{fid}] {d}")
 
-def main():
+def run_auto():
     print(f"\n{SEP}\nHAL PROCUREMENT PIPELINE — full graph run\n{SEP}")
     print(f"[input] reading external case data → {CASE_INPUT.name}  (notes F1–F7 are NOT inputs; references only)")
     inputs = to_stage_inputs(load(str(CASE_INPUT)))
@@ -50,5 +51,26 @@ def main():
         print(f"   {p}")
     print(f"\n{SEP}\nPIPELINE COMPLETE\n{SEP}")
 
+def main():
+    ap = argparse.ArgumentParser(description="HAL procurement note pipeline")
+    g = ap.add_mutually_exclusive_group()
+    g.add_argument("-i", "--interactive", action="store_true",
+                   help="walk the responsibility cascade one decision at a time (default on a terminal)")
+    g.add_argument("-a", "--auto", action="store_true",
+                   help="run the whole linear ORDER unattended (the old behaviour)")
+    ap.add_argument("--agency", choices=["Indenting", "Tendering"],
+                    help="interactive mode: skip the who-are-you prompt")
+    args, rest = ap.parse_known_args()
+
+    # Interactive unless asked otherwise — but never when stdin is not a terminal,
+    # so scripted/CI invocations keep getting the unattended full-graph run.
+    interactive = args.interactive or (not args.auto and sys.stdin.isatty())
+    if interactive:
+        import interactive as cascade_cli
+        argv = (["--agency", args.agency] if args.agency else []) + rest
+        return cascade_cli.main(argv)
+    run_auto()
+    return 0
+
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

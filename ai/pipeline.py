@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from case_object import CaseObject
-from stages import ORDER, STAGES
+from stages import ORDER, STAGES, ALL_STAGES
 from tools import slm_client
 import rules, formats
 
@@ -13,7 +13,7 @@ SEP = "─" * 60
 def _clean(v): return v not in (None, [], "", {})
 
 def _delta(stage, data):
-    return {k: data[k] for k in STAGES[stage]["new"] if _clean(data.get(k))}
+    return {k: data[k] for k in ALL_STAGES[stage]["new"] if _clean(data.get(k))}
 
 def _prompt(stage, delta, refs):
     t = _P[stage]["user"].replace("{delta_json}", json.dumps(delta, indent=2, ensure_ascii=False))
@@ -23,7 +23,7 @@ def _prompt(stage, delta, refs):
     return t + ("\n\n" + g if g else "")
 
 def run_stage(stage, case, inp, max_tokens=800):
-    cfg = STAGES[stage]
+    cfg = ALL_STAGES[stage]
     print(f"\n{SEP}\n[{stage}] {cfg['note']}  (seq {cfg['seq']} | {cfg['phase']} | {cfg['resp']} Agency)")
     case.update(stage, inp or {})
     print(f"[{stage}] INPUT ingested: {[k for k,v in (inp or {}).items() if _clean(v)]}")
@@ -46,7 +46,14 @@ def run_stage(stage, case, inp, max_tokens=800):
     print(f"[{stage}] DELTA → SLM ({len(delta)} new fields): {list(delta.keys())}")
 
     carry, carry_src = "", cfg.get("carry")
-    if carry_src:
+    if carry_src == "$last":
+        # Need-based notes (cascade.NODES) are reached out of ORDER, so they carry
+        # forward whatever note was actually raised last on this file.
+        src = case.path[-1] if case.path else None
+        carry = case.full_output(src) if src else ""
+        print(f"[{stage}] CARRY-FORWARD (last raised note '{src}'): {len(carry)} chars (NOT re-sent to SLM)"
+              if src else f"[{stage}] CARRY: none (first note on file)")
+    elif carry_src:
         src = carry_src if carry_src not in case.skipped else (case.path[-1] if case.path else None)
         carry = case.full_output(src) if src else ""
         if src == carry_src:

@@ -159,10 +159,28 @@ export default function PaymentAdviceNote({ pa }) {
         <span>Remarks : {pa.makerRemark || 'NIL'}</span>
       </div>
 
-      <div className="hal-doc-signs hal-doc-signs-single">
+      <div className="hal-doc-signs hal-doc-signs-split">
         <div className="hal-doc-sign">
           <div className="hal-doc-sign-role">Authorized Signatory</div>
         </div>
+        {(() => {
+          const deskStep = (pa.history ?? []).find((h) => h.action === 'desk_forward_hod');
+          return (
+            <div className={'hal-doc-stamp-box' + (deskStep ? ' hal-doc-stamp-signed' : '')}>
+              {deskStep ? (
+                <>
+                  <div className="hal-doc-stamp-label">✔ Payment Desk — Checked &amp; Stamped</div>
+                  <div className="hal-doc-stamp-meta">{deskStep.date}</div>
+                  {deskStep.remark && <div className="hal-doc-stamp-remark">"{deskStep.remark}"</div>}
+                </>
+              ) : (
+                <div className="hal-doc-stamp-label hal-doc-stamp-empty">
+                  Payment Desk — Stamp &amp; Signature
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       <div className="hal-doc-section-label hal-doc-checklist-title">CHECKLIST</div>
@@ -174,3 +192,4 @@ export default function PaymentAdviceNote({ pa }) {
     </div>
   );
 }
+

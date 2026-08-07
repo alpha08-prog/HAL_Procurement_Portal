@@ -59,7 +59,15 @@ export function registerColumns({ onView }) {
     {
       key: 'forwarded',
       label: 'PA Forwarded (Date / By)',
-      render: (r) => twoLine(formatDate(r.forwardedDate), r.forwardedBy ? roleLabel(r.forwardedBy) : '—')
+      render: (r) =>
+        twoLine(
+          formatDate(r.forwardedDate),
+          r.forwardedByName
+            ? `${r.forwardedByName} / ${r.forwardedByPb}`
+            : r.forwardedBy
+            ? roleLabel(r.forwardedBy)
+            : '—'
+        )
     },
     { key: 'advisedBy', label: 'Advised By', render: (r) => (r.advisedBy ? roleLabel(r.advisedBy) : '—') },
     { key: 'ppr', label: 'CPPC PRR No / Date', render: (r) => (r.pprNo ? twoLine(r.pprNo, formatDate(r.pprDate)) : '—') },
@@ -127,7 +135,7 @@ export const registerCsvColumns = [
   { label: 'CPPC PRR No', value: (r) => r.pprNo ?? '' },
   { label: 'CPPC Forwarding Date', value: (r) => csvDate(r.pprDate) },
   { label: 'PA Created By', value: (r) => (r.createdByName ? `${r.createdByName} / ${r.createdByPb}` : r.createdBy ? roleLabel(r.createdBy) : '') },
-  { label: 'PA Forwarded By', value: (r) => (r.forwardedBy ? roleLabel(r.forwardedBy) : '') },
+  { label: 'PA Forwarded By', value: (r) => (r.forwardedByName ? `${r.forwardedByName} / ${r.forwardedByPb}` : r.forwardedBy ? roleLabel(r.forwardedBy) : '') },
   { label: 'Payment Advised By', value: (r) => (r.advisedBy ? roleLabel(r.advisedBy) : '') },
   { label: 'Advised days from RV', value: (r) => r.advisedFromRvDays ?? '' },
   { label: 'Processed days from Forwarding', value: (r) => r.processedFromForwardingDays ?? '' },

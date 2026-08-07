@@ -79,15 +79,22 @@ export function rvInboxColumns(role, handlers = {}) {
       label: 'Actions',
       render: (row) => {
         const busy = handlers.busyRvNo === row.rvNo;
-        const needsCreditNote = row.creditNoteRequired && !row.creditNoteUploaded;
+        const isRvValueLess = Number(row.rvValue) < Number(row.invoiceValue ?? row.poValue);
+        const creditNoteRequired = row.creditNoteRequired || isRvValueLess;
+        const needsCreditNote = creditNoteRequired && !row.creditNoteUploaded;
         return (
-          <div className="queue-buttons">
+          <div className="queue-buttons" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {needsCreditNote && (
-              <button className="btn btn-secondary" disabled={busy} onClick={() => handlers.onCreditNote?.(row)}>
-                Generate & upload credit note
+              <button
+                className="btn btn-secondary"
+                disabled={busy}
+                onClick={() => handlers.onCreditNote?.(row)}
+                title="RV value is less than claimed invoice value. Upload credit note to proceed."
+              >
+                Generate &amp; upload credit note
               </button>
             )}
-            {row.creditNoteRequired && row.creditNoteUploaded && (
+            {creditNoteRequired && row.creditNoteUploaded && (
               <span className="action-note">Credit note {row.creditNoteNo ?? 'uploaded'} ✓</span>
             )}
             <button

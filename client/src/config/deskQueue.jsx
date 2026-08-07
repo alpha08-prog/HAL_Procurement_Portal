@@ -105,7 +105,13 @@ export const deskQueueConfig = {
       key: 'check',
       label: 'Check advice',
       kind: 'preview',
-      when: (row) => row.status === 'at_payment_desk' || row.status === 'stamped_by_hod'
+      when: (row) => row.status === 'at_payment_desk'
+    },
+    {
+      key: 'viewStamp',
+      label: 'View & stamp Recommendation Report → CPPC',
+      kind: 'preview',
+      when: (row) => row.status === 'stamped_by_hod'
     },
     {
       key: 'view',
@@ -116,10 +122,25 @@ export const deskQueueConfig = {
     // (1) Forward a freshly-arrived advice to HOD for approval.
     {
       key: 'forwardHod',
-      label: 'Forward to HOD',
+      label: 'Check, stamp & forward to HOD',
       transition: 'desk_forward_hod',
       primary: true,
-      when: (row) => row.status === 'at_payment_desk'
+      when: (row) => row.status === 'at_payment_desk',
+      modalTitle: 'Stamp & forward recommendation report to HOD',
+      submitLabel: 'Stamp & Forward',
+      fields: [
+        {
+          key: 'remark',
+          label: 'Forwarding remark',
+          type: 'textarea',
+          placeholder: 'Add note for HOD…',
+          quickOptions: [
+            'Recommendation report checked & stamped. Forwarded to HOD for approval.',
+            'Verified and forwarded for HOD approval.',
+            'All supporting documents checked and recommended to HOD.'
+          ]
+        }
+      ]
     },
     // Send back to the purchase group (returns the PA to pa_created). Remark required.
     {

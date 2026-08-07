@@ -38,7 +38,7 @@ export const SCREENS = [
     path: '/forward-advice',
     title: 'Forward Payment Advice',
     navLabel: 'Forward Advice',
-    visibleTo: ['purchase_officer', 'admin']
+    visibleTo: ALL_ROLES
   },
   {
     path: '/process-payment',

@@ -56,12 +56,26 @@ export function SecuritiesPanel({ pa, editable = false, draft, onChange }) {
       <div className="field field-wide">
         <div className="field-label">Remark for amount against SD / PBG on hold etc.</div>
         {editable ? (
-          <textarea
-            className="field-input"
-            rows={2}
-            value={remarkValue}
-            onChange={(e) => onChange?.('securitiesRemark', e.target.value)}
-          />
+          <>
+            <textarea
+              className="field-input"
+              rows={2}
+              value={remarkValue}
+              onChange={(e) => onChange?.('securitiesRemark', e.target.value)}
+            />
+            <div className="remark-options">
+              {['SD / PBG verified and available in division.', 'Security deposit waived per PO terms.', 'PBG submission verified.'].map((option) => (
+                <button
+                  type="button"
+                  className="remark-option"
+                  key={option}
+                  onClick={() => onChange?.('securitiesRemark', option)}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          </>
         ) : (
           <div className="field-value">{pa.securitiesRemark || '—'}</div>
         )}

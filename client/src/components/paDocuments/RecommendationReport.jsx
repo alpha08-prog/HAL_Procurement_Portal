@@ -153,6 +153,49 @@ export default function RecommendationReport({ pa }) {
           <div className="hal-doc-sign-role">(Authorised By)</div>
         </div>
       </div>
+
+      {/* Payment Desk stamp block — appears once desk has stamped */}
+      {(() => {
+        const deskStep = (pa.history ?? []).find((h) => h.action === 'desk_forward_hod');
+        return (
+          <div className="hal-doc-stamp-row">
+            <div className={'hal-doc-stamp-box' + (deskStep ? ' hal-doc-stamp-signed' : '')}>
+              {deskStep ? (
+                <>
+                  <div className="hal-doc-stamp-label">✔ Payment Desk — Checked &amp; Stamped</div>
+                  <div className="hal-doc-stamp-meta">{deskStep.date}</div>
+                  {deskStep.remark && <div className="hal-doc-stamp-remark">"{deskStep.remark}"</div>}
+                </>
+              ) : (
+                <div className="hal-doc-stamp-label hal-doc-stamp-empty">
+                  Payment Desk — Stamp &amp; Signature
+                </div>
+              )}
+            </div>
+
+            {/* HOD stamp block — appears once HOD has stamped */}
+            {(() => {
+              const hodStep = (pa.history ?? []).find((h) => h.action === 'hod_stamp');
+              return (
+                <div className={'hal-doc-stamp-box' + (hodStep ? ' hal-doc-stamp-signed' : '')}>
+                  {hodStep ? (
+                    <>
+                      <div className="hal-doc-stamp-label">✔ HOD (IMM) — Approved &amp; Stamped</div>
+                      <div className="hal-doc-stamp-meta">{hodStep.date}</div>
+                      {hodStep.remark && <div className="hal-doc-stamp-remark">"{hodStep.remark}"</div>}
+                    </>
+                  ) : (
+                    <div className="hal-doc-stamp-label hal-doc-stamp-empty">
+                      HOD (IMM) — Stamp &amp; Signature
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        );
+      })()}
     </div>
   );
 }
+

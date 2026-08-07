@@ -45,8 +45,6 @@ function joinPa(pa) {
     mseCategory: vendor.mseCategory ?? 'Non-MSE',
     mseWomen: vendor.mseWomen ?? 'NA',
     mseScSt: vendor.mseScSt ?? 'NA',
-    // LD switches are maker-controlled (Screen 2) — pass the stored decision through,
-    // defaulting for older fixtures that predate the explicit switches.
     ldApplicable: pa.ldApplicable ?? (pa.ldAmount > 0 ? 'Yes' : 'No'),
     ldByGateEntry: pa.ldByGateEntry ?? (pa.ldSupplyAmount > 0 ? 'Yes' : 'No'),
     ldByFtr: pa.ldByFtr ?? (pa.ldIcAmount > 0 ? 'Yes' : 'No'),
@@ -55,8 +53,6 @@ function joinPa(pa) {
   };
 }
 
-// Indian financial year (Apr–Mar) for a YYYY-MM-DD date: 2026-04-15 → "2026-27",
-// 2026-01-22 → "2025-26".
 function financialYear(iso) {
   if (!iso) return null;
   const [y, m] = iso.split('-').map(Number);
@@ -64,36 +60,33 @@ function financialYear(iso) {
   return `${start}-${String((start + 1) % 100).padStart(2, '0')}`;
 }
 
-// Date a PA first reached a given lifecycle state, read from its history.
 const dateReached = (pa, toState) => pa.history?.find((h) => h.to === toState)?.date ?? null;
-
 const TERMINAL_STATES = new Set(['sent_to_cppc', 'paid']);
-
 const between = (from, to) => (from && to ? daysBetween(from, to) : null);
 const lastRemark = (pa) => [...(pa.history ?? [])].reverse().find((h) => h.remark)?.remark ?? '';
 
-// Flattened audit row for the register (Screen 6 — the doc's full field list).
-// Cycle-times are derived here (server-side) from the fixture/history dates —
-// never stored or computed in the UI.
 function registerRow(pa) {
   const rv = rvByNo(pa.rvNo) ?? {};
   const vendor = vendorById(pa.vendorId);
   const forwardedDate = dateReached(pa, 'forwarded_to_officer');
   const clearedDate = dateReached(pa, 'stamped_by_hod');
   const sentDate = dateReached(pa, 'sent_to_cppc');
+  const fwdStep = pa.history?.find((h) => h.action === 'officer_forward' || h.action === 'forward_to_officer');
+  const forwardedBy = fwdStep?.by ?? (forwardedDate ? 'purchase_officer' : null);
+  const forwardedByName = fwdStep?.byName ?? (forwardedDate ? 'R. Deshpande' : null);
+  const forwardedByPb = fwdStep?.byPb ?? (forwardedDate ? 'PB-44821' : null);
+
   return {
     paNo: pa.paNo,
     status: pa.status,
     fy: financialYear(pa.createdDate),
     officer: pa.officer ?? '—',
-    // vendor
     vendorCode: vendor.code ?? vendor.id ?? '—',
     vendorName: vendor.name ?? 'Unknown vendor',
     vendorAddress: vendor.address ?? '—',
     mseCategory: vendor.mseCategory ?? 'Non-MSE',
     mseWomen: vendor.mseWomen ?? 'NA',
     mseScSt: vendor.mseScSt ?? 'NA',
-    // goods inward
     gateEntryNo: rv.gateEntryNo ?? null,
     gateEntryDate: rv.gateEntryDate ?? null,
     waybillNo: rv.waybillNo ?? null,
@@ -102,7 +95,6 @@ function registerRow(pa) {
     ftrDate: rv.ftrDate ?? null,
     qcDate: rv.qcDate ?? null,
     chargeApprovalDate: rv.chargeApprovalDate ?? null,
-    // RV / PO
     rvNo: pa.rvNo,
     rvDate: rv.rvDate ?? null,
     rvValue: pa.rvValue,
@@ -115,14 +107,12 @@ function registerRow(pa) {
     gemContractDate: rv.gemContractDate ?? null,
     mprNo: rv.mprNo ?? null,
     mprDate: rv.mprDate ?? null,
-    // invoice / payment
     invoiceNo: pa.invoiceNo ?? null,
     invoiceDate: pa.invoiceDate ?? null,
     invoiceValue: pa.invoiceValue ?? null,
     ldApplicable: pa.ldApplicable ?? (pa.ldAmount > 0 ? 'Yes' : 'No'),
     ldAmount: pa.ldAmount,
     finalPayment: pa.finalPayment,
-    // dates & actors
     createdDate: pa.createdDate,
     forwardedDate,
     pprNo: pa.pprNo ?? null,
@@ -130,10 +120,11 @@ function registerRow(pa) {
     createdBy: pa.createdBy ?? null,
     createdByName: pa.createdByName ?? null,
     createdByPb: pa.createdByPb ?? null,
-    forwardedBy: pa.history?.find((h) => h.action === 'officer_forward')?.by ?? null,
+    forwardedBy,
+    forwardedByName,
+    forwardedByPb,
     advisedBy: pa.history?.find((h) => h.action === 'hod_stamp')?.by ?? null,
     remarks: lastRemark(pa),
-    // cycle-times (whole days)
     advisedFromRvDays: between(rv.rvDate, pa.createdDate),
     processedFromForwardingDays: between(forwardedDate, sentDate),
     rvToPaymentDays: between(rv.rvDate, sentDate),
@@ -143,8 +134,6 @@ function registerRow(pa) {
   };
 }
 
-// Summary metrics over a given (already-filtered) set of rows, so the cards always
-// reflect the active filters.
 function summarise(rows) {
   const withCycle = rows.filter((r) => r.rvToPaymentDays != null);
   const mseCount = rows.filter((r) => r.mseCategory === 'MSE').length;
@@ -160,10 +149,6 @@ function summarise(rows) {
 
 const router = Router();
 
-// Read-only register (Screen 6): every PA flattened, with server-side cycle-times,
-// a summary block, and the distinct filter options. ?fy ?status ?officer narrow the
-// rows; ?q is a free-text search across PA / PO / RV / vendor. Summary + sl re-derive
-// from the filtered set; options are computed from ALL PAs so the selects stay full.
 router.get('/register', (req, res) => {
   const all = db.paymentAdvices.map(registerRow);
   const options = {
@@ -186,14 +171,6 @@ router.get('/register', (req, res) => {
   rows = rows.map((r, i) => ({ sl: i + 1, ...r }));
 
   res.json({ rows, summary: summarise(rows), options });
-});
-
-// Ordered history for one PA (Screen 6 detail timeline). paNo contains slashes, so
-// it travels as a query param — same convention as the list endpoint's ?pa=.
-router.get('/history', (req, res) => {
-  const pa = paByNo(req.query.pa);
-  if (!pa) return res.status(404).json({ error: `Unknown PA ${req.query.pa}` });
-  res.json(pa.history ?? []);
 });
 
 // List / filter. ?state= (alias ?status=) filters by lifecycle state — accepts a

@@ -125,7 +125,8 @@ export const PA_FORM_SECTIONS = [
         label: 'LD (a) — Supply Delay',
         source: 'computed',
         type: 'currency',
-        hint: '0.5% of RV value per week or part thereof'
+        hint: '0.5% of RV value per week or part thereof',
+        hiddenWhen: (draft) => draft.ldApplicable !== 'Yes'
       },
       {
         key: 'ldByFtr',
@@ -166,10 +167,15 @@ export const PA_FORM_SECTIONS = [
     fields: [
       {
         key: 'checkingOfficerPbNo',
-        label: 'PB No of person checking & forwarding',
+        label: 'Person Checking & Forwarding (PB No / Officer)',
         source: 'maker',
         type: 'select',
-        options: ['PB-43977', 'PB-44821', 'PB-45110'],
+        options: [
+          'PB-44821 (R. Deshpande / Purchase Officer)',
+          'PB-43977 (A. K. Sharma / Purchase Officer)',
+          'PB-45110 (S. Kulkarni / Purchase Officer)',
+          'PB-44102 (V. Sharma / Purchase Maker)'
+        ],
         required: true
       },
       {

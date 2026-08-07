@@ -44,6 +44,28 @@ export default function RvInbox() {
     }
   };
 
+  const onCreditNote = async (row) => {
+    setBusyRvNo(row.rvNo);
+    try {
+      const res = await apiFetch('/api/payment-advices/credit-note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rvNo: row.rvNo })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `API error ${res.status}`);
+      setRows((current) => current.map((item) => item.rvNo === row.rvNo ? {
+        ...item,
+        creditNoteUploaded: true,
+        creditNoteNo: data.creditNoteNo
+      } : item));
+    } catch (err) {
+      window.alert(err.message);
+    } finally {
+      setBusyRvNo(null);
+    }
+  };
+
   return (
     <section className="screen">
       <h1 className="screen-title">RV — Payment Status</h1>
@@ -51,7 +73,7 @@ export default function RvInbox() {
         <div className="grid-empty">Could not load RVs: {error}</div>
       ) : (
         <DataGrid
-          columns={rvInboxColumns(role, { onGenerate, busyRvNo })}
+          columns={rvInboxColumns(role, { onGenerate, onCreditNote, busyRvNo })}
           rows={rows}
           rowKey="rvNo"
           emptyMessage="No RVs pending payment."

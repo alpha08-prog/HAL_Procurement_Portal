@@ -116,7 +116,9 @@ export const PA_FORM_SECTIONS = [
         key: 'ldWeeks',
         label: 'Supply Delay',
         source: 'computed',
-        render: (pa) => (pa.ldWeeks > 0 ? `${pa.ldWeeks} week(s) late` : 'On time')
+        render: (pa) => (pa.ldWeeks > 0 ? `${pa.ldWeeks} week(s) late` : 'On time'),
+        // A waived LD has no supply-delay calculation to show.
+        hiddenWhen: (draft) => draft.ldApplicable !== 'Yes'
       },
       {
         key: 'ldSupplyAmount',
@@ -166,10 +168,22 @@ export const PA_FORM_SECTIONS = [
         key: 'checkingOfficerPbNo',
         label: 'PB No of person checking & forwarding',
         source: 'maker',
-        type: 'text',
+        type: 'select',
+        options: ['PB-43977', 'PB-44821', 'PB-45110'],
         required: true
       },
-      { key: 'makerRemark', label: 'Maker Remark', source: 'maker', type: 'textarea' }
+      {
+        key: 'makerRemark',
+        label: 'Maker Remark',
+        source: 'maker',
+        type: 'textarea',
+        quickOptions: [
+          'Invoice verified against RV and PO terms.',
+          'All supporting documents have been checked.',
+          'Payment may be processed as recommended.',
+          'LD is not applicable for this payment.'
+        ]
+      }
     ]
   },
   {

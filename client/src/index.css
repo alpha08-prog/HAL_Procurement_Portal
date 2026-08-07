@@ -2295,6 +2295,54 @@ body {
   color: var(--muted);
   text-align: center;
 }
+
+.pa-references {
+  margin: 0 0 var(--space-4);
+}
+
+.pa-reference-buttons,
+.remark-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.pa-reference-preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--accent-soft);
+  border: 1px solid #c9d9eb;
+  border-radius: var(--radius);
+}
+
+.pa-reference-preview ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.remark-options {
+  margin-top: var(--space-2);
+}
+
+.remark-option {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 3px 8px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.remark-option:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
 .contract-page-footer::after {
   content: " · Page " counter(page);
 }

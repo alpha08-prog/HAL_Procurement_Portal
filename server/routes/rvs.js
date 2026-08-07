@@ -8,6 +8,7 @@ router.get('/', (req, res) => {
     const vendor = vendorById(rv.vendorId);
     return {
       ...rv,
+      creditNoteRequired: Number(rv.rvValue) < Number(rv.invoiceValue),
       vendorName: vendor.name ?? 'Unknown vendor',
       mseCategory: vendor.mseCategory ?? 'Non-MSE',
       mseWomen: vendor.mseWomen ?? 'NA',

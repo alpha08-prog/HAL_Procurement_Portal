@@ -19,21 +19,27 @@ export const STAGE_TITLE = {
   po: 'Purchase Order + Contract'
 };
 
-// Need-based notes outside the linear ORDER (ai/stages.py NEEDBASED). `po_amendment` is
-// the only one wired up: it can be added to a CLOSED file whose last approved note is the
-// PO (or a previous amendment) — it reopens the file, and nextStage() stays null for it so
-// its own approval closes the file again.
-export const NEEDBASED = { po_amendment: 'PO Amendment' };
+// Need-based notes outside the linear ORDER (ai/stages.py NEEDBASED). `next` is used by
+// the generic approval guard only to decide whether the file stays open after approval.
+// The exact next note is still chosen by the user/cascade flow.
+export const NEEDBASED = {
+  retender: { title: 'Retender Note', next: 'tec_req' },
+  short_closure: { title: 'Short Closure Note', next: null },
+  tec_query: { title: 'TEC Query Note', next: 'tec_report' },
+  advance_payment: { title: 'Advance Payment Note', next: 'pp' },
+  po_amendment: { title: 'PO Amendment', next: null }
+};
 
 export const VALID_STAGES = new Set([...STAGE_ORDER, ...Object.keys(NEEDBASED)]);
 
-export const stageTitle = (id) => STAGE_TITLE[id] || NEEDBASED[id] || (id ? id : '—');
+export const stageTitle = (id) => STAGE_TITLE[id] || NEEDBASED[id]?.title || (id ? id : '—');
 
 // The stage at which the tendering phase begins — stamps files.tendering_start so the
 // live-status report can show "time since tendering" (email point 27).
 export const TENDERING_START_STAGE = 'tender_doc';
 
 export function nextStage(id) {
+  if (Object.hasOwn(NEEDBASED, id)) return NEEDBASED[id].next;
   const i = STAGE_ORDER.indexOf(id);
   return i >= 0 && i < STAGE_ORDER.length - 1 ? STAGE_ORDER[i + 1] : null;
 }

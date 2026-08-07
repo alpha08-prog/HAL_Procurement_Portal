@@ -77,15 +77,30 @@ export function rvInboxColumns(role, handlers = {}) {
     {
       key: 'actions',
       label: 'Actions',
-      render: (row) => (
-        <button
-          className="btn"
-          disabled={row.paStatus !== 'rv_pending' || handlers.busyRvNo === row.rvNo}
-          onClick={() => handlers.onGenerate?.(row)}
-        >
-          Generate payment advice
-        </button>
-      )
+      render: (row) => {
+        const busy = handlers.busyRvNo === row.rvNo;
+        const needsCreditNote = row.creditNoteRequired && !row.creditNoteUploaded;
+        return (
+          <div className="queue-buttons">
+            {needsCreditNote && (
+              <button className="btn btn-secondary" disabled={busy} onClick={() => handlers.onCreditNote?.(row)}>
+                Generate & upload credit note
+              </button>
+            )}
+            {row.creditNoteRequired && row.creditNoteUploaded && (
+              <span className="action-note">Credit note {row.creditNoteNo ?? 'uploaded'} ✓</span>
+            )}
+            <button
+              className="btn"
+              disabled={row.paStatus !== 'rv_pending' || busy || needsCreditNote}
+              title={needsCreditNote ? 'Generate and upload the credit note first.' : undefined}
+              onClick={() => handlers.onGenerate?.(row)}
+            >
+              Generate payment advice
+            </button>
+          </div>
+        );
+      }
     }
   ];
 }

@@ -58,8 +58,11 @@ export const officerQueueConfig = {
       )
     }
   ],
-  rowInputs: [{ key: 'remark', placeholder: 'Remark (optional)' }],
   actions: [
-    { key: 'stamp', label: 'Stamp & forward', transition: 'officer_forward', primary: true }
+    {
+      key: 'stamp', label: 'Stamp & forward', transition: 'officer_forward', primary: true,
+      modalTitle: 'Stamp & forward to payment desk', submitLabel: 'Stamp & forward',
+      fields: [{ key: 'remark', label: 'Forwarding remark', type: 'textarea', placeholder: 'Add a remark…', quickOptions: ['Verified against PO terms. Forwarded to payment desk.', 'Documents checked and payment recommended.', 'Forwarded with the applicable LD deduction.'] }]
+    }
   ]
 };

@@ -88,6 +88,65 @@ function Field({ field, pa, draft, onChange, editable }) {
         </div>
       )}
       {field.hint && <div className="field-hint">{field.hint}</div>}
+      {editable && field.quickOptions && (
+        <div className="remark-options" aria-label={`${field.label} examples`}>
+          {field.quickOptions.map((option) => (
+            <button
+              type="button"
+              className="remark-option"
+              key={option}
+              onClick={() => onChange(field.key, option)}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReferenceButtons({ pa, showForwarding, setShowForwarding }) {
+  const [open, setOpen] = useState(null);
+  const references = [
+    ['rv', 'RV', pa.rvNo, `Receipt voucher ${pa.rvNo} · value ${formatINR(pa.rvValue)}`],
+    ['invoice', 'Invoice', pa.invoiceNo, `Invoice ${pa.invoiceNo ?? '—'} · value ${formatINR(pa.invoiceValue)}`],
+    ['po', 'HAL PO', pa.poNo, `HAL purchase order ${pa.poNo} · order value ${formatINR(pa.poValue)}`],
+    ['gem', 'GeM Contract', pa.gemContractNo, pa.gemContractNo ? `GeM contract ${pa.gemContractNo}` : 'No GeM contract linked']
+  ];
+  const extras = [
+    ['FTR', pa.attachments?.ftr === 'Yes'],
+    ['Warranty certificate', pa.attachments?.warranty === 'Yes'],
+    ['Revised bank details', pa.attachments?.bankChange === 'Yes'],
+    ['Credit note', pa.creditNoteUploaded]
+  ];
+
+  return (
+    <div className="pa-references no-print">
+      <div className="pa-reference-buttons">
+        {references.map(([key, label, value, text]) => (
+          <button key={key} type="button" className="btn btn-secondary" onClick={() => setOpen({ label, text })}>
+            {label}{value ? ` · ${value}` : ''}
+          </button>
+        ))}
+        <button type="button" className="btn btn-secondary" onClick={() => setOpen({ label: 'Extra documents', extras: true })}>
+          Extra documents
+        </button>
+        <button type="button" className="btn btn-secondary" onClick={() => setShowForwarding(!showForwarding)}>
+          {showForwarding ? 'Hide forwarding data' : 'View forwarding data'}
+        </button>
+      </div>
+      {open && (
+        <div className="pa-reference-preview">
+          <strong>{open.label}</strong>
+          {open.extras ? (
+            <ul>
+              {extras.map(([label, available]) => <li key={label}>{label}: {available ? 'Available' : 'Not attached'}</li>)}
+            </ul>
+          ) : <span>{open.text}</span>}
+          <button type="button" className="link-btn" onClick={() => setOpen(null)}>Close</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -104,6 +163,7 @@ export default function PaForm({ paNo }) {
   const [error, setError] = useState(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [showForwarding, setShowForwarding] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -208,6 +268,7 @@ export default function PaForm({ paNo }) {
       <p className="pa-meta no-print">
         Created {formatDate(pa.createdDate)} · RV {pa.rvNo} · {pa.vendorName}
       </p>
+      <ReferenceButtons pa={pa} showForwarding={showForwarding} setShowForwarding={setShowForwarding} />
 
       {editable ? (
         // Maker verification stage — data entry stays a field grid (it captures LD
@@ -219,7 +280,7 @@ export default function PaForm({ paNo }) {
               section.render(pa, editable && !busy, { draft, onChange })
             ) : (
               <div className="form-grid">
-                {section.fields.map((field) => (
+                {section.fields.filter((field) => !(field.hiddenWhen?.(draft) ?? false)).map((field) => (
                   <Field
                     key={field.key}
                     field={field}
@@ -238,9 +299,9 @@ export default function PaForm({ paNo }) {
         <PaDocumentView pa={pa} />
       )}
 
-      {recordView && (
+      {(recordView || showForwarding) && (
         <div className="form-section no-print">
-          <div className="form-section-title">History</div>
+          <div className="form-section-title">Forwarding history</div>
           <Timeline paNo={pa.paNo} />
         </div>
       )}

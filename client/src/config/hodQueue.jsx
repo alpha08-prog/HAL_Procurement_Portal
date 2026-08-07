@@ -14,7 +14,7 @@ const forwardedByDesk = (row) => (row.history ?? []).find((h) => h.action === 'd
 
 export const hodQueueConfig = {
   title: 'HOD-IMM Approval',
-  note: 'Stamp a desk-forwarded advice and return it to the payment desk for final payment, or return it to the purchase group with a remark.',
+  note: 'Review the payment advice to HOD, stamp & forward it to the payment desk for final payment, or return it to the purchase group with a remark.',
   state: 'sent_to_hod',
   backPath: '/hod-approval',
   emptyMessage: 'No payment advices awaiting HOD approval.',
@@ -79,13 +79,13 @@ export const hodQueueConfig = {
     // Stamp & forward back to the payment desk for the final payment. Optional remark.
     {
       key: 'stamp',
-      label: 'Stamp & return to desk',
+      label: 'Stamp & forward',
       transition: 'hod_stamp',
       primary: true,
-      modalTitle: 'Stamp & return to payment desk',
-      submitLabel: 'Stamp & return',
+      modalTitle: 'Stamp & forward to payment desk',
+      submitLabel: 'Stamp & forward',
       fields: [
-        { key: 'remark', label: 'Remark (optional)', type: 'textarea', placeholder: 'Note for the payment desk…' }
+        { key: 'remark', label: 'Remark (optional)', type: 'textarea', placeholder: 'Note for the payment desk…', quickOptions: ['Approved and stamped. Forwarded to payment desk for CPPC processing.', 'Approved subject to the enclosed documents.', 'Payment may be processed as recommended.'] }
       ]
     },
     // Return to the purchase group (back to pa_created — maker sees it again). Remark
@@ -97,7 +97,7 @@ export const hodQueueConfig = {
       modalTitle: 'Return to purchase group',
       submitLabel: 'Return',
       fields: [
-        { key: 'remark', label: 'Remark', type: 'textarea', required: true, placeholder: 'Reason for returning to the maker…' }
+        { key: 'remark', label: 'Remark', type: 'textarea', required: true, placeholder: 'Reason for returning to the maker…', quickOptions: ['Please verify the supporting documents.', 'Please correct the payment computation.', 'Please provide the missing clarification.'] }
       ]
     }
   ]

@@ -15,7 +15,7 @@ const forwardedToDesk = (row) =>
 
 export const deskQueueConfig = {
   title: 'Process Payment',
-  note: 'Payment desk — forward a new advice to HOD (or send it back), forward an HOD-stamped advice to CPPC for the final payment, then record the payment released.',
+  note: 'Payment desk — check the same recommendation report received from the forwarding officer, stamp & forward it to HOD, then forward the HOD-stamped advice to CPPC.',
   states: ['at_payment_desk', 'sent_to_hod', 'stamped_by_hod', 'sent_to_cppc', 'paid'],
   backPath: '/process-payment',
   emptyMessage: 'No payment advices at the payment desk.',
@@ -130,7 +130,7 @@ export const deskQueueConfig = {
       modalTitle: 'Send back to purchase group',
       submitLabel: 'Send back',
       fields: [
-        { key: 'remark', label: 'Remark', type: 'textarea', required: true, placeholder: 'Reason for sending back to the maker…' }
+        { key: 'remark', label: 'Remark', type: 'textarea', required: true, placeholder: 'Reason for sending back to the maker…', quickOptions: ['Please verify the supporting documents.', 'Please correct the payment computation.'] }
       ]
     },
     // (2) Forward an HOD-stamped advice to CPPC for the final payment (capture PPR).
@@ -144,7 +144,8 @@ export const deskQueueConfig = {
       submitLabel: 'Forward to CPPC',
       fields: [
         { key: 'pprNo', label: 'CPPC PPR No', type: 'text', required: true, placeholder: 'e.g. PPR/26/0231' },
-        { key: 'pprDate', label: 'PPR Date', type: 'date', required: true }
+        { key: 'pprDate', label: 'PPR Date', type: 'date', required: true },
+        { key: 'remark', label: 'Forwarding remark', type: 'textarea', quickOptions: ['HOD-stamped advice forwarded to CPPC for payment.', 'Payment recommended and forwarded to CPPC.'] }
       ]
     },
     // (3) Record the final payment released by CPPC — closes the loop to 'paid'.

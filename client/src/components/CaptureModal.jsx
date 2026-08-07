@@ -26,14 +26,25 @@ export default function CaptureModal({ title, fields, submitLabel, busy, onSubmi
                 {field.required && <span className="req">*</span>}
               </span>
               {field.type === 'textarea' ? (
-                <textarea
-                  className="field-input"
-                  rows={3}
-                  placeholder={field.placeholder}
-                  value={values[field.key]}
-                  disabled={busy}
-                  onChange={(e) => setValue(field.key, e.target.value)}
-                />
+                <>
+                  <textarea
+                    className="field-input"
+                    rows={3}
+                    placeholder={field.placeholder}
+                    value={values[field.key]}
+                    disabled={busy}
+                    onChange={(e) => setValue(field.key, e.target.value)}
+                  />
+                  {field.quickOptions && (
+                    <div className="remark-options">
+                      {field.quickOptions.map((option) => (
+                        <button type="button" className="remark-option" key={option} disabled={busy} onClick={() => setValue(field.key, option)}>
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
               ) : (
                 <input
                   className="field-input"

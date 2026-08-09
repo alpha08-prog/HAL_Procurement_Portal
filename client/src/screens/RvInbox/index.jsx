@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DataGrid from '../../components/DataGrid.jsx';
+import CreditNoteModal from '../../components/CreditNoteModal.jsx';
 import { rvInboxColumns } from '../../config/rvInboxColumns.jsx';
 import { useRole } from '../../context/RoleContext.jsx';
 import { apiFetch } from '../../lib/api.js';
@@ -11,6 +12,7 @@ export default function RvInbox() {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
   const [busyRvNo, setBusyRvNo] = useState(null);
+  const [cnModalRow, setCnModalRow] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,26 +46,24 @@ export default function RvInbox() {
     }
   };
 
-  const onCreditNote = async (row) => {
-    setBusyRvNo(row.rvNo);
-    try {
-      const res = await apiFetch('/api/payment-advices/credit-note', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rvNo: row.rvNo })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? `API error ${res.status}`);
-      setRows((current) => current.map((item) => item.rvNo === row.rvNo ? {
-        ...item,
-        creditNoteUploaded: true,
-        creditNoteNo: data.creditNoteNo
-      } : item));
-    } catch (err) {
-      window.alert(err.message);
-    } finally {
-      setBusyRvNo(null);
-    }
+  const onCreditNote = (row) => {
+    setCnModalRow(row);
+  };
+
+  const handleCnSuccess = (data) => {
+    setRows((current) =>
+      current?.map((item) =>
+        item.rvNo === data.rvNo
+          ? {
+              ...item,
+              creditNoteUploaded: true,
+              creditNoteNo: data.creditNoteNo,
+              creditNoteFileName: data.fileName,
+              creditNoteRemarks: data.remarks
+            }
+          : item
+      )
+    );
   };
 
   return (
@@ -77,6 +77,14 @@ export default function RvInbox() {
           rows={rows}
           rowKey="rvNo"
           emptyMessage="No RVs pending payment."
+        />
+      )}
+
+      {cnModalRow && (
+        <CreditNoteModal
+          row={cnModalRow}
+          onClose={() => setCnModalRow(null)}
+          onSuccess={handleCnSuccess}
         />
       )}
     </section>

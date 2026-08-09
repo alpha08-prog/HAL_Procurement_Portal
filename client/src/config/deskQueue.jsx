@@ -99,6 +99,11 @@ export const deskQueueConfig = {
     }
   ],
   actions: [
+    {
+      key: 'view1stScreen',
+      label: 'View 1st Screen (Generate Payment Sheet)',
+      kind: 'form_preview'
+    },
     // Open the advice read-only (HAL document format). Actionable rows get "Check
     // advice"; rows the desk can only watch get "View record".
     {

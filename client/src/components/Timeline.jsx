@@ -4,13 +4,17 @@ import { roleLabel } from '../config/roles.js';
 import { apiFetch } from '../lib/api.js';
 import { formatDate } from '../lib/date.js';
 
-// Read-only PA history timeline for the Screen 6 detail view. Fetches the ordered
-// history array from the API (the same record that drives Screen 6's cycle-times).
-export default function Timeline({ paNo }) {
-  const [history, setHistory] = useState(null);
+// Read-only PA history timeline. Accepts an explicit history array prop or fetches it
+// from the API.
+export default function Timeline({ paNo, history: historyProp }) {
+  const [history, setHistory] = useState(historyProp ?? null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (historyProp) {
+      setHistory(historyProp);
+      return;
+    }
     let cancelled = false;
     apiFetch(`/api/payment-advices/history?pa=${encodeURIComponent(paNo)}`)
       .then((res) => {
@@ -22,7 +26,7 @@ export default function Timeline({ paNo }) {
     return () => {
       cancelled = true;
     };
-  }, [paNo]);
+  }, [paNo, historyProp]);
 
   if (error) return <div className="grid-empty">Could not load history: {error}</div>;
   if (!history) return <div className="grid-empty">Loading history…</div>;

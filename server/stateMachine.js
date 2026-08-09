@@ -25,6 +25,12 @@ export const TRANSITIONS = {
     by: 'purchase_officer',
     defaultRemark: 'Stamped and forwarded to payment desk.'
   },
+  officer_send_back: {
+    from: 'forwarded_to_officer',
+    to: 'pa_created',
+    by: 'purchase_officer',
+    remarkRequired: true
+  },
   desk_send_back: {
     from: 'at_payment_desk',
     to: 'pa_created',

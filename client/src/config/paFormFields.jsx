@@ -197,10 +197,6 @@ export const PA_FORM_SECTIONS = [
     render: (pa, editable, ctx) => (
       <SecuritiesPanel pa={pa} editable={editable} draft={ctx?.draft} onChange={ctx?.onChange} />
     )
-  },
-  {
-    title: 'Attachments',
-    render: (pa, editable) => <AttachmentsPanel pa={pa} editable={editable} />
   }
 ];
 

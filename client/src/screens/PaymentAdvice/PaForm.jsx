@@ -3,6 +3,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import PaDocumentView from '../../components/paDocuments/PaDocumentView.jsx';
 import StatusPill from '../../components/StatusPill.jsx';
 import Timeline from '../../components/Timeline.jsx';
+import CreditNoteModal from '../../components/CreditNoteModal.jsx';
+import LdSheetModal from '../../components/LdSheetModal.jsx';
 import { PA_FORM_SECTIONS, PA_MAKER_FIELDS, PA_REQUIRED_FIELDS } from '../../config/paFormFields.jsx';
 import { useRole } from '../../context/RoleContext.jsx';
 import { apiFetch } from '../../lib/api.js';
@@ -107,13 +109,23 @@ function Field({ field, pa, draft, onChange, editable }) {
   );
 }
 
-function ReferenceButtons({ pa, showForwarding, setShowForwarding }) {
+function ReferenceButtons({ pa, showForwarding, setShowForwarding, onOpenLdSheet, onOpenCreditNoteModal }) {
   const [open, setOpen] = useState(null);
   const references = [
-    ['rv', 'RV Invoice (Generated)', pa.rvNo, `Receipt Voucher ${pa.rvNo} · Value ${formatINR(pa.rvValue)} · Invoice ${pa.invoiceNo ?? '—'} (${formatINR(pa.invoiceValue)})`],
+    ['rv', 'RV Invoice (Generated)', pa.rvNo, `Receipt Voucher ${pa.rvNo} · Ref No: ${pa.refNo ?? ('REF/' + pa.rvNo.replaceAll('/', '-'))} · Value ${formatINR(pa.rvValue)} · Invoice ${pa.invoiceNo ?? '—'} (${formatINR(pa.invoiceValue)})`],
     ['po', 'HAL PO', pa.poNo, `HAL Purchase Order ${pa.poNo} · Date ${formatDate(pa.poDate)} · Order Value ${formatINR(pa.poValue)}`],
     ['gem', 'GeM Contract', pa.gemContractNo, pa.gemContractNo ? `GeM Contract ${pa.gemContractNo} · Date ${formatDate(pa.gemContractDate)}` : 'No GeM contract linked']
   ];
+
+  if (pa.creditNoteUploaded || pa.creditNoteNo) {
+    references.push([
+      'cn',
+      'Credit Note',
+      pa.creditNoteNo,
+      `Credit Note ${pa.creditNoteNo ?? 'CN-Attached'} · Uploaded ${formatDate(pa.creditNoteUploadedDate || pa.createdDate)} · File: ${pa.creditNoteFileName || 'CN_Attached.pdf'} · Difference Amount: ${formatINR(Math.abs((pa.invoiceValue || 0) - (pa.rvValue || 0)))}${pa.creditNoteRemarks ? ` · Remarks: ${pa.creditNoteRemarks}` : ''}`
+    ]);
+  }
+
   const extras = [
     ['FTR (Flight Test / Field Test Report)', pa.attachments?.ftr === 'Yes'],
     ['QC Acceptance Certificate', pa.qcDate ? `Accepted on ${formatDate(pa.qcDate)}` : 'Pending'],
@@ -121,6 +133,8 @@ function ReferenceButtons({ pa, showForwarding, setShowForwarding }) {
     ['Revised Bank Details', pa.attachments?.bankChange === 'Yes'],
     ['Credit Note Uploaded', pa.creditNoteUploaded ? `Yes (${pa.creditNoteNo ?? 'CN-Attached'})` : 'Not required / Pending']
   ];
+
+  const hasLd = pa.ldAmount > 0 || pa.ldApplicable === 'Yes' || (pa.ldWeeks || 0) > 0;
 
   return (
     <div className="pa-references no-print">
@@ -130,6 +144,16 @@ function ReferenceButtons({ pa, showForwarding, setShowForwarding }) {
             📄 {label}{value ? ` · ${value}` : ''}
           </button>
         ))}
+        {!pa.creditNoteUploaded && onOpenCreditNoteModal && (
+          <button type="button" className="btn btn-secondary" onClick={onOpenCreditNoteModal}>
+            📄 Upload Credit Note
+          </button>
+        )}
+        {hasLd && (
+          <button type="button" className="btn btn-secondary" onClick={onOpenLdSheet}>
+            📄 View / Generate LD Sheet
+          </button>
+        )}
         <button type="button" className="btn btn-secondary" onClick={() => setOpen({ label: 'Extra Documents & Attachments', extras: true })}>
           📁 Extra Docs
         </button>
@@ -160,7 +184,6 @@ function ReferenceButtons({ pa, showForwarding, setShowForwarding }) {
   );
 }
 
-// Quick remark options shown in the inline remark panel for each role.
 const OFFICER_REMARKS = [
   'Verified against PO terms. Forwarded to payment desk.',
   'Documents checked and payment recommended.',
@@ -190,8 +213,6 @@ export default function PaForm({ paNo }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const backPath = searchParams.get('back');
-  // Register detail view (Screen 6): force read-only regardless of state and append
-  // the history timeline. Without this a pa_created row would render editable.
   const recordView = searchParams.get('view') === '1';
   const { role } = useRole();
   const [pa, setPa] = useState(null);
@@ -200,12 +221,13 @@ export default function PaForm({ paNo }) {
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showForwarding, setShowForwarding] = useState(false);
-  // Inline remark state for officer / desk / HOD action panels
+  const [showLdSheetModal, setShowLdSheetModal] = useState(false);
+  const [showCreditNoteModal, setShowCreditNoteModal] = useState(false);
   const [inlineRemark, setInlineRemark] = useState('');
-  // For desk→CPPC: capture PPR fields inline
   const [pprNo, setPprNo] = useState('');
   const [pprDate, setPprDate] = useState('');
   const [hodReturnRemark, setHodReturnRemark] = useState('');
+  const [officerReturnRemark, setOfficerReturnRemark] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -247,10 +269,24 @@ export default function PaForm({ paNo }) {
   }
 
   const editable = pa.status === 'pa_created' && !recordView;
+  // Purchase Officer at Forward Advice stage verifies on the 1st Screen (Generate Payment Sheet form grid)
+  const isOfficerStage = (backPath === '/forward-advice' || pa.status === 'forwarded_to_officer') && !recordView;
+  const isFormStage = editable || isOfficerStage;
+  const isLdApplicable = pa.ldAmount > 0 || pa.ldApplicable === 'Yes' || (pa.ldWeeks || 0) > 0;
   const missingRequired = PA_REQUIRED_FIELDS.filter((key) => !draft[key]);
   const missingLabels = PA_MAKER_FIELDS.filter((f) => missingRequired.includes(f.key)).map(
     (f) => f.label
   );
+
+  const handleCnSuccess = (data) => {
+    setPa((prev) => prev ? {
+      ...prev,
+      creditNoteUploaded: true,
+      creditNoteNo: data.creditNoteNo,
+      creditNoteFileName: data.fileName,
+      creditNoteRemarks: data.remarks
+    } : prev);
+  };
 
   const onChange = (key, value) => {
     setDraft((d) => ({ ...d, [key]: value }));
@@ -282,8 +318,6 @@ export default function PaForm({ paNo }) {
     }
   };
 
-  // Fire a lifecycle transition from within the document preview page, then navigate
-  // back to the calling queue. Used by the inline officer/desk/HOD action panels.
   const runInlineTransition = async (action, extra = {}) => {
     setBusy(true);
     try {
@@ -320,55 +354,134 @@ export default function PaForm({ paNo }) {
       <Link className="back-link no-print" to={backPath ?? '/payment-advice'}>
         {backPath ? '← Back to queue' : '← All drafts'}
       </Link>
-      <div className="pa-header no-print">
-        <h1 className="screen-title">Payment Advice {pa.paNo}</h1>
-        <StatusPill status={pa.status} />
+      <div className="pa-header no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <h1 className="screen-title" style={{ margin: 0 }}>Payment Advice {pa.paNo}</h1>
+          <StatusPill status={pa.status} />
+        </div>
       </div>
       <p className="pa-meta no-print">
-        Created {formatDate(pa.createdDate)} · RV {pa.rvNo} (RV Value: {formatINR(pa.rvValue)}) · Supplier: {pa.vendorName}
+        Created {formatDate(pa.createdDate)} · RV {pa.rvNo} (Ref: {pa.refNo ?? ('REF/' + pa.rvNo.replaceAll('/', '-'))}) · RV Value: {formatINR(pa.rvValue)} · Supplier: {pa.vendorName}
       </p>
-      <ReferenceButtons pa={pa} showForwarding={showForwarding} setShowForwarding={setShowForwarding} />
 
-      {editable ? (
-        // Maker verification stage — data entry stays a field grid (it captures LD
-        // switches, securities and attachments that no hand-off document carries).
-        PA_FORM_SECTIONS.map((section) => (
-          <div className="form-section" key={section.title}>
-            <div className="form-section-title">{section.title}</div>
-            {section.render ? (
-              section.render(pa, editable && !busy, { draft, onChange })
-            ) : (
-              <div className="form-grid">
-                {section.fields.filter((field) => !(field.hiddenWhen?.(draft) ?? false)).map((field) => (
-                  <Field
-                    key={field.key}
-                    field={field}
-                    pa={pa}
-                    draft={draft}
-                    onChange={onChange}
-                    editable={editable && !busy}
-                  />
-                ))}
-              </div>
-            )}
+      {isLdApplicable && (
+        <div className="banner banner-warn no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '12px 0 16px 0', padding: '12px 16px', background: '#fffbe8', border: '1px solid #fde047', borderRadius: '6px', color: '#854d0e' }}>
+          <div>
+            <strong>⚠️ Liquidated Damages (LD) Applicable:</strong> Total LD Deduction of <strong>{formatINR(pa.ldAmount)}</strong> ({pa.ldWeeks || 0} week(s) supply delay). Net proposed payment: <strong>{formatINR(pa.finalPayment)}</strong>.
           </div>
-        ))
+          <button type="button" className="btn btn-secondary" style={{ whiteSpace: 'nowrap', marginLeft: '12px' }} onClick={() => setShowLdSheetModal(true)}>
+            📄 View LD Sheet
+          </button>
+        </div>
+      )}
+
+      <ReferenceButtons
+        pa={pa}
+        showForwarding={showForwarding}
+        setShowForwarding={setShowForwarding}
+        onOpenLdSheet={() => setShowLdSheetModal(true)}
+        onOpenCreditNoteModal={() => setShowCreditNoteModal(true)}
+      />
+
+      {isFormStage ? (
+        <>
+          {PA_FORM_SECTIONS.map((section) => (
+            <div className="form-section" key={section.title}>
+              <div className="form-section-title">{section.title}</div>
+              {section.render ? (
+                section.render(pa, editable && !busy, { draft, onChange })
+              ) : (
+                <div className="form-grid">
+                  {section.fields.filter((field) => !(field.hiddenWhen?.(draft) ?? false)).map((field) => (
+                    <Field
+                      key={field.key}
+                      field={field}
+                      pa={pa}
+                      draft={draft}
+                      onChange={onChange}
+                      editable={editable && !busy}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Officer Verification & Forwarding Panel rendered on 1st screen */}
+          {isOfficerStage && pa.status === 'forwarded_to_officer' && (
+            <div className="form-section no-print" style={{ marginTop: '24px', background: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+              <div className="form-section-title">Officer Verification &amp; Action</div>
+              <div className="field">
+                <div className="field-label">Officer Forwarding Remark</div>
+                <textarea
+                  className="field-input"
+                  rows={3}
+                  value={inlineRemark}
+                  placeholder="Add a remark before forwarding to payment desk..."
+                  onChange={(e) => setInlineRemark(e.target.value)}
+                  disabled={busy}
+                />
+                <div className="remark-options">
+                  {OFFICER_REMARKS.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      className="remark-option"
+                      onClick={() => setInlineRemark(opt)}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="field" style={{ marginTop: '14px' }}>
+                <div className="field-label">Return Remark (if returning to maker due to ambiguity)</div>
+                <textarea
+                  className="field-input"
+                  rows={2}
+                  value={officerReturnRemark}
+                  placeholder="Reason for returning to maker..."
+                  onChange={(e) => setOfficerReturnRemark(e.target.value)}
+                  disabled={busy}
+                />
+              </div>
+
+              <div className="form-actions" style={{ marginTop: '16px' }}>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={busy}
+                  onClick={() => runInlineTransition('officer_forward', { remark: inlineRemark })}
+                >
+                  ✔ Stamp &amp; forward to payment desk
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={busy || (!officerReturnRemark.trim() && !inlineRemark.trim())}
+                  title={(!officerReturnRemark.trim() && !inlineRemark.trim()) ? 'Enter a return remark above to return' : undefined}
+                  onClick={() => runInlineTransition('officer_send_back', { remark: officerReturnRemark || inlineRemark })}
+                >
+                  ✗ Return to maker
+                </button>
+                <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => navigate(backPath ?? '/forward-advice')}>
+                  ← Back to queue
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       ) : (
-        // Once forwarded, the advice is shown (and printed) in the HAL document formats.
-        // The role prop gates the HOD checklist tab. remarkPanel/actionBar inject
-        // in-page stamp & forward controls for the officer, desk and HOD stages.
         <PaDocumentView
           pa={pa}
           role={role}
           remarkPanel={
-            // Show a remark textarea to the officer, desk (at_payment_desk & stamped_by_hod), or HOD
-            (backPath === '/forward-advice' && pa.status === 'forwarded_to_officer') ||
             (backPath === '/process-payment' && (pa.status === 'at_payment_desk' || pa.status === 'stamped_by_hod')) ||
             (backPath === '/hod-approval' && pa.status === 'sent_to_hod') ? (
               <div className="pa-remark-panel">
                 <div className="form-section-title">
-                  {backPath === '/forward-advice' ? 'Officer Forwarding Remark'
-                    : backPath === '/hod-approval' ? 'HOD Remark'
+                  {backPath === '/hod-approval' ? 'HOD Remark'
                     : pa.status === 'stamped_by_hod' ? 'Desk → CPPC Forwarding Remark'
                     : 'Desk Forwarding Remark'}
                 </div>
@@ -381,8 +494,7 @@ export default function PaForm({ paNo }) {
                   disabled={busy}
                 />
                 <div className="remark-options">
-                  {(backPath === '/forward-advice' ? OFFICER_REMARKS
-                    : backPath === '/hod-approval' ? HOD_REMARKS
+                  {(backPath === '/hod-approval' ? HOD_REMARKS
                     : pa.status === 'stamped_by_hod' ? DESK_CPPC_REMARKS
                     : DESK_REMARKS
                   ).map((opt) => (
@@ -452,23 +564,8 @@ export default function PaForm({ paNo }) {
             ) : null
           }
           actionBar={
-            // Officer: Stamp & forward to payment desk
-            backPath === '/forward-advice' && pa.status === 'forwarded_to_officer' ? (
-              <div className="form-actions">
-                <button
-                  className="btn"
-                  disabled={busy}
-                  onClick={() => runInlineTransition('officer_forward', { remark: inlineRemark })}
-                >
-                  ✔ Stamp &amp; forward to payment desk
-                </button>
-                <button className="btn btn-secondary" disabled={busy} onClick={() => navigate(backPath)}>
-                  ← Back to queue
-                </button>
-              </div>
-            )
-            // Payment desk (at_payment_desk): Stamp & forward to HOD
-            : backPath === '/process-payment' && pa.status === 'at_payment_desk' ? (
+            // Payment desk (at_payment_desk): Stamp & forward to HOD, or Return to maker
+            backPath === '/process-payment' && pa.status === 'at_payment_desk' ? (
               <div className="form-actions">
                 <button
                   className="btn"
@@ -476,6 +573,13 @@ export default function PaForm({ paNo }) {
                   onClick={() => runInlineTransition('desk_forward_hod', { remark: inlineRemark })}
                 >
                   ✔ Stamp &amp; forward to HOD
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  disabled={busy}
+                  onClick={() => runInlineTransition('desk_send_back', { remark: inlineRemark || 'Returned by payment desk' })}
+                >
+                  ✗ Return to maker
                 </button>
                 <button className="btn btn-secondary" disabled={busy} onClick={() => navigate(backPath)}>
                   ← Back to queue
@@ -535,7 +639,7 @@ export default function PaForm({ paNo }) {
       {(recordView || showForwarding) && (
         <div className="form-section no-print">
           <div className="form-section-title">Forwarding history</div>
-          <Timeline paNo={pa.paNo} />
+          <Timeline paNo={pa.paNo} history={pa.history} />
         </div>
       )}
 
@@ -552,6 +656,14 @@ export default function PaForm({ paNo }) {
             <span className="action-note">Fill {missingLabels.join(', ')} to submit.</span>
           )}
         </div>
+      )}
+
+      {showLdSheetModal && (
+        <LdSheetModal pa={pa} onClose={() => setShowLdSheetModal(false)} />
+      )}
+
+      {showCreditNoteModal && (
+        <CreditNoteModal row={pa} onClose={() => setShowCreditNoteModal(false)} onSuccess={handleCnSuccess} />
       )}
     </section>
   );

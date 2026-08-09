@@ -44,10 +44,15 @@ function joinPa(pa) {
     gstin: vendor.gstin ?? '—',
     mseCategory: vendor.mseCategory ?? 'Non-MSE',
     mseWomen: vendor.mseWomen ?? 'NA',
-    mseScSt: vendor.mseScSt ?? 'NA',
+    refNo: rv.refNo ?? `REF/${rv.rvNo.replaceAll('/', '-')}`,
     ldApplicable: pa.ldApplicable ?? (pa.ldAmount > 0 ? 'Yes' : 'No'),
     ldByGateEntry: pa.ldByGateEntry ?? (pa.ldSupplyAmount > 0 ? 'Yes' : 'No'),
     ldByFtr: pa.ldByFtr ?? (pa.ldIcAmount > 0 ? 'Yes' : 'No'),
+    creditNoteUploaded: pa.creditNoteUploaded ?? Boolean(rv.creditNoteUploaded),
+    creditNoteNo: pa.creditNoteNo ?? rv.creditNoteNo ?? null,
+    creditNoteUploadedDate: pa.creditNoteUploadedDate ?? rv.creditNoteUploadedDate ?? null,
+    creditNoteFileName: pa.creditNoteFileName ?? rv.creditNoteFileName ?? null,
+    creditNoteRemarks: pa.creditNoteRemarks ?? rv.creditNoteRemarks ?? null,
     pendingDaysGate: rv.gateEntryDate ? daysSince(rv.gateEntryDate) : null,
     pendingDaysPa: daysSince(pa.createdDate)
   };
@@ -173,6 +178,12 @@ router.get('/register', (req, res) => {
   res.json({ rows, summary: summarise(rows), options });
 });
 
+router.get('/history', (req, res) => {
+  const pa = paByNo(req.query.pa);
+  if (!pa) return res.status(404).json({ error: `Unknown PA ${req.query.pa}` });
+  res.json(pa.history ?? []);
+});
+
 // List / filter. ?state= (alias ?status=) filters by lifecycle state — accepts a
 // single value or a comma-separated set (e.g. the payment desk watches
 // at_payment_desk,sent_to_hod,stamped_by_hod,sent_to_cppc,paid in one queue).
@@ -250,21 +261,38 @@ router.post('/', (req, res) => {
 // invoice value. Document storage is represented by the retained document number
 // and timestamp in this prototype; the PA route enforces that it exists.
 router.post('/credit-note', (req, res) => {
-  const rv = rvByNo(req.body?.rvNo);
-  if (!rv) return res.status(404).json({ error: `Unknown RV ${req.body?.rvNo}` });
-  if (rv.paStatus !== 'rv_pending') {
-    return res.status(409).json({ error: 'A payment advice already exists for this RV.' });
+  let rv = rvByNo(req.body?.rvNo);
+  let pa = paByNo(req.body?.paNo);
+  if (!rv && pa) {
+    rv = rvByNo(pa.rvNo);
   }
-  if (Number(rv.rvValue) >= Number(rv.invoiceValue)) {
-    return res.status(422).json({ error: 'A credit note is not required for this RV.' });
-  }
+  if (!rv) return res.status(404).json({ error: `Unknown RV ${req.body?.rvNo ?? pa?.rvNo}` });
+
+  const creditNoteNo = req.body?.creditNoteNo?.trim() || rv.creditNoteNo || `CN/${rv.rvNo.replaceAll('/', '-')}`;
+  const fileName = req.body?.fileName?.trim() || req.body?.creditNoteFileName?.trim() || `CreditNote_${rv.rvNo.replaceAll('/', '_')}.pdf`;
+  const remarks = req.body?.remarks?.trim() || req.body?.creditNoteRemarks?.trim() || 'Credit note uploaded successfully.';
+  const uploadedDate = req.body?.uploadedDate || todayISO();
+
   rv.creditNoteUploaded = true;
-  rv.creditNoteNo = rv.creditNoteNo ?? `CN/${rv.rvNo.replaceAll('/', '-')}`;
-  rv.creditNoteUploadedDate = todayISO();
+  rv.creditNoteNo = creditNoteNo;
+  rv.creditNoteUploadedDate = uploadedDate;
+  rv.creditNoteFileName = fileName;
+  rv.creditNoteRemarks = remarks;
+
+  if (pa) {
+    pa.creditNoteUploaded = true;
+    pa.creditNoteNo = creditNoteNo;
+    pa.creditNoteUploadedDate = uploadedDate;
+    pa.creditNoteFileName = fileName;
+    pa.creditNoteRemarks = remarks;
+  }
+
   res.json({
     rvNo: rv.rvNo,
     creditNoteNo: rv.creditNoteNo,
-    uploadedDate: rv.creditNoteUploadedDate
+    uploadedDate: rv.creditNoteUploadedDate,
+    fileName: rv.creditNoteFileName,
+    remarks: rv.creditNoteRemarks
   });
 });
 

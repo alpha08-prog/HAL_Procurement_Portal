@@ -33,7 +33,8 @@ const pendingValue = (days) => {
 };
 
 const BASE_COLUMNS = [
-  { key: 'rvNo', label: 'RV No / Date', render: (r) => twoLine(<strong>{r.rvNo}</strong>, formatDate(r.rvDate)) },
+  { key: 'rvNo', label: 'RV No / Reference No', render: (r) => twoLine(<strong>{r.rvNo}</strong>, <span style={{ fontSize: '0.75rem', color: 'var(--color-text-subtle, #4b5563)' }}>{r.refNo ?? `REF/${r.rvNo.replaceAll('/', '-')}`}</span>) },
+  { key: 'rvDate', label: 'RV Date', render: (r) => formatDate(r.rvDate) },
   { key: 'gateEntryNo', label: 'Gate Entry No / Date', render: (r) => twoLine(r.gateEntryNo, formatDate(r.gateEntryDate)) },
   { key: 'waybillNo', label: 'Waybill No', render: (r) => twoLine(r.waybillNo, formatDate(r.waybillDate)) },
   { key: 'poNo', label: 'PO No / Date', render: (r) => twoLine(r.poNo, formatDate(r.poDate)) },
@@ -67,11 +68,7 @@ const BASE_COLUMNS = [
   { key: 'paymentGroup', label: 'Payment Group', render: (r) => paymentGroupStatus(r.paStatus) }
 ];
 
-// Roles that can generate a payment advice from this inbox.
-const CAN_GENERATE_PA = ['purchase_maker', 'admin'];
-
 export function rvInboxColumns(role, handlers = {}) {
-  if (!CAN_GENERATE_PA.includes(role)) return BASE_COLUMNS;
   return [
     ...BASE_COLUMNS,
     {
@@ -91,7 +88,7 @@ export function rvInboxColumns(role, handlers = {}) {
                 onClick={() => handlers.onCreditNote?.(row)}
                 title="RV value is less than claimed invoice value. Upload credit note to proceed."
               >
-                Generate &amp; upload credit note
+                Upload Credit Note
               </button>
             )}
             {creditNoteRequired && row.creditNoteUploaded && (

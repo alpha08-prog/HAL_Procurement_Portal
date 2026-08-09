@@ -26,7 +26,7 @@ export const SCREENS = [
     path: '/rv-inbox',
     title: 'RV — Payment Status',
     navLabel: 'RV Inbox',
-    visibleTo: ['purchase_maker', 'admin']
+    visibleTo: ALL_ROLES
   },
   {
     path: '/payment-advice',

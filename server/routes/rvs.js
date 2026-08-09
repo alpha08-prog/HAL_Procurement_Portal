@@ -8,6 +8,7 @@ router.get('/', (req, res) => {
     const vendor = vendorById(rv.vendorId);
     return {
       ...rv,
+      refNo: rv.refNo ?? `REF/${rv.rvNo.replaceAll('/', '-')}`,
       creditNoteRequired: Number(rv.rvValue) < Number(rv.invoiceValue),
       vendorName: vendor.name ?? 'Unknown vendor',
       mseCategory: vendor.mseCategory ?? 'Non-MSE',

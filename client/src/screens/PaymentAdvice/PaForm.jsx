@@ -228,6 +228,7 @@ export default function PaForm({ paNo }) {
   const [pprDate, setPprDate] = useState('');
   const [hodReturnRemark, setHodReturnRemark] = useState('');
   const [officerReturnRemark, setOfficerReturnRemark] = useState('');
+  const [viewTab, setViewTab] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -269,9 +270,9 @@ export default function PaForm({ paNo }) {
   }
 
   const editable = pa.status === 'pa_created' && !recordView;
-  // Purchase Officer at Forward Advice stage verifies on the 1st Screen (Generate Payment Sheet form grid)
   const isOfficerStage = (backPath === '/forward-advice' || pa.status === 'forwarded_to_officer') && !recordView;
   const isFormStage = editable || isOfficerStage;
+  const activeTab = viewTab ?? (isOfficerStage ? 'doc' : 'form');
   const isLdApplicable = pa.ldAmount > 0 || pa.ldApplicable === 'Yes' || (pa.ldWeeks || 0) > 0;
   const missingRequired = PA_REQUIRED_FIELDS.filter((key) => !draft[key]);
   const missingLabels = PA_MAKER_FIELDS.filter((f) => missingRequired.includes(f.key)).map(
@@ -383,7 +384,26 @@ export default function PaForm({ paNo }) {
         onOpenCreditNoteModal={() => setShowCreditNoteModal(true)}
       />
 
-      {isFormStage ? (
+      {(editable || isOfficerStage) && (
+        <div className="no-print" style={{ display: 'flex', gap: '10px', marginBottom: '16px', borderBottom: '2px solid var(--color-border, #e5e7eb)', paddingBottom: '12px' }}>
+          <button
+            type="button"
+            className={activeTab === 'doc' ? 'btn' : 'btn btn-secondary'}
+            onClick={() => setViewTab('doc')}
+          >
+            📄 {isOfficerStage ? 'Stamped Payment Advice Document' : 'Draft Payment Advice Document'}
+          </button>
+          <button
+            type="button"
+            className={activeTab === 'form' ? 'btn' : 'btn btn-secondary'}
+            onClick={() => setViewTab('form')}
+          >
+            📋 Verification Form Grid
+          </button>
+        </div>
+      )}
+
+      {(editable || isOfficerStage) && activeTab === 'form' ? (
         <>
           {PA_FORM_SECTIONS.map((section) => (
             <div className="form-section" key={section.title}>
@@ -407,7 +427,7 @@ export default function PaForm({ paNo }) {
             </div>
           ))}
 
-          {/* Officer Verification & Forwarding Panel rendered on 1st screen */}
+          {/* Officer Verification & Forwarding Panel rendered on 1st screen form grid */}
           {isOfficerStage && pa.status === 'forwarded_to_officer' && (
             <div className="form-section no-print" style={{ marginTop: '24px', background: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
               <div className="form-section-title">Officer Verification &amp; Action</div>
@@ -417,7 +437,7 @@ export default function PaForm({ paNo }) {
                   className="field-input"
                   rows={3}
                   value={inlineRemark}
-                  placeholder="Add a remark before forwarding to payment desk..."
+                  placeholder="Add a remark before forwarding to payment desk (Neerja Sharma)..."
                   onChange={(e) => setInlineRemark(e.target.value)}
                   disabled={busy}
                 />
@@ -441,7 +461,7 @@ export default function PaForm({ paNo }) {
                   className="field-input"
                   rows={2}
                   value={officerReturnRemark}
-                  placeholder="Reason for returning to maker..."
+                  placeholder="Reason for returning to maker (Yogesh M.)..."
                   onChange={(e) => setOfficerReturnRemark(e.target.value)}
                   disabled={busy}
                 />
@@ -477,7 +497,40 @@ export default function PaForm({ paNo }) {
           pa={pa}
           role={role}
           remarkPanel={
-            (backPath === '/process-payment' && (pa.status === 'at_payment_desk' || pa.status === 'stamped_by_hod')) ||
+            isOfficerStage ? (
+              <div className="pa-remark-panel">
+                <div className="form-section-title">Officer Verification &amp; Forwarding Remark</div>
+                <textarea
+                  className="field-input"
+                  rows={3}
+                  value={inlineRemark}
+                  placeholder="Add a remark before forwarding to payment desk (Neerja Sharma)..."
+                  onChange={(e) => setInlineRemark(e.target.value)}
+                  disabled={busy}
+                />
+                <div className="remark-options">
+                  {OFFICER_REMARKS.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      className="remark-option"
+                      onClick={() => setInlineRemark(opt)}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+                <div className="form-section-title" style={{ marginTop: '16px' }}>Return Remark (if returning to maker)</div>
+                <textarea
+                  className="field-input"
+                  rows={2}
+                  value={officerReturnRemark}
+                  placeholder="Reason for returning to maker (Yogesh M.)..."
+                  onChange={(e) => setOfficerReturnRemark(e.target.value)}
+                  disabled={busy}
+                />
+              </div>
+            ) : (backPath === '/process-payment' && (pa.status === 'at_payment_desk' || pa.status === 'stamped_by_hod')) ||
             (backPath === '/hod-approval' && pa.status === 'sent_to_hod') ? (
               <div className="pa-remark-panel">
                 <div className="form-section-title">
@@ -564,8 +617,32 @@ export default function PaForm({ paNo }) {
             ) : null
           }
           actionBar={
+            isOfficerStage ? (
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={busy}
+                  onClick={() => runInlineTransition('officer_forward', { remark: inlineRemark })}
+                >
+                  ✔ Stamp &amp; forward to payment desk
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={busy || (!officerReturnRemark.trim() && !inlineRemark.trim())}
+                  title={(!officerReturnRemark.trim() && !inlineRemark.trim()) ? 'Enter a return remark above to return' : undefined}
+                  onClick={() => runInlineTransition('officer_send_back', { remark: officerReturnRemark || inlineRemark })}
+                >
+                  ✗ Return to maker
+                </button>
+                <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => navigate(backPath ?? '/forward-advice')}>
+                  ← Back to queue
+                </button>
+              </div>
+            )
             // Payment desk (at_payment_desk): Stamp & forward to HOD, or Return to maker
-            backPath === '/process-payment' && pa.status === 'at_payment_desk' ? (
+            : backPath === '/process-payment' && pa.status === 'at_payment_desk' ? (
               <div className="form-actions">
                 <button
                   className="btn"

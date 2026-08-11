@@ -6,8 +6,10 @@ const router = Router();
 router.get('/', (req, res) => {
   let rows = db.rvs.map((rv) => {
     const vendor = vendorById(rv.vendorId);
+    const pa = db.paymentAdvices.find((p) => p.rvNo === rv.rvNo);
     return {
       ...rv,
+      paNo: pa?.paNo ?? null,
       refNo: rv.refNo ?? `REF/${rv.rvNo.replaceAll('/', '-')}`,
       creditNoteRequired: Number(rv.rvValue) < Number(rv.invoiceValue),
       vendorName: vendor.name ?? 'Unknown vendor',

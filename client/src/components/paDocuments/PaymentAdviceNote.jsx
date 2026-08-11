@@ -161,8 +161,33 @@ export default function PaymentAdviceNote({ pa }) {
 
       <div className="hal-doc-signs hal-doc-signs-split" style={{ display: 'flex', gap: '16px', marginTop: '16px', flexWrap: 'wrap' }}>
         <div className="hal-doc-sign" style={{ flex: 1 }}>
-          <div className="hal-doc-sign-role">Authorized Signatory</div>
+          <div className="hal-doc-sign-role">Authorized Signatory (Maker: {pa.createdByName || 'Yogesh M.'})</div>
         </div>
+        {(() => {
+          const officerStep = (pa.history ?? []).find((h) => h.action === 'officer_forward' || h.action === 'forward_to_officer');
+          const isOfficerPreview = pa.status === 'forwarded_to_officer';
+          return (
+            <div className={'hal-doc-stamp-box' + (officerStep || isOfficerPreview ? ' hal-doc-stamp-signed' : '')} style={{ flex: 1 }}>
+              {officerStep ? (
+                <>
+                  <div className="hal-doc-stamp-label">✔ Purchase Officer — Verified &amp; Stamped</div>
+                  <div className="hal-doc-stamp-meta">{officerStep.date} · {pa.officer || 'R. Deshpande'}</div>
+                  {officerStep.remark && <div className="hal-doc-stamp-remark">"{officerStep.remark}"</div>}
+                </>
+              ) : isOfficerPreview ? (
+                <>
+                  <div className="hal-doc-stamp-label">✔ Purchase Officer — Stamped &amp; Ready</div>
+                  <div className="hal-doc-stamp-meta">{formatDate(new Date().toISOString())} · {pa.officer || 'R. Deshpande'}</div>
+                  <div className="hal-doc-stamp-remark">"Verified &amp; stamped for forwarding to Payment Desk (Neerja Sharma)"</div>
+                </>
+              ) : (
+                <div className="hal-doc-stamp-label hal-doc-stamp-empty">
+                  Purchase Officer — Stamp &amp; Signature
+                </div>
+              )}
+            </div>
+          );
+        })()}
         {(() => {
           const deskStep = (pa.history ?? []).find((h) => h.action === 'desk_forward_hod');
           return (

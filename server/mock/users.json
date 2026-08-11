@@ -10,7 +10,7 @@
   },
   {
     "id": "U002",
-    "name": "Asha Mhatre",
+    "name": "Yogesh M. (Purchase Maker)",
     "email": "maker@hal.local",
     "password": "hal@1234",
     "role": "purchase_maker",
@@ -37,7 +37,7 @@
   },
   {
     "id": "U005",
-    "name": "M. Iyer",
+    "name": "Neerja Sharma (Payment Desk)",
     "email": "desk@hal.local",
     "password": "hal@1234",
     "role": "payment_desk",

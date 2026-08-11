@@ -94,14 +94,34 @@ export function rvInboxColumns(role, handlers = {}) {
             {creditNoteRequired && row.creditNoteUploaded && (
               <span className="action-note">Credit note {row.creditNoteNo ?? 'uploaded'} ✓</span>
             )}
-            <button
-              className="btn"
-              disabled={row.paStatus !== 'rv_pending' || busy || needsCreditNote}
-              title={needsCreditNote ? 'Generate and upload the credit note first.' : undefined}
-              onClick={() => handlers.onGenerate?.(row)}
-            >
-              Generate payment advice
-            </button>
+            {row.paStatus === 'rv_pending' ? (
+              <button
+                className="btn"
+                disabled={busy || needsCreditNote}
+                title={needsCreditNote ? 'Generate and upload the credit note first.' : undefined}
+                onClick={() => handlers.onGenerate?.(row)}
+              >
+                Generate payment advice
+              </button>
+            ) : row.paStatus === 'pa_created' ? (
+              <button
+                className="btn"
+                disabled={busy}
+                onClick={() => handlers.onViewDraft?.(row)}
+                title="Open draft payment advice to edit & submit"
+              >
+                ✏️ View / Edit Draft PA
+              </button>
+            ) : (
+              <button
+                className="btn btn-secondary"
+                disabled={busy}
+                onClick={() => handlers.onViewPa?.(row)}
+                title="View active payment advice"
+              >
+                🔍 View PA
+              </button>
+            )}
           </div>
         );
       }

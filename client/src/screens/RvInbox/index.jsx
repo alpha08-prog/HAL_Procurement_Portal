@@ -66,6 +66,22 @@ export default function RvInbox() {
     );
   };
 
+  const onViewDraft = (row) => {
+    if (row.paNo) {
+      navigate(`/payment-advice?pa=${encodeURIComponent(row.paNo)}&back=/rv-inbox`);
+    } else {
+      navigate(`/payment-advice`);
+    }
+  };
+
+  const onViewPa = (row) => {
+    if (row.paNo) {
+      navigate(`/payment-advice?pa=${encodeURIComponent(row.paNo)}&back=/rv-inbox&view=1`);
+    } else {
+      navigate(`/payment-register`);
+    }
+  };
+
   return (
     <section className="screen">
       <h1 className="screen-title">RV — Payment Status</h1>
@@ -73,7 +89,7 @@ export default function RvInbox() {
         <div className="grid-empty">Could not load RVs: {error}</div>
       ) : (
         <DataGrid
-          columns={rvInboxColumns(role, { onGenerate, onCreditNote, busyRvNo })}
+          columns={rvInboxColumns(role, { onGenerate, onCreditNote, onViewDraft, onViewPa, busyRvNo })}
           rows={rows}
           rowKey="rvNo"
           emptyMessage="No RVs pending payment."

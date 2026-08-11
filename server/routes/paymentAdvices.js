@@ -224,13 +224,11 @@ router.post('/', (req, res) => {
     status: 'pa_created',
     createdDate: todayISO(),
     createdBy: 'purchase_maker',
-    createdByName: 'V. Sharma',
+    createdByName: 'Yogesh M.',
     createdByPb: 'PB-44102',
     officer: rv.poOfficer ? rv.poOfficer.split(' / ')[0] : '—',
     rvValue: rv.rvValue,
     ...computeLd(rv),
-    // Invoice no/date/value are IFS-fetched from the RV (red fields on Screen 2) —
-    // copied at generation so the maker sees them read-only and can forward.
     invoiceNo: rv.invoiceNo ?? null,
     invoiceDate: rv.invoiceDate ?? null,
     invoiceValue: rv.invoiceValue ?? null,

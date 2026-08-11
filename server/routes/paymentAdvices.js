@@ -225,7 +225,7 @@ router.post('/', (req, res) => {
     createdDate: todayISO(),
     createdBy: 'purchase_maker',
     createdByName: 'Yogesh M.',
-    createdByPb: 'PB-44102',
+    createdByPb: 'PB-44731',
     officer: rv.poOfficer ? rv.poOfficer.split(' / ')[0] : '—',
     rvValue: rv.rvValue,
     ...computeLd(rv),
@@ -302,8 +302,6 @@ router.post('/update', (req, res) => {
     return res.status(409).json({ error: `${pa.paNo} is ${pa.status} — maker fields are locked` });
   }
 
-  // Invoice no/date/value are IFS-fetched (read-only on Screen 2) — not accepted here.
-  // The maker supplies the LD switches, the manual I&C amount, their PB no and a remark.
   const {
     makerRemark,
     securitiesRemark,
@@ -311,11 +309,13 @@ router.post('/update', (req, res) => {
     ldByGateEntry,
     ldByFtr,
     ldIcAmount,
-    checkingOfficerPbNo
+    checkingOfficerPbNo,
+    bankMismatch
   } = req.body;
   if (makerRemark !== undefined) pa.makerRemark = makerRemark;
   if (securitiesRemark !== undefined) pa.securitiesRemark = securitiesRemark;
   if (checkingOfficerPbNo !== undefined) pa.checkingOfficerPbNo = checkingOfficerPbNo || null;
+  if (bankMismatch !== undefined) pa.bankMismatch = Boolean(bankMismatch);
   if (ldApplicable !== undefined) pa.ldApplicable = ldApplicable === 'Yes' ? 'Yes' : 'No';
   if (ldByGateEntry !== undefined) pa.ldByGateEntry = ldByGateEntry === 'Yes' ? 'Yes' : 'No';
   if (ldByFtr !== undefined) pa.ldByFtr = ldByFtr === 'Yes' ? 'Yes' : 'No';

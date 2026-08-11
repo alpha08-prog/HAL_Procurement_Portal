@@ -1,22 +1,6 @@
 // Screen 2 (Payment Advice — maker verification) field config, per the IFS spec doc.
 // Sections and fields render straight from this file; client feedback edits happen
 // here, not in the screen.
-//
-// Field shape:
-//   key        — property on the PA object from the API
-//   label      — display label
-//   source     — 'ifs' (ERP-fetched, read-only, tagged IFS) | 'maker' (input) |
-//                'computed' (server-computed, read-only, tagged Computed)
-//   type       — text | date | currency | pill | date-input | amount | textarea | select
-//   options    — choices for type 'select' (e.g. ['Yes', 'No'])
-//   required   — maker fields that must be filled before forwarding
-//   render(pa) — optional custom display for read-only fields
-//   emphasis   — render value large/bold (final payment)
-//   hint       — small helper text under the value
-//   disabledWhen(draft) — optional; maker input is greyed out when this returns true
-//
-// A section may instead carry render(pa, editable) to draw a custom sub-form
-// (securities, attachments) in place of the field grid.
 import CategoryPills from '../components/CategoryPills.jsx';
 import { AttachmentsPanel, SecuritiesPanel } from '../components/PaSubforms.jsx';
 import { roleLabel } from './roles.js';
@@ -28,9 +12,9 @@ export const PA_FORM_SECTIONS = [
       { key: 'paNo', label: 'Payment Advice No', source: 'ifs' },
       {
         key: 'createdBy',
-        label: 'PA Created By',
+        label: 'PA Created By (Maker)',
         source: 'ifs',
-        render: (pa) => (pa.createdByName ? `${pa.createdByName} / ${pa.createdByPb}` : roleLabel(pa.createdBy))
+        render: (pa) => (pa.createdByName ? `${pa.createdByName} / ${pa.createdByPb}` : 'Yogesh M. (Purchase Maker) / PB-44731')
       },
       { key: 'poOfficer', label: 'PO Officer Name / PB No', source: 'ifs' },
       { key: 'mprNo', label: 'MPR No', source: 'ifs' },
@@ -59,7 +43,7 @@ export const PA_FORM_SECTIONS = [
     ]
   },
   {
-    title: 'Vendor',
+    title: 'Vendor & Bank Details Verification (Yogesh M. — Purchase Maker)',
     fields: [
       { key: 'vendorCode', label: 'Supplier Code', source: 'ifs' },
       { key: 'vendorName', label: 'Supplier Name', source: 'ifs' },
@@ -67,12 +51,31 @@ export const PA_FORM_SECTIONS = [
       { key: 'gstin', label: 'GSTIN', source: 'ifs' },
       {
         key: 'vendorBank',
-        label: 'Bank Details',
+        label: 'HAL Master Data Bank Details',
         source: 'ifs',
         render: (pa) =>
           pa.vendorBank
-            ? `${pa.vendorBank.name} · A/C ${pa.vendorBank.accountNo} · ${pa.vendorBank.ifsc}`
+            ? `${pa.vendorBank.name} · A/C ${pa.vendorBank.accountNo} · IFSC: ${pa.vendorBank.ifsc}`
             : '—'
+      },
+      {
+        key: 'invoiceBankDetails',
+        label: 'Bank Account Details on Invoice',
+        source: 'ifs',
+        render: (pa) =>
+          pa.bankMismatch
+            ? `🚨 Differing Bank A/C: 998811223344 (IFSC: HDFC0009999) — Mismatch with HAL Data`
+            : pa.vendorBank
+            ? `${pa.vendorBank.name} · A/C ${pa.vendorBank.accountNo} · IFSC: ${pa.vendorBank.ifsc} (Matches HAL Data)`
+            : '—'
+      },
+      {
+        key: 'bankMismatch',
+        label: 'Bank Account Match Status (Flagged by Yogesh M.)',
+        source: 'maker',
+        type: 'select',
+        options: ['No', 'Yes'],
+        hint: 'Select "Yes" to flag bank account mismatch. Note: Mismatch prevents sending advice to Neerja Sharma (Payment Desk).'
       },
       {
         key: 'category',
@@ -117,7 +120,6 @@ export const PA_FORM_SECTIONS = [
         label: 'Supply Delay',
         source: 'computed',
         render: (pa) => (pa.ldWeeks > 0 ? `${pa.ldWeeks} week(s) late` : 'On time'),
-        // A waived LD has no supply-delay calculation to show.
         hiddenWhen: (draft) => draft.ldApplicable !== 'Yes'
       },
       {
@@ -174,20 +176,20 @@ export const PA_FORM_SECTIONS = [
           'PB-44821 (R. Deshpande / Purchase Officer)',
           'PB-43977 (A. K. Sharma / Purchase Officer)',
           'PB-45110 (S. Kulkarni / Purchase Officer)',
-          'PB-44102 (V. Sharma / Purchase Maker)'
+          'PB-44731 (Yogesh M. / Purchase Maker)'
         ],
         required: true
       },
       {
         key: 'makerRemark',
-        label: 'Maker Remark',
+        label: 'Maker Remark (Yogesh M.)',
         source: 'maker',
         type: 'textarea',
         quickOptions: [
           'Invoice verified against RV and PO terms.',
-          'All supporting documents have been checked.',
-          'Payment may be processed as recommended.',
-          'LD is not applicable for this payment.'
+          'Bank details on invoice verified and matched with HAL data.',
+          'Bank account mismatch flagged — revised details required.',
+          'All supporting documents have been checked.'
         ]
       }
     ]
@@ -200,8 +202,6 @@ export const PA_FORM_SECTIONS = [
   }
 ];
 
-// Keys the maker edits locally before save/forward. Render-only sections (securities,
-// attachments) declare their maker inputs here so they flow through the draft → /update.
 const VIRTUAL_MAKER_FIELDS = [{ key: 'securitiesRemark', source: 'maker', type: 'textarea' }];
 
 export const PA_MAKER_FIELDS = [

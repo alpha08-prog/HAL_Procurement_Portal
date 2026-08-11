@@ -15,7 +15,7 @@ const forwardedToDesk = (row) =>
 
 export const deskQueueConfig = {
   title: 'Process Payment',
-  note: 'Payment desk — check the same recommendation report received from the forwarding officer, stamp & forward it to HOD, then forward the HOD-stamped advice to CPPC.',
+  note: 'Payment desk (Neerja Sharma) — check the recommendation report received from the forwarding officer, stamp & forward it to HOD, then forward the HOD-stamped advice to CPPC.',
   states: ['at_payment_desk', 'sent_to_hod', 'stamped_by_hod', 'sent_to_cppc', 'paid'],
   backPath: '/process-payment',
   emptyMessage: 'No payment advices at the payment desk.',

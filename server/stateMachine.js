@@ -23,6 +23,10 @@ export const TRANSITIONS = {
     from: 'forwarded_to_officer',
     to: 'at_payment_desk',
     by: 'purchase_officer',
+    guard: (pa) =>
+      pa.bankMismatch
+        ? 'Cannot send to Neerja Sharma (Payment Desk): Bank account details on Invoice and in HAL data do not match. Flagged by Yogesh (Maker).'
+        : null,
     defaultRemark: 'Stamped and forwarded to payment desk.'
   },
   officer_send_back: {

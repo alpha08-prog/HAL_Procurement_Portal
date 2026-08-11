@@ -141,75 +141,45 @@ export default function RecommendationReport({ pa }) {
         ))}
       </ol>
 
-      <div className="hal-doc-signs">
-        <div className="hal-doc-sign">
-          <div className="hal-doc-sign-name">
-            {pa.checkingOfficerPbNo || pa.createdByPb} ({pa.createdByName})
-          </div>
-          <div className="hal-doc-sign-role">(Authorised By)</div>
-        </div>
-        <div className="hal-doc-sign">
-          <div className="hal-doc-sign-name">{pa.poOfficer}</div>
-          <div className="hal-doc-sign-role">(Authorised By)</div>
-        </div>
-      </div>
-
-      {/* Stamp blocks row */}
+      {/* Final Signatures / Stamp Section — 2 signatures at the end: HOD (IMM) and Payment Desk */}
       {(() => {
-        const officerStep = (pa.history ?? []).find((h) => h.action === 'officer_forward' || h.action === 'forward_to_officer');
-        const isOfficerPreview = pa.status === 'forwarded_to_officer';
-        const deskStep = (pa.history ?? []).find((h) => h.action === 'desk_forward_hod');
+        const deskStep = (pa.history ?? []).find((h) => h.action === 'desk_forward_hod' || h.action === 'desk_forward_cppc');
         const hodStep = (pa.history ?? []).find((h) => h.action === 'hod_stamp');
 
         return (
-          <div className="hal-doc-stamp-row" style={{ display: 'flex', gap: '16px', marginTop: '16px', flexWrap: 'wrap' }}>
-            {/* Officer Stamp */}
-            <div className={'hal-doc-stamp-box' + (officerStep || isOfficerPreview ? ' hal-doc-stamp-signed' : '')} style={{ flex: 1 }}>
-              {officerStep ? (
-                <>
-                  <div className="hal-doc-stamp-label">✔ Purchase Officer — Verified &amp; Stamped</div>
-                  <div className="hal-doc-stamp-meta">{officerStep.date} · {pa.officer || 'R. Deshpande'}</div>
-                  {officerStep.remark && <div className="hal-doc-stamp-remark">"{officerStep.remark}"</div>}
-                </>
-              ) : isOfficerPreview ? (
-                <>
-                  <div className="hal-doc-stamp-label">✔ Purchase Officer — Stamped &amp; Ready</div>
-                  <div className="hal-doc-stamp-meta">{formatDate(new Date().toISOString())} · {pa.officer || 'R. Deshpande'}</div>
-                  <div className="hal-doc-stamp-remark">"Verified &amp; stamped for forwarding to Payment Desk (Neerja Sharma)"</div>
-                </>
-              ) : (
-                <div className="hal-doc-stamp-label hal-doc-stamp-empty">
-                  Purchase Officer — Stamp &amp; Signature
-                </div>
-              )}
-            </div>
-
-            {/* Payment Desk Stamp */}
-            <div className={'hal-doc-stamp-box' + (deskStep ? ' hal-doc-stamp-signed' : '')} style={{ flex: 1 }}>
-              {deskStep ? (
-                <>
-                  <div className="hal-doc-stamp-label">✔ Payment Desk — Checked &amp; Stamped</div>
-                  <div className="hal-doc-stamp-meta">{deskStep.date}</div>
-                  {deskStep.remark && <div className="hal-doc-stamp-remark">"{deskStep.remark}"</div>}
-                </>
-              ) : (
-                <div className="hal-doc-stamp-label hal-doc-stamp-empty">
-                  Payment Desk (Neerja Sharma) — Stamp &amp; Signature
-                </div>
-              )}
-            </div>
-
-            {/* HOD Stamp */}
-            <div className={'hal-doc-stamp-box' + (hodStep ? ' hal-doc-stamp-signed' : '')} style={{ flex: 1 }}>
+          <div className="hal-doc-stamp-row" style={{ display: 'flex', gap: '20px', marginTop: '24px', flexWrap: 'wrap' }}>
+            {/* HOD (IMM) Signature & Stamp */}
+            <div className={'hal-doc-stamp-box' + (hodStep ? ' hal-doc-stamp-signed' : '')} style={{ flex: 1, padding: '16px' }}>
+              <div className="hal-doc-stamp-title" style={{ fontWeight: 600, color: 'var(--color-primary, #1e3a8a)', marginBottom: '6px' }}>
+                1. HOD (IMM) Approval
+              </div>
               {hodStep ? (
                 <>
                   <div className="hal-doc-stamp-label">✔ HOD (IMM) — Approved &amp; Stamped</div>
-                  <div className="hal-doc-stamp-meta">{hodStep.date}</div>
+                  <div className="hal-doc-stamp-meta">{hodStep.date} · V. Rao</div>
                   {hodStep.remark && <div className="hal-doc-stamp-remark">"{hodStep.remark}"</div>}
                 </>
               ) : (
                 <div className="hal-doc-stamp-label hal-doc-stamp-empty">
                   HOD (IMM) — Stamp &amp; Signature
+                </div>
+              )}
+            </div>
+
+            {/* Payment Desk Signature & Stamp */}
+            <div className={'hal-doc-stamp-box' + (deskStep ? ' hal-doc-stamp-signed' : '')} style={{ flex: 1, padding: '16px' }}>
+              <div className="hal-doc-stamp-title" style={{ fontWeight: 600, color: 'var(--color-primary, #1e3a8a)', marginBottom: '6px' }}>
+                2. Payment Desk Approval
+              </div>
+              {deskStep ? (
+                <>
+                  <div className="hal-doc-stamp-label">✔ Payment Desk — Checked &amp; Stamped</div>
+                  <div className="hal-doc-stamp-meta">{deskStep.date} · Neerja Sharma</div>
+                  {deskStep.remark && <div className="hal-doc-stamp-remark">"{deskStep.remark}"</div>}
+                </>
+              ) : (
+                <div className="hal-doc-stamp-label hal-doc-stamp-empty">
+                  Payment Desk (Neerja Sharma) — Stamp &amp; Signature
                 </div>
               )}
             </div>

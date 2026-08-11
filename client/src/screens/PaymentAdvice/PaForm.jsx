@@ -376,6 +376,12 @@ export default function PaForm({ paNo }) {
         </div>
       )}
 
+      {(pa.bankMismatch || draft?.bankMismatch === 'Yes' || draft?.bankMismatch === true) && (
+        <div className="banner banner-danger no-print" style={{ margin: '12px 0 16px 0', padding: '14px 18px', background: '#fef2f2', border: '1.5px solid #ef4444', borderRadius: '6px', color: '#991b1b', fontSize: '0.95rem' }}>
+          <strong>🚨 Bank Account Details Mismatch (Flagged by Yogesh M. - Purchase Maker):</strong> Bank account details on Invoice do not match HAL master data. Payment advice <strong>CANNOT be sent to Neerja Sharma (Payment Desk)</strong> until bank account details match.
+        </div>
+      )}
+
       <ReferenceButtons
         pa={pa}
         showForwarding={showForwarding}
@@ -471,7 +477,8 @@ export default function PaForm({ paNo }) {
                 <button
                   type="button"
                   className="btn"
-                  disabled={busy}
+                  disabled={busy || pa.bankMismatch || draft?.bankMismatch === 'Yes' || draft?.bankMismatch === true}
+                  title={(pa.bankMismatch || draft?.bankMismatch === 'Yes' || draft?.bankMismatch === true) ? 'Cannot send to Neerja Sharma (Payment Desk): Bank account details on Invoice and in HAL data do not match (Flagged by Yogesh M.).' : undefined}
                   onClick={() => runInlineTransition('officer_forward', { remark: inlineRemark })}
                 >
                   ✔ Stamp &amp; forward to payment desk
@@ -622,7 +629,8 @@ export default function PaForm({ paNo }) {
                 <button
                   type="button"
                   className="btn"
-                  disabled={busy}
+                  disabled={busy || pa.bankMismatch || draft?.bankMismatch === 'Yes' || draft?.bankMismatch === true}
+                  title={(pa.bankMismatch || draft?.bankMismatch === 'Yes' || draft?.bankMismatch === true) ? 'Cannot send to Neerja Sharma (Payment Desk): Bank account details on Invoice and in HAL data do not match (Flagged by Yogesh M.).' : undefined}
                   onClick={() => runInlineTransition('officer_forward', { remark: inlineRemark })}
                 >
                   ✔ Stamp &amp; forward to payment desk

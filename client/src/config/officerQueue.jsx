@@ -7,7 +7,7 @@ import { roleLabel } from './roles.js';
 
 export const officerQueueConfig = {
   title: 'Forward Payment Advice',
-  note: 'Officer queue — verify the advice, add a remark, stamp & forward to the payment desk.',
+  note: 'Officer queue — verify the advice, add a remark, stamp & forward to the payment desk (Neerja Sharma).',
   state: 'forwarded_to_officer',
   backPath: '/forward-advice',
   emptyMessage: 'No payment advices awaiting officer action.',
@@ -37,7 +37,7 @@ export const officerQueueConfig = {
     { key: 'poOfficer', label: 'Purchase Officer / PB No' },
     {
       key: 'createdBy',
-      label: 'PA Created By',
+      label: 'PA Created By (Maker)',
       render: (row) => (row.createdByName ? `${row.createdByName} / ${row.createdByPb}` : roleLabel(row.createdBy))
     },
     { key: 'mseCategory', label: 'MSME', render: (row) => <StatusPill status={row.mseCategory} /> },
@@ -46,6 +46,18 @@ export const officerQueueConfig = {
       label: 'PA Amount',
       align: 'right',
       render: (row) => <span className="num">{formatINR(row.finalPayment)}</span>
+    },
+    {
+      key: 'bankStatus',
+      label: 'Bank Account Status',
+      render: (row) =>
+        row.bankMismatch ? (
+          <span className="pill pill-danger" title="Bank account details mismatch flagged by Yogesh M. (Maker). Cannot send to Neerja Sharma (Payment Desk).">
+            🚨 Mismatch (Blocked)
+          </span>
+        ) : (
+          <span className="pill pill-success">✓ Matched</span>
+        )
     },
     {
       key: 'pendingDays',
@@ -60,9 +72,26 @@ export const officerQueueConfig = {
   ],
   actions: [
     {
-      key: 'stamp', label: 'Stamp & forward', transition: 'officer_forward', primary: true,
-      modalTitle: 'Stamp & forward to payment desk', submitLabel: 'Stamp & forward',
-      fields: [{ key: 'remark', label: 'Forwarding remark', type: 'textarea', placeholder: 'Add a remark…', quickOptions: ['Verified against PO terms. Forwarded to payment desk.', 'Documents checked and payment recommended.', 'Forwarded with the applicable LD deduction.'] }]
+      key: 'stamp',
+      label: 'Stamp & forward',
+      transition: 'officer_forward',
+      primary: true,
+      when: (row) => !row.bankMismatch,
+      modalTitle: 'Stamp & forward to payment desk (Neerja Sharma)',
+      submitLabel: 'Stamp & forward',
+      fields: [
+        {
+          key: 'remark',
+          label: 'Forwarding remark',
+          type: 'textarea',
+          placeholder: 'Add a remark…',
+          quickOptions: [
+            'Verified against PO terms. Forwarded to payment desk.',
+            'Documents checked and payment recommended.',
+            'Forwarded with the applicable LD deduction.'
+          ]
+        }
+      ]
     }
   ]
 };

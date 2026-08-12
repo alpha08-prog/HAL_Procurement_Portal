@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { roleLabel, screensForRole } from '../config/roles.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useRole } from '../context/RoleContext.jsx';
@@ -11,10 +12,57 @@ function initialsOf(name = '') {
   return (parts[0]?.slice(0, 2) || '?').toUpperCase();
 }
 
+// Dropdown menu that closes on outside click or Escape.
+function NavDropdown({ label, isActive, children }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    const esc = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open]);
+
+  return (
+    <span
+      ref={ref}
+      className={`app-nav-dropdown${open ? ' open' : ''}${isActive ? ' active' : ''}`}
+    >
+      <button
+        type="button"
+        className="app-nav-dropdown-trigger"
+        onClick={() => setOpen((v) => !v)}
+      >
+        {label} <span className="app-nav-dropdown-arrow">▼</span>
+      </button>
+      <div className="app-nav-dropdown-menu" onClick={() => setOpen(false)}>
+        {children}
+      </div>
+    </span>
+  );
+}
+
 export default function Header() {
   const { user, logout } = useAuth();
   const { role, canSwitch } = useRole();
+  const location = useLocation();
   const screens = screensForRole(role);
+
+  // Group screens by their group property for rendering.
+  const paymentScreens = screens.filter((s) => !s.group);
+  const notingScreens = screens.filter((s) => s.group === 'Noting');
+  const contractScreens = screens.filter((s) => s.group === 'Contracts');
+
+  const isNotingActive = location.pathname.startsWith('/noting');
+  const isContractsActive = location.pathname.startsWith('/contracts');
 
   return (
     <header className="app-header">
@@ -48,22 +96,70 @@ export default function Header() {
       </div>
 
       <nav className="app-nav">
-        {screens.map((s, i) => {
-          // Insert a divider whenever the nav group changes (e.g. Payment → Noting).
-          const prevGroup = i > 0 ? screens[i - 1].group : undefined;
-          const showDivider = i > 0 && s.group !== prevGroup;
-          return (
-            <span key={s.path} className="app-nav-item">
-              {showDivider && <span className="app-nav-divider" aria-hidden="true" />}
-              <NavLink
-                to={s.path}
-                className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}
-              >
-                {s.navLabel}
-              </NavLink>
-            </span>
-          );
-        })}
+        {/* Payment module screens — flat links */}
+        {paymentScreens.map((s) => (
+          <span key={s.path} className="app-nav-item">
+            <NavLink
+              to={s.path}
+              className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}
+            >
+              {s.navLabel}
+            </NavLink>
+          </span>
+        ))}
+
+        {/* Divider before Noting */}
+        {notingScreens.length > 0 && <span className="app-nav-divider" aria-hidden="true" />}
+
+        {/* eFiles dropdown (FLITE-style) */}
+        {notingScreens.length > 0 && (
+          <NavDropdown label="eFiles" isActive={isNotingActive}>
+            <Link to="/noting/inbox">Inbox</Link>
+            <Link to="/noting/sentbox">SentBox</Link>
+            <Link to="/noting/cabinet">Cabinet</Link>
+            <div className="menu-divider" />
+            <Link to="/noting/initiate">Create</Link>
+            <Link to="/noting/files">Drafts &amp; Files</Link>
+          </NavDropdown>
+        )}
+
+        {/* Workspace dropdown */}
+        {notingScreens.length > 0 && (
+          <NavDropdown label="Workspace" isActive={false}>
+            <Link to="/noting/upcoming">Upcoming Files</Link>
+            <Link to="/noting">Dashboard</Link>
+          </NavDropdown>
+        )}
+
+        {/* Other noting links */}
+        {notingScreens.length > 0 && (
+          <>
+            <NavLink
+              to="/noting/reports"
+              className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}
+            >
+              Reports
+            </NavLink>
+            <NavLink
+              to="/noting/org"
+              className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}
+            >
+              Organisation
+            </NavLink>
+          </>
+        )}
+
+        {/* Contracts dropdown */}
+        {contractScreens.length > 0 && (
+          <>
+            <span className="app-nav-divider" aria-hidden="true" />
+            <NavDropdown label="Contracts" isActive={isContractsActive}>
+              {contractScreens.map((s) => (
+                <Link key={s.path} to={s.path}>{s.navLabel}</Link>
+              ))}
+            </NavDropdown>
+          </>
+        )}
       </nav>
     </header>
   );

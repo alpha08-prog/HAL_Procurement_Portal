@@ -30,15 +30,22 @@ router.get('/inbox', (req, res) => {
   const me = currentMember(req);
   if (!me) return res.status(403).json({ error: 'No noting member mapped to this account' });
   const rows = all(
-    `SELECT n.txn_id, n.ref_no, n.title, n.status, n.classification, n.created_at,
-            f.file_id, f.title AS file_title, f.kind, f.standalone, im.name AS initiator,
+    `SELECT n.txn_id, n.ref_no, n.title, n.body, n.status, n.classification, n.created_at,
+            f.file_id, f.title AS file_title, f.kind, f.standalone, im.name AS initiator_name,
+            u.name AS department,
             (SELECT rs.purpose FROM routing_steps rs WHERE rs.note_id = n.id AND rs.to_member_id = ? ORDER BY rs.seq DESC LIMIT 1) AS incoming_purpose,
             (SELECT rs.state   FROM routing_steps rs WHERE rs.note_id = n.id AND rs.to_member_id = ? ORDER BY rs.seq DESC LIMIT 1) AS incoming_state
-     FROM notes n JOIN files f ON f.id = n.file_pk LEFT JOIN members im ON im.id = n.initiator_id
+     FROM notes n
+     JOIN files f ON f.id = n.file_pk
+     LEFT JOIN members im ON im.id = n.initiator_id
+     LEFT JOIN org_units u ON u.id = im.section_id
      WHERE n.custodian_id = ? AND n.status IN ('draft','in_check','routed')
      ORDER BY n.id DESC`,
     me.id, me.id, me.id
   );
+  for (const r of rows) {
+    r.priority = 'Medium';
+  }
   res.json({ inbox: rows });
 });
 

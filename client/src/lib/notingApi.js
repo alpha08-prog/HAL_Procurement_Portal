@@ -63,3 +63,10 @@ export const fetchAlerts = () => getJson('/api/noting/alerts');
 
 // AI pipeline notes (existing bridge) — source for AI-drafted N1.
 export const fetchAiNotes = () => getJson('/api/ai/notes');
+
+// eFile FLITE additions
+export const fetchSentBox = () => getJson('/api/noting/sentbox');
+export const fetchUpcoming = () => getJson('/api/noting/upcoming');
+export const fetchDashboard = () => getJson('/api/noting/dashboard');
+export const delegateAuthority = (payload) => postJson('/api/noting/delegation', payload);
+export const cancelDelegation = () => postJson('/api/noting/delegation/cancel', {});

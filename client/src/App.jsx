@@ -10,6 +10,8 @@ import Login from './screens/Login/index.jsx';
 import NotingHome from './screens/Noting/Home.jsx';
 import Initiate from './screens/Noting/Initiate.jsx';
 import Inbox from './screens/Noting/Inbox.jsx';
+import SentBox from './screens/Noting/SentBox.jsx';
+import UpcomingFiles from './screens/Noting/UpcomingFiles.jsx';
 import Files from './screens/Noting/Files.jsx';
 import Cabinet from './screens/Noting/Cabinet.jsx';
 import NoteDetail from './screens/Noting/NoteDetail.jsx';
@@ -48,6 +50,8 @@ export default function App() {
               <Route path="/noting" element={<NotingHome />} />
               <Route path="/noting/initiate" element={<Initiate />} />
               <Route path="/noting/inbox" element={<Inbox />} />
+              <Route path="/noting/sentbox" element={<SentBox />} />
+              <Route path="/noting/upcoming" element={<UpcomingFiles />} />
               <Route path="/noting/files" element={<Files />} />
               <Route path="/noting/cabinet" element={<Cabinet />} />
               <Route path="/noting/reports" element={<Reports />} />

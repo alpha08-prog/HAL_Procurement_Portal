@@ -89,6 +89,20 @@ export const SCREENS = [
     visibleTo: ALL_ROLES
   },
   {
+    path: '/noting/sentbox',
+    title: 'SentBox',
+    navLabel: 'SentBox',
+    group: 'Noting',
+    visibleTo: ALL_ROLES
+  },
+  {
+    path: '/noting/upcoming',
+    title: 'Upcoming Files',
+    navLabel: 'Upcoming',
+    group: 'Noting',
+    visibleTo: ALL_ROLES
+  },
+  {
     path: '/noting/files',
     title: 'Files',
     navLabel: 'Files',

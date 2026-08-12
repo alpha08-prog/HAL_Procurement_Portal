@@ -148,3 +148,14 @@ CREATE TABLE IF NOT EXISTS cabinet (
   reason    TEXT NOT NULL,                          -- initiator|router|approver
   placed_at TEXT NOT NULL
 );
+
+-- Active authority delegations
+CREATE TABLE IF NOT EXISTS delegations (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  from_id    INTEGER NOT NULL REFERENCES members(id),
+  to_id      INTEGER NOT NULL REFERENCES members(id),
+  from_date  TEXT NOT NULL,
+  to_date    TEXT NOT NULL,
+  reason     TEXT,
+  created_at TEXT NOT NULL
+);

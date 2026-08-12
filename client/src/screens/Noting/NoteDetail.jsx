@@ -3,7 +3,8 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import Attachments from '../../components/Attachments.jsx';
 import Clarifications from '../../components/Clarifications.jsx';
 import NoteRenderer from '../../components/NoteRenderer.jsx';
-import RoutingTimeline from '../../components/RoutingTimeline.jsx';
+import RichTextEditor from '../../components/noting/RichTextEditor.jsx';
+import MemberPickerModal from '../../components/noting/MemberPickerModal.jsx';
 import {
   CLASSIFICATIONS,
   ClassificationBadge,
@@ -11,6 +12,7 @@ import {
   StatusBadge
 } from '../../config/notingColumns.jsx';
 import {
+  addNote,
   decideNote,
   fetchAlerts,
   fetchGrants,
@@ -28,40 +30,6 @@ import {
   sendForCheck
 } from '../../lib/notingApi.js';
 
-function IdChip({ label, value }) {
-  return (
-    <span className="id-chip">
-      <span className="id-chip-label">{label}</span>
-      <span className="id-chip-value">{value || '—'}</span>
-    </span>
-  );
-}
-
-// Members grouped by their org placement (Department › Section) so picking the next
-// member follows the nesting sequence Corporate › Complex › Division › Dept › Section › user.
-function MemberSelect({ value, onChange, members, exclude }) {
-  const groups = new Map();
-  for (const m of members.filter((m) => !exclude?.includes(m.id))) {
-    const label = m.unit_path || (m.unit ? (m.parent_unit ? `${m.parent_unit} › ${m.unit}` : m.unit) : 'No current posting');
-    if (!groups.has(label)) groups.set(label, []);
-    groups.get(label).push(m);
-  }
-  return (
-    <select className="field-input" value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">— select member —</option>
-      {[...groups].map(([label, ms]) => (
-        <optgroup key={label} label={label}>
-          {ms.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name} — {m.designation}
-            </option>
-          ))}
-        </optgroup>
-      ))}
-    </select>
-  );
-}
-
 export default function NoteDetail() {
   const { txnId } = useParams();
   const [sp] = useSearchParams();
@@ -72,20 +40,28 @@ export default function NoteDetail() {
   const [steps, setSteps] = useState([]);
   const [grants, setGrants] = useState([]);
   const [alerts, setAlerts] = useState([]);
-  const [shareLink, setShareLink] = useState('');
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState(null);
-  const [panel, setPanel] = useState(null);
-  const [edit, setEdit] = useState({ title: '', body: '', classification: 'normal' });
+  
+  const [showCoverPage, setShowCoverPage] = useState(true);
+  const [accordionOpen, setAccordionOpen] = useState({
+    attachments: true,
+    stamping: false,
+    referred: false,
+    clarifications: false
+  });
+  
+  const [newNoteBody, setNewNoteBody] = useState('');
   const [pick, setPick] = useState({ toMemberId: '', comment: '' });
-  const [decision, setDecision] = useState('approve');
+  const [showMemberPicker, setShowMemberPicker] = useState(false);
+  const [memberPickerPurpose, setMemberPickerPurpose] = useState('forward');
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
     fetchNote(txnId, grantToken)
       .then((d) => {
         setData(d);
-        setEdit({ title: d.note.title, body: d.note.body || '', classification: d.note.classification });
+        setNewNoteBody(d.note.body || '');
       })
       .catch((err) => setError(err.message));
     fetchHistory(txnId).then((d) => setSteps(d.history)).catch(() => setSteps([]));
@@ -99,41 +75,28 @@ export default function NoteDetail() {
     fetchMembers().then((d) => setMembers(d.members)).catch(() => setMembers([]));
   }, [load]);
 
-  if (error && !data) return <div className="grid-empty">Could not load note: {error}</div>;
-  if (!data) return <div className="grid-empty">Loading…</div>;
+  if (error && !data) return <div className="grid-empty">Could not load e-file: {error}</div>;
+  if (!data) return <div className="grid-empty">Loading e-file…</div>;
 
   const { note, file, initiator, custodian } = data;
   const isHolder = me && me.id === note.custodian_id;
   const routable = ['draft', 'in_check', 'routed'].includes(note.status);
   const decidable = ['routed', 'in_check'].includes(note.status);
   const closed = ['approved', 'rejected'].includes(note.status);
-  const lastStep = steps[steps.length - 1];
-  const canRetract = me && lastStep && lastStep.from_id === me.id && lastStep.state === 'sent';
-  const canRetrieve = closed && me && note.decided_by === me.id;
-  const restricted = note.classification !== 'normal';
 
-  const partIds = new Set([note.initiator_id, note.custodian_id]);
-  steps.forEach((s) => {
-    if (s.from_id) partIds.add(s.from_id);
-    if (s.to_id) partIds.add(s.to_id);
-  });
-  const people = members.filter((m) => partIds.has(m.id));
+  const toggleAccordion = (key) => {
+    setAccordionOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
-  // Send-back may only target the initiator or a previous holder (email: "user or previous
-  // member") — the server enforces this too.
-  const priorIds = new Set([note.initiator_id].filter(Boolean));
-  steps.forEach((s) => {
-    if (s.from_id) priorIds.add(s.from_id);
-  });
-  const priorMembers = members.filter((m) => priorIds.has(m.id) && m.id !== note.custodian_id);
-
-  const run = async (fn) => {
+  const handleForwardMember = async (member) => {
     setBusy(true);
     setError(null);
     try {
-      await fn();
-      setPanel(null);
-      setPick({ toMemberId: '', comment: '' });
+      if (memberPickerPurpose === 'forward') {
+        await forwardNote(txnId, { toMemberId: member.id, comment: pick.comment || 'Concurred & Forwarded' });
+      } else if (memberPickerPurpose === 'sendback') {
+        await sendBackNote(txnId, { toMemberId: member.id, comment: pick.comment || 'Returned' });
+      }
       load();
     } catch (err) {
       setError(err.message);
@@ -142,16 +105,11 @@ export default function NoteDetail() {
     }
   };
 
-  const toId = () => Number(pick.toMemberId);
-
-  const doShare = async () => {
+  const handleDecision = async (decision) => {
     setBusy(true);
     setError(null);
-    setShareLink('');
     try {
-      const r = await grantAccess(txnId, { toMemberId: Number(pick.toMemberId) });
-      setShareLink(window.location.origin + r.link);
-      setPick({ toMemberId: '', comment: '' });
+      await decideNote(txnId, { decision, comment: pick.comment });
       load();
     } catch (err) {
       setError(err.message);
@@ -159,304 +117,205 @@ export default function NoteDetail() {
       setBusy(false);
     }
   };
-
-  const rendered = {
-    title: note.title,
-    meta: {
-      'File ID': file.file_id,
-      'Reference No': note.ref_no,
-      'Transaction ID': note.txn_id,
-      Reference: file.car_no || (file.standalone ? 'Standalone (no requisition)' : '—'),
-      Classification: clsLabel(note.classification),
-      Initiator: initiator?.name,
-      Date: note.created_at
-    },
-    fullOutput: note.body,
-    newSection: note.body,
-    annexures: []
-  };
-
-  const toggle = (p) => setPanel(panel === p ? null : p);
 
   return (
     <section className="screen">
-      <div className="no-print">
-        <Link to="/noting/files" className="back-link">
-          ← Files
-        </Link>
-
-        <div className="note-idbar">
-          <IdChip label="File ID" value={file.file_id} />
-          <IdChip label="Reference No" value={note.ref_no} />
-          <IdChip label="Transaction ID" value={note.txn_id} />
-          <ClassificationBadge value={note.classification} />
-          <StatusBadge value={note.status} />
-          <span className="id-chip">
-            <span className="id-chip-label">Currently with</span>
-            <span className="id-chip-value">{custodian?.name}</span>
-          </span>
-        </div>
-
-        {restricted && (
-          <div className="banner banner-restricted">
-            🔒 {clsLabel(note.classification)} — visible only to routed members. A link or
-            transaction id alone grants no access.
-          </div>
-        )}
-
-        {alerts.length > 0 && (
-          <div className="banner banner-error">
-            ⚠ {alerts.length} re-share attempt(s) on this note —{' '}
-            {alerts.map((a) => `PB ${a.offender_pb}`).join(', ')}. The shared link was revoked.
-          </div>
-        )}
-
-        <div className="note-detail-actions">
-          {isHolder && note.status === 'draft' && (
-            <button type="button" className={'btn' + (panel === 'edit' ? '' : ' btn-secondary')} onClick={() => toggle('edit')}>
-              Edit draft
-            </button>
-          )}
-          {isHolder && note.status === 'draft' && (
-            <button type="button" className={'btn' + (panel === 'check' ? '' : ' btn-secondary')} onClick={() => toggle('check')}>
-              Send for check
-            </button>
-          )}
-          {isHolder && routable && (
-            <button type="button" className={'btn' + (panel === 'forward' ? '' : ' btn-secondary')} onClick={() => toggle('forward')}>
-              Forward
-            </button>
-          )}
-          {isHolder && decidable && (
-            <button type="button" className={'btn' + (panel === 'sendback' ? '' : ' btn-secondary')} onClick={() => toggle('sendback')}>
-              Send back
-            </button>
-          )}
-          {isHolder && decidable && (
-            <button type="button" className={'btn' + (panel === 'decision' ? '' : ' btn-secondary')} onClick={() => toggle('decision')}>
-              Approve / Reject
-            </button>
-          )}
-          {canRetract && (
-            <button type="button" className="btn btn-secondary" onClick={() => run(() => retractNote(txnId))} disabled={busy}>
-              Retract
-            </button>
-          )}
-          {canRetrieve && (
-            <button type="button" className="btn btn-secondary" onClick={() => run(() => retrieveNote(txnId))} disabled={busy}>
-              Retrieve from cabinet
-            </button>
-          )}
-          {restricted && (
-            <button type="button" className={'btn' + (panel === 'share' ? '' : ' btn-secondary')} onClick={() => toggle('share')}>
-              Share (need-to-know)
-            </button>
-          )}
+      {/* Top Banner */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Link to="/noting/inbox" className="back-link" style={{ fontSize: 12 }}>← Back to Inbox</Link>
           <button
             type="button"
-            className={'btn' + (panel === 'summary' ? '' : ' btn-secondary')}
-            onClick={() => {
-              toggle('summary');
-              if (!summary) fetchSummary(txnId).then((d) => setSummary(d.summary)).catch(() => setSummary({ lead: '', facts: [], meta: [] }));
-            }}
+            className="btn btn-secondary"
+            style={{ padding: '2px 8px', fontSize: 11 }}
+            onClick={() => setShowCoverPage((v) => !v)}
           >
-            Summary
-          </button>
-          <button type="button" className="btn btn-secondary" onClick={() => window.print()}>
-            Download PDF
+            {showCoverPage ? 'Hide Cover Page' : 'Show Cover Page'}
           </button>
         </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <ClassificationBadge value={note.classification} />
+          <StatusBadge value={note.status} />
+        </div>
+      </div>
 
-        {panel === 'summary' && (
-          <div className="form-section">
-            <div className="form-section-title">Proposal summary</div>
-            {!summary ? (
-              <div className="grid-empty">Generating…</div>
-            ) : (
-              <>
-                {summary.meta?.length > 0 && (
-                  <ul className="summary-facts summary-meta">
-                    {summary.meta.map(([k, v]) => (
-                      <li key={k}>
-                        <strong>{k}:</strong> {v}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {summary.lead && <p className="note-para">{summary.lead}</p>}
-                {summary.facts.length > 0 && (
-                  <ul className="summary-facts">
-                    {summary.facts.map((f, i) => (
-                      <li key={i}>{f}</li>
-                    ))}
-                  </ul>
-                )}
-                {!summary.lead && summary.facts.length === 0 && !summary.meta?.length && (
-                  <div className="grid-empty">No content to summarise.</div>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {panel === 'edit' && (
-          <div className="form-section">
-            <div className="form-section-title">Edit draft</div>
-            <div className="form-grid">
-              <label className="field-wide">
-                <span className="field-label">Note title</span>
-                <input className="field-input" value={edit.title} onChange={(e) => setEdit({ ...edit, title: e.target.value })} />
-              </label>
-              <label>
-                <span className="field-label">Classification</span>
-                <select className="field-input" value={edit.classification} onChange={(e) => setEdit({ ...edit, classification: e.target.value })}>
-                  {CLASSIFICATIONS.map((c) => (
-                    <option key={c.id} value={c.id}>{c.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="field-wide">
-                <span className="field-label">Note body</span>
-                <textarea className="field-input" rows={10} value={edit.body} onChange={(e) => setEdit({ ...edit, body: e.target.value })} />
-              </label>
-            </div>
-            <div className="form-actions">
-              <button type="button" className="btn" disabled={busy} onClick={() => run(() => saveDraft(txnId, edit))}>
-                {busy ? 'Saving…' : 'Save draft'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {(panel === 'check' || panel === 'forward' || panel === 'sendback') && (
-          <div className="form-section">
-            <div className="form-section-title">
-              {panel === 'check' ? 'Send draft for check' : panel === 'forward' ? 'Forward to next member' : 'Send back'}
-            </div>
-            <div className="form-grid">
-              <label>
-                <span className="field-label">{panel === 'sendback' ? 'Return to' : 'Member'}</span>
-                <MemberSelect
-                  value={pick.toMemberId}
-                  onChange={(v) => setPick({ ...pick, toMemberId: v })}
-                  members={panel === 'sendback' ? priorMembers : members}
-                  exclude={[]}
-                />
-              </label>
-              <label className="field-wide">
-                <span className="field-label">Comment {panel === 'forward' ? '(blank = “Concurred & Forwarded”)' : '(optional)'}</span>
-                <input className="field-input" value={pick.comment} onChange={(e) => setPick({ ...pick, comment: e.target.value })} />
-              </label>
-            </div>
-            <div className="form-actions">
-              <button
-                type="button"
-                className="btn"
-                disabled={busy || !pick.toMemberId}
-                onClick={() =>
-                  run(() =>
-                    panel === 'check'
-                      ? sendForCheck(txnId, { toMemberId: toId(), comment: pick.comment })
-                      : panel === 'forward'
-                        ? forwardNote(txnId, { toMemberId: toId(), comment: pick.comment })
-                        : sendBackNote(txnId, { toMemberId: toId(), comment: pick.comment })
-                  )
-                }
-              >
-                {busy ? 'Sending…' : panel === 'check' ? 'Send for check' : panel === 'forward' ? 'Forward' : 'Send back'}
-              </button>
-              {panel === 'forward' && <span className="action-note">Add anyone as the next member — including yourself.</span>}
-              {panel === 'sendback' && <span className="action-note">Return only to the initiator or a member who held this note before.</span>}
-            </div>
-          </div>
-        )}
-
-        {panel === 'decision' && (
-          <div className="form-section">
-            <div className="form-section-title">Decision</div>
-            <div className="form-grid">
-              <label>
-                <span className="field-label">Outcome</span>
-                <select className="field-input" value={decision} onChange={(e) => setDecision(e.target.value)}>
-                  <option value="approve">Approve</option>
-                  <option value="reject">Reject</option>
-                </select>
-              </label>
-              <label className="field-wide">
-                <span className="field-label">Remark (optional)</span>
-                <input className="field-input" value={pick.comment} onChange={(e) => setPick({ ...pick, comment: e.target.value })} />
-              </label>
-            </div>
-            <div className="form-actions">
-              <button type="button" className="btn" disabled={busy} onClick={() => run(() => decideNote(txnId, { decision, comment: pick.comment }))}>
-                {busy ? 'Recording…' : decision === 'approve' ? 'Approve & file' : 'Reject & file'}
-              </button>
-              <span className="action-note">On decision the file moves to the cabinet.</span>
-            </div>
-          </div>
-        )}
-
-        {panel === 'share' && (
-          <div className="form-section">
-            <div className="form-section-title">Share (need-to-know)</div>
-            <div className="form-grid">
-              <label>
-                <span className="field-label">Give access to</span>
-                <MemberSelect value={pick.toMemberId} onChange={(v) => setPick({ ...pick, toMemberId: v })} members={members} />
-              </label>
-            </div>
-            <div className="form-actions">
-              <button type="button" className="btn" disabled={busy || !pick.toMemberId} onClick={doShare}>
-                {busy ? 'Issuing…' : 'Issue link'}
-              </button>
-              <span className="action-note">If the recipient forwards this link, access is revoked for both.</span>
-            </div>
-            {shareLink && (
-              <div className="share-link">
-                <span className="field-label">Share link</span>
-                <input className="field-input" readOnly value={shareLink} onFocus={(e) => e.target.select()} />
+      <div className="ef-split-layout">
+        {/* Main Column */}
+        <div className="ef-main-col">
+          {/* Cover Page */}
+          {showCoverPage && (
+            <div className="ef-cover-page">
+              <div className="ef-cover-header">
+                <h2>HINDUSTAN AERONAUTICS LIMITED — NASHIK DIVISION</h2>
+                <h3>E-FILE NOTING SHEET: #{file.file_id}</h3>
               </div>
-            )}
-            {grants.length > 0 && (
-              <ul className="grant-list">
-                {grants.map((g) => (
-                  <li key={g.token}>
-                    <span>{g.granted_to}</span>
-                    <span className={`tag ${g.state === 'active' ? 'tag-note-approved' : 'tag-note-rejected'}`}>
-                      {g.state === 'active' ? 'Active' : `Revoked (${g.revoke_reason || 'revoked'})`}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+              <dl className="ef-cover-meta">
+                <dt>Subject:</dt>
+                <dd style={{ fontWeight: 600, color: 'var(--accent)' }}>{file.title}</dd>
+                <dt>Ref No:</dt>
+                <dd>{note.ref_no}</dd>
+                <dt>Txn ID:</dt>
+                <dd>{note.txn_id}</dd>
+                <dt>Currently With:</dt>
+                <dd style={{ fontWeight: 600, color: '#1e7d43' }}>{custodian?.name || '—'}</dd>
+              </dl>
+            </div>
+          )}
+
+          {/* Routing Trail / Note History Tabs */}
+          <div className="ef-routing-tabs">
+            <button type="button" className="ef-routing-tab-arrow">◄</button>
+            <button type="button" className="ef-routing-tab active">N1 (Note 1)</button>
+            <button type="button" className="ef-routing-tab-arrow">►</button>
           </div>
-        )}
 
-        {error && <div className="banner banner-error">{error}</div>}
+          {/* Existing Note Content Display */}
+          <div className={`ef-note-header${note.status === 'rejected' ? ' rejected' : ''}`}>
+            <span>N1 Note by {initiator?.name || 'Initiator'} ({initiator?.designation || 'Desk'})</span>
+            <span>Created: {new Date(note.created_at).toLocaleDateString('en-IN')}</span>
+          </div>
 
-        <h2 className="section-heading" style={{ marginTop: 'var(--space-4)' }}>
-          Attachments
-        </h2>
-        <Attachments
-          txnId={txnId}
-          isInitiator={me && me.id === note.initiator_id}
-          canAdd={me && people.some((p) => p.id === me.id)}
-        />
+          <div className="ef-note-body">
+            <div dangerouslySetInnerHTML={{ __html: note.body || '<p>No content in note body.</p>' }} />
+            <div className="ef-note-signature">
+              <strong>Digitally Signed By:</strong> {initiator?.name}<br />
+              <strong>Designation:</strong> {initiator?.designation}<br />
+              <strong>Date &amp; Time:</strong> {new Date(note.created_at).toLocaleString('en-IN')}
+            </div>
+          </div>
 
-        <h2 className="section-heading" style={{ marginTop: 'var(--space-5)' }}>
-          Routing trail
-        </h2>
-        <RoutingTimeline steps={steps} />
+          {/* Action Toolbar for Current Holder */}
+          {isHolder && routable && (
+            <div className="form-section" style={{ marginTop: 24 }}>
+              <div className="form-section-title">Workflow Actions</div>
+              <div style={{ marginBottom: 12 }}>
+                <span className="field-label">Remarks / Comment</span>
+                <input
+                  className="field-input"
+                  style={{ width: '100%' }}
+                  value={pick.comment}
+                  onChange={(e) => setPick({ ...pick, comment: e.target.value })}
+                  placeholder="Enter remarks for forward/sendback/approval"
+                />
+              </div>
 
-        <h2 className="section-heading" style={{ marginTop: 'var(--space-5)' }}>
-          Clarifications
-        </h2>
-        <Clarifications txnId={txnId} me={me} people={people} />
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={busy}
+                  onClick={() => {
+                    setMemberPickerPurpose('forward');
+                    setShowMemberPicker(true);
+                  }}
+                >
+                  Forward to Officer →
+                </button>
+
+                {decidable && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={busy}
+                    onClick={() => {
+                      setMemberPickerPurpose('sendback');
+                      setShowMemberPicker(true);
+                    }}
+                  >
+                    ← Send Back
+                  </button>
+                )}
+
+                {decidable && (
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{ background: '#1e7d43' }}
+                    disabled={busy}
+                    onClick={() => handleDecision('approve')}
+                  >
+                    Approve &amp; File
+                  </button>
+                )}
+
+                {decidable && (
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{ background: '#b3261e' }}
+                    disabled={busy}
+                    onClick={() => handleDecision('reject')}
+                  >
+                    Reject &amp; Close
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right Accordion Panel */}
+        <div className="ef-right-panel">
+          <div className="ef-panel-actions">
+            <button type="button" className="ef-panel-action" onClick={() => window.print()}>
+              🖨️ Download PDF
+            </button>
+            <button
+              type="button"
+              className="ef-panel-action"
+              onClick={() => {
+                if (!summary) fetchSummary(txnId).then((d) => setSummary(d.summary));
+              }}
+            >
+              📄 Summary
+            </button>
+          </div>
+
+          {summary && (
+            <div className="ef-accordion-item open">
+              <div className="ef-accordion-trigger">
+                <span>Summary</span>
+              </div>
+              <div className="ef-accordion-content" style={{ display: 'block' }}>
+                <p>{summary.lead}</p>
+                <ul>
+                  {summary.facts?.map((f, i) => (
+                    <li key={i}>{f}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          <div className={`ef-accordion-item${accordionOpen.attachments ? ' open' : ''}`}>
+            <button type="button" className="ef-accordion-trigger" onClick={() => toggleAccordion('attachments')}>
+              <span>Attachments</span>
+              <span className="arrow">▼</span>
+            </button>
+            <div className="ef-accordion-content">
+              <Attachments txnId={txnId} isInitiator={me && me.id === note.initiator_id} canAdd={isHolder} />
+            </div>
+          </div>
+
+          <div className={`ef-accordion-item${accordionOpen.clarifications ? ' open' : ''}`}>
+            <button type="button" className="ef-accordion-trigger" onClick={() => toggleAccordion('clarifications')}>
+              <span>Clarifications</span>
+              <span className="arrow">▼</span>
+            </button>
+            <div className="ef-accordion-content">
+              <Clarifications txnId={txnId} me={me} people={members} />
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="note-print-area">
-        <NoteRenderer note={rendered} mode="full" />
-      </div>
+      <MemberPickerModal
+        isOpen={showMemberPicker}
+        onClose={() => setShowMemberPicker(false)}
+        members={members}
+        onSelect={handleForwardMember}
+        title={memberPickerPurpose === 'forward' ? 'Select Officer to Forward' : 'Select Officer to Return File'}
+      />
     </section>
   );
 }

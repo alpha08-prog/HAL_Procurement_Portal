@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS members (
   name          TEXT NOT NULL,
   email         TEXT,
   designation   TEXT,
+  grade         TEXT,                              -- Grade e.g. 2 - HR Officer, 8 - AGM
   app_role      TEXT,                              -- maps to client roles.js id, when the member can log in
   section_id    INTEGER REFERENCES org_units(id),  -- current posting (a leaf unit)
   heads_unit_id INTEGER REFERENCES org_units(id)   -- unit this member heads (section/dept/division), else NULL

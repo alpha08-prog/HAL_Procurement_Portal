@@ -50,6 +50,7 @@ export function StatusBadge({ value }) {
 export const MEMBER_COLUMNS = [
   { key: 'pb', label: 'PB No' },
   { key: 'name', label: 'Member' },
+  { key: 'grade', label: 'Grade', render: (r) => r.grade || '—' },
   { key: 'designation', label: 'Designation' },
   { key: 'unit', label: 'Unit', render: (r) => r.unit_path || r.unit || '—' },
   { key: 'parent_unit', label: 'Under', render: (r) => r.parent_unit || '—' },

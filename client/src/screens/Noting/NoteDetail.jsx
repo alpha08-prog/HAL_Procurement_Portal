@@ -72,7 +72,7 @@ export default function NoteDetail() {
   useEffect(() => {
     load();
     fetchMe().then((d) => setMe(d.member)).catch(() => setMe(null));
-    fetchMembers().then((d) => setMembers(d.members)).catch(() => setMembers([]));
+    fetchMembers().then((d) => setMembers(d?.members || [])).catch(() => setMembers([]));
   }, [load]);
 
   if (error && !data) return <div className="grid-empty">Could not load e-file: {error}</div>;

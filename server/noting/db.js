@@ -22,6 +22,7 @@ function ensureColumn(table, column, decl) {
   if (!cols.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${decl}`);
 }
 ensureColumn('files', 'line_no', 'TEXT');
+ensureColumn('members', 'grade', 'TEXT');
 
 // Thin helpers. Params are positional `?` bound via spread (node:sqlite anonymous params).
 export const all = (sql, ...p) => db.prepare(sql).all(...p);

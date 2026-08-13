@@ -44,7 +44,7 @@ router.get('/org', (_req, res) => {
 // Member directory: person, designation, current unit + parent, and any unit they head.
 router.get('/members', (_req, res) => {
   const members = all(
-    `SELECT m.id, m.pb, m.name, m.email, m.designation, m.app_role,
+    `SELECT m.id, m.pb, m.name, m.email, m.designation, m.grade, m.app_role,
             u.name AS unit, u.kind AS unit_kind,
             u.id AS unit_id,
             p.name AS parent_unit,

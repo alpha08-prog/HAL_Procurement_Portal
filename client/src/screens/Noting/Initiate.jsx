@@ -49,7 +49,7 @@ export default function Initiate() {
       .then((d) => !cancelled && setFiles(d.files))
       .catch(() => !cancelled && setFiles([]));
     fetchMembers()
-      .then((d) => !cancelled && setMembers(d.members))
+      .then((d) => !cancelled && setMembers(d?.members || []))
       .catch(() => !cancelled && setMembers([]));
     return () => { cancelled = true; };
   }, []);

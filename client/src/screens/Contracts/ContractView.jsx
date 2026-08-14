@@ -9,6 +9,15 @@ import {
 
 const CONTRACT_WORKFLOW_ROLES = new Set(['purchase_maker', 'purchase_officer', 'hod_imm', 'admin']);
 
+const ALLOWED_PROFORMA_IDS = new Set([
+  'pbg_bg',
+  'sd_bg',
+  'adv_bg',
+  'indemnity_bond',
+  'warranty_cert',
+  'service_level'
+]);
+
 // One contract: the printable document plus a .no-print action rail. Draft → edit
 // selections / finalise; finalised → verify integrity + print. The document itself is
 // isolated in .note-print-area so window.print() yields the HAL contract alone.
@@ -42,7 +51,7 @@ export default function ContractView() {
     try {
       const [p, f] = await Promise.all([fetchClausePlan(c.contract_type_id), fetchFormats()]);
       setPlan(p);
-      setAllFormats(f.formats);
+      setAllFormats((f.formats || []).filter((fmt) => ALLOWED_PROFORMA_IDS.has(fmt.id)));
       setEdit({
         classification: c.classification,
         description: c.description || '',

@@ -69,7 +69,7 @@ function insertAll() {
           body: 'The SUPPLIER shall deposit the golden image of the binocular firmware, together with programming fixtures and flashing instructions, with HAL or an escrow agent nominated by HAL within 30 days of first delivery. The escrow shall be released to the BUYER on the SUPPLIER ceasing to support the product or on termination of this contract for default.'
         }
       ],
-      formatIds: ['pbg_bg', 'integrity_omnibus', 'nda_e7'],
+      formatIds: ['pbg_bg', 'warranty_cert'],
       smartContract: true
     },
     CM

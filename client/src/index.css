@@ -692,6 +692,140 @@ body {
   flex: 1;
 }
 
+/* ── Clarification Search & Officer Picker ── */
+.clarify-officer-select-container {
+  position: relative;
+  width: 100%;
+}
+
+.clarify-selected-officer-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 8px 12px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+}
+
+.clarify-selected-officer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.clarify-selected-officer-info .officer-badge {
+  font-size: 13px;
+  color: var(--fg);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.officer-pb-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--accent);
+  border: 1px solid var(--border);
+}
+
+.clarify-selected-officer-info .officer-sub {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.clarify-officer-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2);
+  max-height: 280px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.clarify-dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.clarify-dropdown-list {
+  overflow-y: auto;
+  max-height: 230px;
+}
+
+.clarify-dropdown-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s ease;
+}
+
+.clarify-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.clarify-dropdown-item:hover {
+  background: var(--accent-soft);
+}
+
+.clarify-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.clarify-item-name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--fg);
+}
+
+.clarify-item-pb {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--neutral-bg);
+  color: var(--accent);
+}
+
+.clarify-item-bottom {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.clarify-item-unit {
+  color: var(--muted);
+  opacity: 0.85;
+}
+
+.clarify-dropdown-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 /* Attachments */
 .attach-list {
   list-style: none;

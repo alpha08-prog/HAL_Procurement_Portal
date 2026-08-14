@@ -12,6 +12,15 @@ import {
 // Matrix for the chosen type, and pulls value/party details from the HAL PO and the
 // scope of work from the Provisioning Note. Everything shown here is read-only IFS
 // context — the server recomputes all money and snapshots all clauses on generation.
+const ALLOWED_PROFORMA_IDS = new Set([
+  'pbg_bg',
+  'sd_bg',
+  'adv_bg',
+  'indemnity_bond',
+  'warranty_cert',
+  'service_level'
+]);
+
 export default function Generate() {
   const navigate = useNavigate();
   const [tenders, setTenders] = useState([]);
@@ -34,7 +43,7 @@ export default function Generate() {
 
   useEffect(() => {
     fetchTenders().then((d) => setTenders(d.tenders)).catch(() => setTenders([]));
-    fetchFormats().then((d) => setFormats(d.formats)).catch(() => setFormats([]));
+    fetchFormats().then((d) => setFormats((d.formats || []).filter((f) => ALLOWED_PROFORMA_IDS.has(f.id)))).catch(() => setFormats([]));
     fetchLibrary().then((d) => setTypes(d.contractTypes)).catch(() => setTypes([]));
   }, []);
 

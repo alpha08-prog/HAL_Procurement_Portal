@@ -6,7 +6,7 @@ import { allTenders, findTender, findPo } from '../../contracts/poSource.js';
 import { computeItems } from '../../contracts/money.js';
 import { clausesForType } from '../../contracts/matrix.js';
 import { get } from '../../contracts/db.js';
-import { FORMATS } from '../../contracts/generate.js';
+import { getFormats } from '../../contracts/generate.js';
 import { requireRoles } from '../../middleware/requireRoles.js';
 
 const router = Router();
@@ -46,6 +46,6 @@ router.get('/clause-plan', contractWorkflowRole, (req, res) => {
   res.json({ typeId, ...clausesForType(typeId) });
 });
 
-router.get('/formats', contractWorkflowRole, (_req, res) => res.json({ formats: FORMATS }));
+router.get('/formats', contractWorkflowRole, (_req, res) => res.json({ formats: getFormats() }));
 
 export default router;

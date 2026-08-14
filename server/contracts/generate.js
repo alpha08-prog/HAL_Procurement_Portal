@@ -14,7 +14,14 @@ import { nextContractNo } from './refs.js';
 import { findPo } from './poSource.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
-export const FORMATS = JSON.parse(readFileSync(join(here, 'seed', 'formats.json'), 'utf8'));
+export function getFormats() {
+  try {
+    return JSON.parse(readFileSync(join(here, 'seed', 'formats.json'), 'utf8'));
+  } catch {
+    return [];
+  }
+}
+export const FORMATS = getFormats();
 export const CLASSIFICATIONS = ['normal', 'restricted', 'confidential', 'secret', 'top_secret'];
 
 const HAL_PARTY = {
@@ -64,7 +71,8 @@ function validateCustoms(customClauses) {
 
 function validateFormats(formatIds) {
   const ids = [...new Set(formatIds || [])];
-  const known = new Map(FORMATS.map((f) => [f.id, f.label]));
+  const formats = getFormats();
+  const known = new Map(formats.map((f) => [f.id, f.label]));
   for (const id of ids) if (!known.has(id)) fail(422, `Unknown format "${id}"`);
   return ids.map((id) => ({ id, label: known.get(id) }));
 }

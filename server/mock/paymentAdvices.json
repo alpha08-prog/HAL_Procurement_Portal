@@ -221,7 +221,7 @@
     "invoiceValue": 482160,
     "checkingOfficerPbNo": "PB-44821",
     "ldApplicable": "No",
-    "bankMismatch": true,
+    "bankMismatch": false,
     "securities": {
       "sd": {
         "applicable": "Yes",

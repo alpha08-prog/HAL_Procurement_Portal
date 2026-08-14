@@ -63,7 +63,7 @@ export const PA_FORM_SECTIONS = [
         label: 'Bank Account Details on Invoice',
         source: 'ifs',
         render: (pa) =>
-          pa.bankMismatch
+          (pa.bankMismatch === true || pa.bankMismatch === 'Yes')
             ? `🚨 Differing Bank A/C: 998811223344 (IFSC: HDFC0009999) — Mismatch with HAL Data`
             : pa.vendorBank
             ? `${pa.vendorBank.name} · A/C ${pa.vendorBank.accountNo} · IFSC: ${pa.vendorBank.ifsc} (Matches HAL Data)`
@@ -71,11 +71,11 @@ export const PA_FORM_SECTIONS = [
       },
       {
         key: 'bankMismatch',
-        label: 'Bank Account Match Status (Flagged by Yogesh M.)',
+        label: 'Bank Account Mismatch? (Flagged by Yogesh M.)',
         source: 'maker',
         type: 'select',
         options: ['No', 'Yes'],
-        hint: 'Select "Yes" to flag bank account mismatch. Note: Mismatch prevents sending advice to Neerja Sharma (Payment Desk).'
+        hint: 'Default is "No" (Matches HAL Data). Select "Yes" only if bank account details on invoice do not match HAL master data.'
       },
       {
         key: 'category',

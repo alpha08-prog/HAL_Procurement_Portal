@@ -15,7 +15,9 @@ const initDraft = (pa) =>
   Object.fromEntries(
     PA_MAKER_FIELDS.map((f) => [
       f.key,
-      pa[f.key] ?? (f.type === 'select' ? f.options?.[0] ?? '' : '')
+      f.key === 'bankMismatch'
+        ? (pa.bankMismatch === true || pa.bankMismatch === 'Yes' ? 'Yes' : 'No')
+        : (pa[f.key] ?? (f.type === 'select' ? f.options?.[0] ?? '' : ''))
     ])
   );
 
@@ -274,6 +276,9 @@ export default function PaForm({ paNo }) {
   const isFormStage = editable || isOfficerStage;
   const activeTab = viewTab ?? (isOfficerStage ? 'doc' : 'form');
   const isLdApplicable = pa.ldAmount > 0 || pa.ldApplicable === 'Yes' || (pa.ldWeeks || 0) > 0;
+  const isBankMismatch = editable
+    ? (draft?.bankMismatch === 'Yes' || draft?.bankMismatch === true)
+    : (pa.bankMismatch === true || pa.bankMismatch === 'Yes');
   const missingRequired = PA_REQUIRED_FIELDS.filter((key) => !draft[key]);
   const missingLabels = PA_MAKER_FIELDS.filter((f) => missingRequired.includes(f.key)).map(
     (f) => f.label
@@ -376,7 +381,7 @@ export default function PaForm({ paNo }) {
         </div>
       )}
 
-      {(pa.bankMismatch || draft?.bankMismatch === 'Yes' || draft?.bankMismatch === true) && (
+      {isBankMismatch && (
         <div className="banner banner-danger no-print" style={{ margin: '12px 0 16px 0', padding: '14px 18px', background: '#fef2f2', border: '1.5px solid #ef4444', borderRadius: '6px', color: '#991b1b', fontSize: '0.95rem' }}>
           <strong>🚨 Bank Account Details Mismatch (Flagged by Yogesh M. - Purchase Maker):</strong> Bank account details on Invoice do not match HAL master data. Payment advice <strong>CANNOT be sent to Neerja Sharma (Payment Desk)</strong> until bank account details match.
         </div>
@@ -477,8 +482,8 @@ export default function PaForm({ paNo }) {
                 <button
                   type="button"
                   className="btn"
-                  disabled={busy || pa.bankMismatch || draft?.bankMismatch === 'Yes' || draft?.bankMismatch === true}
-                  title={(pa.bankMismatch || draft?.bankMismatch === 'Yes' || draft?.bankMismatch === true) ? 'Cannot send to Neerja Sharma (Payment Desk): Bank account details on Invoice and in HAL data do not match (Flagged by Yogesh M.).' : undefined}
+                  disabled={busy || isBankMismatch}
+                  title={isBankMismatch ? 'Cannot send to Neerja Sharma (Payment Desk): Bank account details on Invoice and in HAL data do not match (Flagged by Yogesh M.).' : undefined}
                   onClick={() => runInlineTransition('officer_forward', { remark: inlineRemark })}
                 >
                   ✔ Stamp &amp; forward to payment desk
@@ -503,6 +508,8 @@ export default function PaForm({ paNo }) {
         <PaDocumentView
           pa={pa}
           role={role}
+          backPath={backPath}
+          officerRemark={inlineRemark}
           remarkPanel={
             isOfficerStage ? (
               <div className="pa-remark-panel">
@@ -629,8 +636,8 @@ export default function PaForm({ paNo }) {
                 <button
                   type="button"
                   className="btn"
-                  disabled={busy || pa.bankMismatch || draft?.bankMismatch === 'Yes' || draft?.bankMismatch === true}
-                  title={(pa.bankMismatch || draft?.bankMismatch === 'Yes' || draft?.bankMismatch === true) ? 'Cannot send to Neerja Sharma (Payment Desk): Bank account details on Invoice and in HAL data do not match (Flagged by Yogesh M.).' : undefined}
+                  disabled={busy || isBankMismatch}
+                  title={isBankMismatch ? 'Cannot send to Neerja Sharma (Payment Desk): Bank account details on Invoice and in HAL data do not match (Flagged by Yogesh M.).' : undefined}
                   onClick={() => runInlineTransition('officer_forward', { remark: inlineRemark })}
                 >
                   ✔ Stamp &amp; forward to payment desk

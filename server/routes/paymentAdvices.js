@@ -315,7 +315,9 @@ router.post('/update', (req, res) => {
   if (makerRemark !== undefined) pa.makerRemark = makerRemark;
   if (securitiesRemark !== undefined) pa.securitiesRemark = securitiesRemark;
   if (checkingOfficerPbNo !== undefined) pa.checkingOfficerPbNo = checkingOfficerPbNo || null;
-  if (bankMismatch !== undefined) pa.bankMismatch = Boolean(bankMismatch);
+  if (bankMismatch !== undefined) {
+    pa.bankMismatch = bankMismatch === 'Yes' || bankMismatch === true;
+  }
   if (ldApplicable !== undefined) pa.ldApplicable = ldApplicable === 'Yes' ? 'Yes' : 'No';
   if (ldByGateEntry !== undefined) pa.ldByGateEntry = ldByGateEntry === 'Yes' ? 'Yes' : 'No';
   if (ldByFtr !== undefined) pa.ldByFtr = ldByFtr === 'Yes' ? 'Yes' : 'No';

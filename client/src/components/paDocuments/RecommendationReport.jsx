@@ -21,10 +21,14 @@ const CERTIFICATION = [
   'All payment related documents in original are available in the Division for any audit / inspection.'
 ];
 
-export default function RecommendationReport({ pa }) {
+export default function RecommendationReport({ pa, previewOfficerRemark }) {
   const bank = pa.vendorBank ?? {};
   const printedOn = formatDate(new Date().toISOString());
   const delay = delayDays(pa);
+
+  const officerStep = (pa.history ?? []).find((h) => h.action === 'officer_forward');
+  const isOfficerStage = pa.status === 'forwarded_to_officer';
+  const showOfficerStamp = isOfficerStage || officerStep;
 
   return (
     <div className="hal-doc">
@@ -141,15 +145,38 @@ export default function RecommendationReport({ pa }) {
         ))}
       </ol>
 
-      {/* Final Signatures / Stamp Section — 2 signatures at the end: HOD (IMM) and Payment Desk */}
+      {/* Final Signatures / Stamp Section */}
       {(() => {
         const deskStep = (pa.history ?? []).find((h) => h.action === 'desk_forward_hod' || h.action === 'desk_forward_cppc');
         const hodStep = (pa.history ?? []).find((h) => h.action === 'hod_stamp');
 
         return (
-          <div className="hal-doc-stamp-row" style={{ display: 'flex', gap: '20px', marginTop: '24px', flexWrap: 'wrap' }}>
-            {/* HOD (IMM) Signature & Stamp */}
-            <div className={'hal-doc-stamp-box' + (hodStep ? ' hal-doc-stamp-signed' : '')} style={{ flex: 1, padding: '16px' }}>
+          <div className="hal-doc-stamp-row" style={{ display: 'flex', gap: '16px', marginTop: '24px', flexWrap: 'wrap' }}>
+            {/* Forwarding Officer Stamp (shown at officer stage / when verified) */}
+            {showOfficerStamp && (
+              <div className="hal-doc-stamp-box hal-doc-stamp-signed" style={{ flex: 1, minWidth: 220, padding: '14px', border: '1.5px dashed var(--accent, #0052cc)', background: 'var(--accent-soft, #f0f7ff)' }}>
+                <div className="hal-doc-stamp-title" style={{ fontWeight: 700, color: 'var(--accent, #0052cc)', marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>🔏 Forwarding Officer Stamp</span>
+                  {isOfficerStage && !officerStep && (
+                    <span style={{ fontSize: 10, background: 'var(--accent)', color: '#fff', padding: '1px 6px', borderRadius: 4 }}>
+                      Preview
+                    </span>
+                  )}
+                </div>
+                <div className="hal-doc-stamp-label" style={{ color: '#166534', fontWeight: 700 }}>
+                  ✔ Purchase Officer — Verified &amp; Stamped
+                </div>
+                <div className="hal-doc-stamp-meta" style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                  {officerStep?.date || formatDate(new Date().toISOString())} · Officer {pa.checkingOfficerPbNo || 'PB-44821'}
+                </div>
+                <div className="hal-doc-stamp-remark" style={{ fontSize: 11, fontStyle: 'italic', marginTop: 4, color: '#334155' }}>
+                  "{previewOfficerRemark || officerStep?.remark || 'Verified against PO terms. Forwarded to payment desk.'}"
+                </div>
+              </div>
+            )}
+
+            {/* 1. HOD (IMM) Approval */}
+            <div className={'hal-doc-stamp-box' + (hodStep ? ' hal-doc-stamp-signed' : '')} style={{ flex: 1, minWidth: 220, padding: '16px' }}>
               <div className="hal-doc-stamp-title" style={{ fontWeight: 600, color: 'var(--color-primary, #1e3a8a)', marginBottom: '6px' }}>
                 1. HOD (IMM) Approval
               </div>
@@ -166,8 +193,8 @@ export default function RecommendationReport({ pa }) {
               )}
             </div>
 
-            {/* Payment Desk Signature & Stamp */}
-            <div className={'hal-doc-stamp-box' + (deskStep ? ' hal-doc-stamp-signed' : '')} style={{ flex: 1, padding: '16px' }}>
+            {/* 2. Payment Desk Approval */}
+            <div className={'hal-doc-stamp-box' + (deskStep ? ' hal-doc-stamp-signed' : '')} style={{ flex: 1, minWidth: 220, padding: '16px' }}>
               <div className="hal-doc-stamp-title" style={{ fontWeight: 600, color: 'var(--color-primary, #1e3a8a)', marginBottom: '6px' }}>
                 2. Payment Desk Approval
               </div>

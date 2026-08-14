@@ -51,7 +51,7 @@ export const officerQueueConfig = {
       key: 'bankStatus',
       label: 'Bank Account Status',
       render: (row) =>
-        row.bankMismatch ? (
+        (row.bankMismatch === true || row.bankMismatch === 'Yes') ? (
           <span className="pill pill-danger" title="Bank account details mismatch flagged by Yogesh M. (Maker). Cannot send to Neerja Sharma (Payment Desk).">
             🚨 Mismatch (Blocked)
           </span>
@@ -76,7 +76,7 @@ export const officerQueueConfig = {
       label: 'Stamp & forward',
       transition: 'officer_forward',
       primary: true,
-      when: (row) => !row.bankMismatch,
+      when: (row) => !(row.bankMismatch === true || row.bankMismatch === 'Yes'),
       modalTitle: 'Stamp & forward to payment desk (Neerja Sharma)',
       submitLabel: 'Stamp & forward',
       fields: [

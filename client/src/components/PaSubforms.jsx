@@ -116,7 +116,7 @@ export function AttachmentsPanel({ pa, editable }) {
           );
         })}
       </div>
-      {pa.bankMismatch && (
+      {(pa.bankMismatch === true || pa.bankMismatch === 'Yes') && (
         <div className="banner banner-info">
           Bank details differ between PO and invoice — revised bank details / vendor confirmation
           enclosed for approval.

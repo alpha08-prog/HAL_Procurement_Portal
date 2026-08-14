@@ -54,10 +54,14 @@ function ChecklistRow({ item }) {
   );
 }
 
-export default function PaymentAdviceNote({ pa }) {
+export default function PaymentAdviceNote({ pa, previewOfficerRemark }) {
   const bank = pa.vendorBank ?? {};
   const dated = dateReached(pa, 'sent_to_hod') ?? pa.createdDate;
   const checklist = buildChecklist(pa);
+
+  const officerStep = (pa.history ?? []).find((h) => h.action === 'officer_forward');
+  const isOfficerStage = pa.status === 'forwarded_to_officer';
+  const showOfficerStamp = isOfficerStage || officerStep;
 
   return (
     <div className="hal-doc">
@@ -159,12 +163,35 @@ export default function PaymentAdviceNote({ pa }) {
         <span>Remarks : {pa.makerRemark || 'NIL'}</span>
       </div>
 
-      <div className="hal-doc-signs hal-doc-signs-split" style={{ display: 'flex', gap: '20px', marginTop: '20px', flexWrap: 'wrap' }}>
-        {/* HOD (IMM) Signature & Stamp */}
+      <div className="hal-doc-signs hal-doc-signs-split" style={{ display: 'flex', gap: '16px', marginTop: '20px', flexWrap: 'wrap' }}>
+        {/* Forwarding Officer Stamp (shown at officer stage / when verified) */}
+        {showOfficerStamp && (
+          <div className="hal-doc-stamp-box hal-doc-stamp-signed" style={{ flex: 1, minWidth: 220, padding: '14px', border: '1.5px dashed var(--accent, #0052cc)', background: 'var(--accent-soft, #f0f7ff)' }}>
+            <div className="hal-doc-stamp-title" style={{ fontWeight: 700, color: 'var(--accent, #0052cc)', marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
+              <span>🔏 Forwarding Officer Stamp</span>
+              {isOfficerStage && !officerStep && (
+                <span style={{ fontSize: 10, background: 'var(--accent)', color: '#fff', padding: '1px 6px', borderRadius: 4 }}>
+                  Preview
+                </span>
+              )}
+            </div>
+            <div className="hal-doc-stamp-label" style={{ color: '#166534', fontWeight: 700 }}>
+              ✔ Purchase Officer — Verified &amp; Stamped
+            </div>
+            <div className="hal-doc-stamp-meta" style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+              {officerStep?.date || formatDate(new Date().toISOString())} · Officer {pa.checkingOfficerPbNo || 'PB-44821'}
+            </div>
+            <div className="hal-doc-stamp-remark" style={{ fontSize: 11, fontStyle: 'italic', marginTop: 4, color: '#334155' }}>
+              "{previewOfficerRemark || officerStep?.remark || 'Verified against PO terms. Forwarded to payment desk.'}"
+            </div>
+          </div>
+        )}
+
+        {/* 1. HOD (IMM) Signature & Stamp */}
         {(() => {
           const hodStep = (pa.history ?? []).find((h) => h.action === 'hod_stamp');
           return (
-            <div className={'hal-doc-stamp-box' + (hodStep ? ' hal-doc-stamp-signed' : '')} style={{ flex: 1, padding: '14px' }}>
+            <div className={'hal-doc-stamp-box' + (hodStep ? ' hal-doc-stamp-signed' : '')} style={{ flex: 1, minWidth: 220, padding: '14px' }}>
               <div className="hal-doc-stamp-title" style={{ fontWeight: 600, color: 'var(--color-primary, #1e3a8a)', marginBottom: '4px' }}>
                 1. HOD (IMM) Approval Signature
               </div>
@@ -183,11 +210,11 @@ export default function PaymentAdviceNote({ pa }) {
           );
         })()}
 
-        {/* Payment Desk Signature & Stamp */}
+        {/* 2. Payment Desk Signature & Stamp */}
         {(() => {
           const deskStep = (pa.history ?? []).find((h) => h.action === 'desk_forward_hod' || h.action === 'desk_forward_cppc');
           return (
-            <div className={'hal-doc-stamp-box' + (deskStep ? ' hal-doc-stamp-signed' : '')} style={{ flex: 1, padding: '14px' }}>
+            <div className={'hal-doc-stamp-box' + (deskStep ? ' hal-doc-stamp-signed' : '')} style={{ flex: 1, minWidth: 220, padding: '14px' }}>
               <div className="hal-doc-stamp-title" style={{ fontWeight: 600, color: 'var(--color-primary, #1e3a8a)', marginBottom: '4px' }}>
                 2. Payment Desk Signature
               </div>

@@ -149,9 +149,12 @@ export default function StampingModal({ isOpen, onClose, members = [], onConfirm
                   <input
                     type="checkbox"
                     checked={selectedMembers.has(m.id)}
-                    onChange={() => {}}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      toggleMember(m.id);
+                    }}
                     onClick={(e) => e.stopPropagation()}
-                    style={{ cursor: 'pointer' }}
+                    style={{ cursor: 'pointer', width: 16, height: 16 }}
                   />
                   <div style={{ flex: 1 }}>
                     <strong style={{ color: 'var(--foreground)' }}>{m.name}</strong>

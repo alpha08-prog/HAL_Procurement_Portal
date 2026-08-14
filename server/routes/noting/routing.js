@@ -54,13 +54,18 @@ router.get('/cabinet', (req, res) => {
   const me = currentMember(req);
   if (!me) return res.status(403).json({ error: 'No noting member mapped to this account' });
   const rows = all(
-    `SELECT c.reason, c.placed_at, f.id AS file_pk, f.file_id, f.title, f.kind, f.standalone, f.status,
-            (SELECT n.txn_id  FROM notes n WHERE n.file_pk = f.id ORDER BY n.seq DESC LIMIT 1) AS last_txn,
-            (SELECT n.status  FROM notes n WHERE n.file_pk = f.id ORDER BY n.seq DESC LIMIT 1) AS last_status,
+    `SELECT c.reason, c.placed_at, f.id AS file_pk, f.file_id, f.title, f.kind, f.standalone, f.status AS file_status,
+            im.name AS initiator_name,
+            (SELECT n.txn_id   FROM notes n WHERE n.file_pk = f.id ORDER BY n.seq DESC LIMIT 1) AS last_txn,
+            (SELECT n.txn_id   FROM notes n WHERE n.file_pk = f.id ORDER BY n.seq DESC LIMIT 1) AS txn_id,
+            (SELECT n.status   FROM notes n WHERE n.file_pk = f.id ORDER BY n.seq DESC LIMIT 1) AS last_status,
             (SELECT n.stage_id FROM notes n WHERE n.file_pk = f.id ORDER BY n.seq DESC LIMIT 1) AS last_stage,
             (SELECT n.decided_by FROM notes n WHERE n.file_pk = f.id ORDER BY n.seq DESC LIMIT 1) AS decided_by
-     FROM cabinet c JOIN files f ON f.id = c.file_pk
-     WHERE c.member_id = ? ORDER BY c.placed_at DESC, f.id DESC`,
+     FROM cabinet c 
+     JOIN files f ON f.id = c.file_pk
+     LEFT JOIN members im ON im.id = f.initiator_id
+     WHERE c.member_id = ? 
+     ORDER BY c.placed_at DESC, f.id DESC`,
     me.id
   );
   // Next-action prompt: when the latest note is approved and the case is still open, offer
@@ -70,10 +75,16 @@ router.get('/cabinet', (req, res) => {
   const cabinet = rows.map((r) => {
     let next = null;
     if (r.last_status === 'approved') {
-      if (r.status === 'open') next = nextStage(r.last_stage);
+      if (r.file_status === 'open') next = nextStage(r.last_stage);
       else if (['po', 'po_amendment'].includes(r.last_stage)) next = 'po_amendment';
     }
-    return { ...r, next_stage: next, next_stage_title: next ? stageTitle(next) : null };
+    return {
+      ...r,
+      status: r.last_status || 'approved',
+      priority: 'Medium',
+      next_stage: next,
+      next_stage_title: next ? stageTitle(next) : null
+    };
   });
   res.json({ cabinet, meId: me.id });
 });

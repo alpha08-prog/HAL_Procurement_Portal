@@ -15,20 +15,78 @@ const TABS = [
   { id: 'live-status', label: 'Live status', columns: LIVE_STATUS_COLUMNS, rowKey: 'file_id' }
 ];
 
-// Recursively renders the file pipeline: one MPR/CAR/SPR can spawn many PP.
-function FileNode({ file }) {
+// Recursively renders the file pipeline: one MPR/CAR/SPR can spawn many PP (line-wise L1 agencies).
+function FileNode({ file, depth = 0 }) {
+  const isParent = file.children && file.children.length > 0;
+  const linkPath = file.first_txn ? `/noting/note/${file.first_txn}` : '/noting/files';
+
   return (
-    <li className="org-node">
-      <span className="org-node-label">
-        <Link to={`/noting/note/${file.first_txn}`}>{file.file_id}</Link>
-        <span>{file.title}</span>
-        {file.line_no && <span className="org-code">{file.line_no}</span>}
-        {file.car_no && <span className="org-code">{file.car_no}</span>}
-      </span>
-      {file.children?.length > 0 && (
-        <ul className="org-children">
+    <li className={`org-node ${isParent ? 'org-node-parent' : ''}`} style={{ marginBottom: 12 }}>
+      <div
+        className="org-node-card"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 10,
+          background: depth === 0 ? 'var(--surface)' : 'var(--neutral-bg)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius)',
+          padding: '8px 14px',
+          boxShadow: 'var(--shadow-sm)',
+          flexWrap: 'wrap'
+        }}
+      >
+        <span style={{ fontSize: depth === 0 ? 16 : 14 }}>
+          {depth === 0 ? '📁' : '↳ 📄'}
+        </span>
+
+        <Link
+          to={linkPath}
+          style={{ fontWeight: 700, color: 'var(--accent)', textDecoration: 'none' }}
+        >
+          {file.file_id}
+        </Link>
+
+        <span style={{ fontWeight: 600, color: 'var(--foreground)' }}>
+          {file.title}
+        </span>
+
+        {file.kind && (
+          <span className="tag" style={{ fontSize: 10, textTransform: 'uppercase' }}>
+            {file.kind}
+          </span>
+        )}
+
+        {file.car_no && (
+          <span className="org-code" style={{ fontSize: 11, background: 'var(--accent-soft)', color: 'var(--accent)', padding: '2px 6px', borderRadius: 3 }}>
+            {file.car_no}
+          </span>
+        )}
+
+        {file.line_no && (
+          <span className="tag tag-note-routed" style={{ fontSize: 11, fontWeight: 700 }}>
+            {file.line_no}
+          </span>
+        )}
+
+        <span
+          className={`tag ${file.status === 'open' ? 'tag-cls-normal' : 'tag-note-approved'}`}
+          style={{ fontSize: 10, textTransform: 'uppercase' }}
+        >
+          {file.status || 'open'}
+        </span>
+
+        {isParent && (
+          <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>
+            ({file.children.length} child {file.children.length === 1 ? 'case' : 'cases'})
+          </span>
+        )}
+      </div>
+
+      {isParent && (
+        <ul className="org-children" style={{ marginTop: 8, paddingLeft: 24, borderLeft: '2px dashed var(--accent)', listStyle: 'none' }}>
           {file.children.map((c) => (
-            <FileNode key={c.id} file={c} />
+            <FileNode key={c.id} file={c} depth={depth + 1} />
           ))}
         </ul>
       )}
@@ -40,25 +98,42 @@ export default function Reports() {
   const [tab, setTab] = useState('lifecycle');
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setData(null);
     setError(null);
+    setLoading(true);
+
     fetchReport(tab)
-      .then((d) => !cancelled && setData(d))
-      .catch((err) => !cancelled && setError(err.message));
+      .then((d) => {
+        if (!cancelled) {
+          setData(d);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err.message);
+          setLoading(false);
+        }
+      });
+
     return () => {
       cancelled = true;
     };
   }, [tab]);
 
   const active = TABS.find((t) => t.id === tab);
+  const treeList = Array.isArray(data?.tree) ? data.tree : [];
 
   return (
     <section className="screen">
       <h1 className="screen-title">Reports</h1>
-      <p className="screen-sub">Procurement pipeline oversight — shows the files you initiated, routed, or supervise as a unit head.</p>
+      <p className="screen-sub">
+        Procurement pipeline oversight — shows the files you initiated, routed, or supervise as a unit head.
+      </p>
 
       <div className="ai-doc-modes report-tabs" role="group" aria-label="Report">
         {TABS.map((t) => (
@@ -73,20 +148,40 @@ export default function Reports() {
         ))}
       </div>
 
-      {error ? (
-        <div className="grid-empty">Could not load report: {error}</div>
+      {loading ? (
+        <div className="grid-empty">Loading report data…</div>
+      ) : error ? (
+        <div className="banner banner-error">Could not load report: {error}</div>
       ) : tab === 'tree' ? (
-        !data ? (
-          <div className="grid-empty">Loading…</div>
-        ) : (
-          <ul className="org-tree">
-            {data.tree.map((f) => (
-              <FileNode key={f.id} file={f} />
-            ))}
-          </ul>
-        )
+        <div style={{ marginTop: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ fontSize: 13, color: 'var(--muted)' }}>
+              Showing <strong>{treeList.length}</strong> top-level procurement pipelines and their line-wise child Purchase Proposals.
+            </div>
+            <Link to="/noting/initiate" className="btn btn-secondary" style={{ fontSize: 11, padding: '4px 10px' }}>
+              + Initiate Line-wise Child File
+            </Link>
+          </div>
+
+          {treeList.length === 0 ? (
+            <div className="grid-empty" style={{ background: 'var(--surface)', padding: 32, borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+              No parent-child files found for your supervised units. You can initiate child line-wise Purchase Proposals from the <strong>Initiate</strong> screen.
+            </div>
+          ) : (
+            <ul className="org-tree" style={{ padding: 16, background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', listStyle: 'none' }}>
+              {treeList.map((f) => (
+                <FileNode key={f.id} file={f} depth={0} />
+              ))}
+            </ul>
+          )}
+        </div>
       ) : (
-        <DataGrid columns={active.columns} rows={data?.rows} rowKey={active.rowKey} emptyMessage="No data." />
+        <DataGrid
+          columns={active.columns}
+          rows={data?.rows || []}
+          rowKey={active.rowKey}
+          emptyMessage="No data available for this report."
+        />
       )}
     </section>
   );

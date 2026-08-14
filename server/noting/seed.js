@@ -154,26 +154,47 @@ const NOTES = [
 ];
 
 const STEPS = [
+  // note 1 (Provisioning NVB)
   [1, 1, 5, 6, 'forward', 'actioned', 'forward', 'Concurred & Forwarded', '2026-05-03', '2026-05-04', '2026-05-06'],
   [1, 2, 6, 2, 'forward', 'actioned', 'approve', 'Concurred & Forwarded. Placed for approval.', '2026-05-06', '2026-05-08', '2026-05-16'],
   [1, 3, 2, 2, 'approve', 'actioned', 'approve', 'Approved. Proceed with tendering.', '2026-05-16', null, '2026-05-16'],
-  [2, 1, 5, 6, 'forward', 'actioned', 'forward', 'Concurred & Forwarded', '2026-05-19', '2026-05-20', '2026-05-22'],
+
+  // note 2 (Tender Document NVB)
+  [2, 1, 5, 6, 'forward', 'actioned', 'forward', 'Draft tender document uploaded for verification.', '2026-05-19', '2026-05-20', '2026-05-22'],
   [2, 2, 6, 2, 'forward', 'actioned', 'approve', 'Draft tender document verified against PM Issue-4.', '2026-05-22', '2026-05-25', '2026-06-02'],
   [2, 3, 2, 2, 'approve', 'actioned', 'approve', 'Tender document approved for issue on GeM.', '2026-06-02', null, '2026-06-02'],
-  [3, 1, 6, 7, 'forward', 'actioned', 'send_back', 'Concurred & Forwarded', '2026-06-11', '2026-06-12', '2026-06-14'],
+
+  // note 3 (Standalone Administrative Furniture)
+  [3, 1, 6, 7, 'forward', 'actioned', 'send_back', 'Placed for budget vetting.', '2026-06-11', '2026-06-12', '2026-06-14'],
   [3, 2, 7, 6, 'forward', 'actioned', 'forward', 'Please attach the quotation comparative statement.', '2026-06-14', '2026-06-15', '2026-06-18'],
-  [3, 3, 6, 4, 'forward', 'sent', 'forward', 'Comparative statement attached. Resubmitted for concurrence.', '2026-06-18', null, null],
-  [4, 1, 5, 6, 'forward', 'opened', 'forward', 'Concurred & Forwarded', '2026-06-01', '2026-06-03', null],
+  [3, 3, 6, 4, 'forward', 'actioned', 'forward', 'Comparative statement attached. Resubmitted for concurrence.', '2026-06-18', '2026-06-19', '2026-06-19'],
+  [3, 4, 4, 2, 'forward', 'sent', 'forward', 'Vetted and forwarded to HOD (IMM).', '2026-06-19', null, null],
+
+  // note 4 (PP NVB Line 1)
+  [4, 1, 5, 6, 'forward', 'opened', 'forward', 'Purchase Proposal for Line 1 (M/s Optic Systems) submitted for scrutiny.', '2026-06-01', '2026-06-03', null],
+
+  // note 7 (Confidential Secure Comm)
   [7, 1, 5, 6, 'forward', 'opened', 'forward', 'For concurrence — restricted circulation.', '2026-06-20', '2026-06-21', null],
+
+  // note 8 (Top Secret Special Project)
   [8, 1, 5, 4, 'forward', 'opened', 'forward', 'Top secret — for CM (Purchase) only.', '2026-07-01', '2026-07-02', null],
-  [9, 1, 11, 10, 'forward', 'sent', 'forward', 'Concurred & Forwarded', '2026-07-10', null, null],
+
+  // note 9 (IT Hardware Refresh - Admin)
+  [9, 1, 11, 10, 'forward', 'actioned', 'forward', 'Hardware requirement submitted to System Administrator.', '2026-07-10', '2026-07-11', '2026-07-11'],
+  [9, 2, 10, 11, 'forward', 'sent', 'forward', 'Technical feasibility concurred. Forwarded for asset allocation.', '2026-07-11', null, null],
+
+  // note 10 (Tool Kits Rejected)
   [10, 1, 5, 6, 'forward', 'actioned', 'forward', 'Concurred & Forwarded', '2026-05-21', '2026-05-22', '2026-05-25'],
-  [10, 2, 6, 2, 'forward', 'actioned', 'reject', 'Concurred & Forwarded', '2026-05-25', '2026-05-28', '2026-06-12'],
+  [10, 2, 6, 2, 'forward', 'actioned', 'reject', 'Concurred & Forwarded to HOD.', '2026-05-25', '2026-05-28', '2026-06-12'],
   [10, 3, 2, 2, 'approve', 'actioned', 'reject', 'Rejected — budget provision not available in current FY.', '2026-06-12', null, '2026-06-12'],
-  [11, 1, 5, 6, 'forward', 'actioned', 'forward', 'Concurred & Forwarded', '2026-03-03', '2026-03-04', '2026-03-08'],
-  [11, 2, 6, 2, 'forward', 'actioned', 'approve', 'Concurred & Forwarded', '2026-03-08', '2026-03-10', '2026-04-10'],
+
+  // note 11 (PP Hydraulic Seals)
+  [11, 1, 5, 6, 'forward', 'actioned', 'forward', 'Purchase Proposal initiated for hydraulic seals.', '2026-03-03', '2026-03-04', '2026-03-08'],
+  [11, 2, 6, 2, 'forward', 'actioned', 'approve', 'All technical and commercial terms verified.', '2026-03-08', '2026-03-10', '2026-04-10'],
   [11, 3, 2, 2, 'approve', 'actioned', 'approve', 'Purchase proposal approved.', '2026-04-10', null, '2026-04-10'],
-  [12, 1, 5, 6, 'forward', 'actioned', 'forward', 'Concurred & Forwarded', '2026-04-13', '2026-04-14', '2026-04-18'],
+
+  // note 12 (PO + Contract Hydraulic Seals)
+  [12, 1, 5, 6, 'forward', 'actioned', 'forward', 'Draft Purchase Order prepared.', '2026-04-13', '2026-04-14', '2026-04-18'],
   [12, 2, 6, 2, 'forward', 'actioned', 'approve', 'PO terms verified against DoP.', '2026-04-18', '2026-04-20', '2026-07-05'],
   [12, 3, 2, 2, 'approve', 'actioned', 'approve', 'PO approved and released to vendor.', '2026-07-05', null, '2026-07-05']
 ];
@@ -205,29 +226,50 @@ const ALERTS = [
 ];
 
 const CABINET = [
-  [5, 1, 'initiator', '2026-06-02'], [6, 1, 'router', '2026-06-02'], [2, 1, 'approver', '2026-06-02'],
-  [5, 9, 'initiator', '2026-06-12'], [6, 9, 'router', '2026-06-12'], [2, 9, 'approver', '2026-06-12'],
-  [5, 10, 'initiator', '2026-07-05'], [6, 10, 'router', '2026-07-05'], [2, 10, 'approver', '2026-07-05']
+  // User 5 (Purchase Maker)
+  [5, 1, 'initiator', '2026-06-02'], [5, 9, 'initiator', '2026-06-12'], [5, 10, 'initiator', '2026-07-05'],
+  // User 6 (Purchase Officer)
+  [6, 1, 'router', '2026-06-02'], [6, 9, 'router', '2026-06-12'], [6, 10, 'router', '2026-07-05'],
+  // User 2 (HOD IMM)
+  [2, 1, 'approver', '2026-06-02'], [2, 9, 'approver', '2026-06-12'], [2, 10, 'approver', '2026-07-05'],
+  // User 4 (CM Purchase)
+  [4, 9, 'router', '2026-06-12'], [4, 10, 'router', '2026-07-05'],
+  // User 10 (System Admin)
+  [10, 8, 'approver', '2026-07-11'],
+  // User 11 (QA Test)
+  [11, 8, 'initiator', '2026-07-11']
+];
+
+const DELEGATIONS = [
+  [2, 4, '2026-06-15', '2026-06-30', 'Delegation of signing authority while HOD on annual tour / leave', '2026-06-15']
 ];
 
 const TABLES = [
-  'cabinet', 'access_alerts', 'access_grants', 'attachments', 'clarification_messages',
+  'delegations', 'cabinet', 'access_alerts', 'access_grants', 'attachments', 'clarification_messages',
   'clarifications', 'routing_steps', 'notes', 'files', 'postings', 'members', 'org_units'
 ];
 
 function insertAll() {
-  for (const r of ORG) run('INSERT INTO org_units(id,name,kind,code,parent_id) VALUES(?,?,?,?,?)', ...r);
-  for (const r of MEMBERS) run('INSERT INTO members(id,pb,name,email,designation,grade,app_role,section_id,heads_unit_id) VALUES(?,?,?,?,?,?,?,?,?)', ...r);
-  for (const r of POSTINGS) run('INSERT INTO postings(member_id,org_unit_id,role_in_unit,from_date,to_date) VALUES(?,?,?,?,?)', ...r);
-  for (const r of FILES) run('INSERT INTO files(id,file_id,title,kind,car_no,standalone,initiator_id,initiator_unit_id,parent_file_id,line_no,status,provisioning_start,tendering_start,created_at,closed_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', ...r);
-  for (const r of NOTES) run('INSERT INTO notes(id,file_pk,seq,ref_no,txn_id,title,stage_id,source,body,classification,status,initiator_id,custodian_id,decision,decided_by,created_at,closed_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', ...r);
-  for (const r of STEPS) run('INSERT INTO routing_steps(note_id,seq,from_member_id,to_member_id,purpose,state,action,comment,sent_at,opened_at,actioned_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)', ...r);
-  for (const r of ATTACHMENTS) run('INSERT INTO attachments(note_id,kind,name,ref,uploaded_by_id,created_at) VALUES(?,?,?,?,?,?)', ...r);
-  for (const r of CLARIFICATIONS) run('INSERT INTO clarifications(id,note_id,asked_by_id,asked_to_id,status,created_at) VALUES(?,?,?,?,?,?)', ...r);
-  for (const r of CLARIFICATION_MESSAGES) run('INSERT INTO clarification_messages(clarification_id,author_id,body,created_at) VALUES(?,?,?,?)', ...r);
-  for (const r of GRANTS) run('INSERT INTO access_grants(id,note_id,token,granted_by_id,granted_to_id,state,created_at,revoked_at,revoke_reason) VALUES(?,?,?,?,?,?,?,?,?)', ...r);
-  for (const r of ALERTS) run('INSERT INTO access_alerts(id,note_id,grant_id,custodian_id,offender_pb,message,created_at) VALUES(?,?,?,?,?,?,?)', ...r);
-  for (const r of CABINET) run('INSERT INTO cabinet(member_id,file_pk,reason,placed_at) VALUES(?,?,?,?)', ...r);
+  db.exec('BEGIN TRANSACTION;');
+  try {
+    for (const r of ORG) run('INSERT INTO org_units(id,name,kind,code,parent_id) VALUES(?,?,?,?,?)', ...r);
+    for (const r of MEMBERS) run('INSERT INTO members(id,pb,name,email,designation,grade,app_role,section_id,heads_unit_id) VALUES(?,?,?,?,?,?,?,?,?)', ...r);
+    for (const r of POSTINGS) run('INSERT INTO postings(member_id,org_unit_id,role_in_unit,from_date,to_date) VALUES(?,?,?,?,?)', ...r);
+    for (const r of FILES) run('INSERT INTO files(id,file_id,title,kind,car_no,standalone,initiator_id,initiator_unit_id,parent_file_id,line_no,status,provisioning_start,tendering_start,created_at,closed_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', ...r);
+    for (const r of NOTES) run('INSERT INTO notes(id,file_pk,seq,ref_no,txn_id,title,stage_id,source,body,classification,status,initiator_id,custodian_id,decision,decided_by,created_at,closed_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', ...r);
+    for (const r of STEPS) run('INSERT INTO routing_steps(note_id,seq,from_member_id,to_member_id,purpose,state,action,comment,sent_at,opened_at,actioned_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)', ...r);
+    for (const r of ATTACHMENTS) run('INSERT INTO attachments(note_id,kind,name,ref,uploaded_by_id,created_at) VALUES(?,?,?,?,?,?)', ...r);
+    for (const r of CLARIFICATIONS) run('INSERT INTO clarifications(id,note_id,asked_by_id,asked_to_id,status,created_at) VALUES(?,?,?,?,?,?)', ...r);
+    for (const r of CLARIFICATION_MESSAGES) run('INSERT INTO clarification_messages(clarification_id,author_id,body,created_at) VALUES(?,?,?,?)', ...r);
+    for (const r of GRANTS) run('INSERT INTO access_grants(id,note_id,token,granted_by_id,granted_to_id,state,created_at,revoked_at,revoke_reason) VALUES(?,?,?,?,?,?,?,?,?)', ...r);
+    for (const r of ALERTS) run('INSERT INTO access_alerts(id,note_id,grant_id,custodian_id,offender_pb,message,created_at) VALUES(?,?,?,?,?,?,?)', ...r);
+    for (const r of CABINET) run('INSERT INTO cabinet(member_id,file_pk,reason,placed_at) VALUES(?,?,?,?)', ...r);
+    for (const r of DELEGATIONS) run('INSERT INTO delegations(from_id,to_id,from_date,to_date,reason,created_at) VALUES(?,?,?,?,?,?)', ...r);
+    db.exec('COMMIT;');
+  } catch (err) {
+    db.exec('ROLLBACK;');
+    throw err;
+  }
 }
 
 export function seedIfEmpty() {

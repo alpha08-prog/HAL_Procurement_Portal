@@ -95,7 +95,7 @@ router.get('/sentbox', (req, res) => {
   const sentbox = all(
     `SELECT rs.id AS step_id, rs.sent_at, rs.state, n.txn_id, n.ref_no, n.title,
             f.file_id, m_to.name AS sent_to_name, m_init.name AS initiator_name,
-            m_cust.name AS custodian_name, n.classification
+            m_cust.name AS custodian_name, n.classification, n.status AS note_status
      FROM routing_steps rs
      JOIN notes n ON n.id = rs.note_id
      JOIN files f ON f.id = n.file_pk
@@ -109,6 +109,7 @@ router.get('/sentbox', (req, res) => {
 
   for (const s of sentbox) {
     s.priority = 'Medium';
+    s.status = s.state === 'sent' ? 'Delivered' : s.state === 'opened' ? 'Read' : s.state === 'actioned' ? 'Actioned' : s.state;
     s.can_retract = s.state === 'sent';
   }
 

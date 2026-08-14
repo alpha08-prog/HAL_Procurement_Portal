@@ -11,14 +11,14 @@ export default function Cabinet() {
   const navigate = useNavigate();
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
-  const [filterTab, setFilterTab] = useState('open'); // 'open' | 'closed_unread' | 'closed_read'
-  const [subTab, setSubTab] = useState('approved'); // 'approved' | 'rejected' | 'closed' | 'transferred'
+  const [filterTab, setFilterTab] = useState('all'); // 'all' | 'open' | 'closed'
+  const [subTab, setSubTab] = useState('all'); // 'all' | 'approved' | 'rejected'
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState(false);
 
   const load = () =>
     fetchCabinet()
-      .then((d) => setRows(d.cabinet))
+      .then((d) => setRows(d.cabinet || []))
       .catch((err) => setError(err.message));
 
   useEffect(() => {
@@ -38,20 +38,30 @@ export default function Cabinet() {
     }
   };
 
-  const filtered = rows?.filter((r) => {
-    // Filter by subTab decision
-    if (subTab === 'approved' && r.status !== 'approved' && r.file_status !== 'closed') return true; // keep approved or cabinet rows
+  const safeRows = Array.isArray(rows) ? rows : [];
+
+  const filtered = safeRows.filter((r) => {
+    // Filter by Top Tab (open / closed / all)
+    if (filterTab === 'open' && r.file_status !== 'open') return false;
+    if (filterTab === 'closed' && r.file_status === 'open') return false;
+
+    // Filter by Sub Tab (approved / rejected / all)
+    if (subTab === 'approved' && r.status === 'rejected') return false;
     if (subTab === 'rejected' && r.status !== 'rejected') return false;
-    
+
     // Search filter
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
       (r.title || '').toLowerCase().includes(q) ||
       (r.file_id || '').toLowerCase().includes(q) ||
-      (r.initiator_name || '').toLowerCase().includes(q)
+      (r.initiator_name || '').toLowerCase().includes(q) ||
+      (r.reason || '').toLowerCase().includes(q)
     );
   });
+
+  const openCount = safeRows.filter((r) => r.file_status === 'open').length;
+  const closedCount = safeRows.filter((r) => r.file_status !== 'open').length;
 
   return (
     <section className="screen">
@@ -62,65 +72,58 @@ export default function Cabinet() {
         Files you initiated, routed or decided — retained after closure.
       </p>
 
-      {/* Top Filter Tabs (Open / Closed) */}
+      {/* Top Filter Tabs (All / Open / Closed) */}
       <div className="ef-filter-tabs">
+        <button
+          type="button"
+          className={`ef-filter-tab${filterTab === 'all' ? ' active' : ''}`}
+          onClick={() => setFilterTab('all')}
+        >
+          All Cabinet Files ({safeRows.length})
+        </button>
         <button
           type="button"
           className={`ef-filter-tab tab-open${filterTab === 'open' ? ' active' : ''}`}
           onClick={() => setFilterTab('open')}
         >
-          Open Files ({rows ? rows.filter(r => r.file_status === 'open').length : 0})
+          Open Cases ({openCount})
         </button>
         <button
           type="button"
-          className={`ef-filter-tab tab-closed-unread${filterTab === 'closed_unread' ? ' active' : ''}`}
-          onClick={() => setFilterTab('closed_unread')}
+          className={`ef-filter-tab tab-closed-read${filterTab === 'closed' ? ' active' : ''}`}
+          onClick={() => setFilterTab('closed')}
         >
-          Closed &amp; Unread Files (0)
-        </button>
-        <button
-          type="button"
-          className={`ef-filter-tab tab-closed-read${filterTab === 'closed_read' ? ' active' : ''}`}
-          onClick={() => setFilterTab('closed_read')}
-        >
-          Closed &amp; Read Files ({rows ? rows.filter(r => r.file_status !== 'open').length : 0})
+          Closed Cases ({closedCount})
         </button>
       </div>
 
       {/* Sub Tabs */}
-      <div className="ef-tabs">
+      <div className="ef-tabs" style={{ marginTop: 12 }}>
+        <button
+          type="button"
+          className={`ef-tab${subTab === 'all' ? ' active' : ''}`}
+          onClick={() => setSubTab('all')}
+        >
+          ALL ({safeRows.length})
+        </button>
         <button
           type="button"
           className={`ef-tab${subTab === 'approved' ? ' active' : ''}`}
           onClick={() => setSubTab('approved')}
         >
-          APPROVED FILES
+          APPROVED FILES ({safeRows.filter((r) => r.status !== 'rejected').length})
         </button>
         <button
           type="button"
           className={`ef-tab${subTab === 'rejected' ? ' active' : ''}`}
           onClick={() => setSubTab('rejected')}
         >
-          REJECTED FILES
-        </button>
-        <button
-          type="button"
-          className={`ef-tab${subTab === 'closed' ? ' active' : ''}`}
-          onClick={() => setSubTab('closed')}
-        >
-          CLOSED FILES
-        </button>
-        <button
-          type="button"
-          className={`ef-tab${subTab === 'transferred' ? ' active' : ''}`}
-          onClick={() => setSubTab('transferred')}
-        >
-          TRANSFERRED FILES
+          REJECTED FILES ({safeRows.filter((r) => r.status === 'rejected').length})
         </button>
       </div>
 
       {/* Search Bar */}
-      <div className="ef-search-bar" style={{ maxWidth: 400 }}>
+      <div className="ef-search-bar" style={{ maxWidth: 400, marginTop: 12 }}>
         <input
           className="ef-search-input"
           placeholder="Search on Subject / Ref No / Initiator"
@@ -131,12 +134,12 @@ export default function Cabinet() {
 
       {error && <div className="banner banner-error">{error}</div>}
 
-      {!filtered ? (
+      {!rows ? (
         <div className="grid-empty">Loading cabinet…</div>
       ) : filtered.length === 0 ? (
         <div className="grid-empty">Your cabinet is empty for this view.</div>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
+        <div style={{ overflowX: 'auto', marginTop: 12 }}>
           <table className="ef-inbox-table">
             <thead>
               <tr>
@@ -145,6 +148,7 @@ export default function Cabinet() {
                 <th>File Ref.No</th>
                 <th>SUBJECT</th>
                 <th>ORIGINATOR</th>
+                <th>ROLE IN FILE</th>
                 <th>PRIORITY</th>
                 <th>Status</th>
                 <th>Action / Next Note</th>
@@ -160,11 +164,16 @@ export default function Cabinet() {
                   </td>
                   <td>{r.file_id}</td>
                   <td style={{ maxWidth: 280 }}>
-                    <Link to={`/noting/note/${r.txn_id}`} className="subject-link">
+                    <Link to={`/noting/note/${r.txn_id || r.last_txn}`} className="subject-link">
                       {r.title}
                     </Link>
                   </td>
                   <td style={{ fontSize: 11 }}>{r.initiator_name || '—'}</td>
+                  <td>
+                    <span className="tag" style={{ textTransform: 'capitalize', fontSize: 10 }}>
+                      {r.reason || 'Participant'}
+                    </span>
+                  </td>
                   <td><PriorityBadge value={r.priority || 'Medium'} /></td>
                   <td>
                     <span className={`tag ${r.status === 'approved' ? 'tag-note-approved' : r.status === 'rejected' ? 'tag-note-rejected' : 'tag-note-routed'}`}>

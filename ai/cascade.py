@@ -1,4 +1,4 @@
-"""Responsibility cascade -- a machine-readable copy of
+`"""Responsibility cascade -- a machine-readable copy of
 
     sampleData/HAL PURCHASE FORMATS dt 22.06.2026/
         Note & Format Generation Stages and responsibility cascadeing.xlsx
@@ -96,25 +96,19 @@ PREREQ_FORMATS = {
 NODES = {
     "provisioning": {
         "stage_no": None, "owner": INDENTING, "checklist": True,
-        "title": "Provisioning -- raise the indent",
+        "title": "Provisioning -- raise the indent (N1)",
+        "description": "Tender Document is prepared directly from Provisioning Checklist + 72 STC clauses without separate note generation.",
         "options": [
-            ("provisioning", "PROVISIONING NOTE", "tender_doc", None),
-        ],
-    },
-    "tender_doc": {
-        "stage_no": None, "owner": TENDERING, "checklist": True,
-        "title": "Tendering -- float the tender document",
-        "options": [
-            ("tender_doc", "TENDER DOCUMENT  (GeM / E-Proc)", "tender_opened", None),
+            ("provisioning", "PROVISIONING NOTE (N1)", "tender_opened", None),
         ],
     },
     "tender_opened": {
         "stage_no": 1, "owner": TENDERING,
-        "title": "Tender opened -- post tender opening scenario",
+        "title": "Tender opened -- post tender opening scenario (N2)",
         "options": [
-            ("emd", "EMD STAGE ACCEPTANCE NOTE", "post_emd", None),
+            ("emd", "EMD STAGE ACCEPTANCE NOTE (N2)", "post_emd", None),
             ("retender", "RETENDER NOTE", "post_retender", "retender_required"),
-            ("tec_req", "TEC REQ NOTE", "tec_stage", None),
+            ("tec_req", "TEC REQ NOTE (N2)", "tec_stage", None),
         ],
     },
     "post_emd": {

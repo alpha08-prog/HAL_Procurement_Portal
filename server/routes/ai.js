@@ -14,10 +14,10 @@ const PDF_NAME = /^\d{2}_[A-Za-z_]+\.pdf$/;
 
 // Mirror of ai/stages.py (ALL_STAGES + REF) — note title / sequence / annexure-format ids
 // per stage. The server can't import the Python module directly.
+// Tender Document is prepared directly from Provisioning Checklist + 72 STC clauses without separate note generation.
 const STAGE_META = {
-  provisioning: { seq: 0, phase: 'PROVISIONING', agency: 'Indenting', title: 'Provisioning Note', ref: 'Provisioning_Note', formats: ['mpr_car'] },
-  tender_doc: { seq: 1, phase: 'TENDERING', agency: 'Tendering', title: 'Tender Document', ref: 'Tender_Document', formats: ['sd_format', 'pbg_format'] },
-  emd: { seq: 2, phase: 'TENDERING', agency: 'Tendering', title: 'EMD Stage Acceptance Note', ref: 'EMD_Stage_Acceptance', formats: [] },
+  provisioning: { seq: 1, phase: 'PROVISIONING', agency: 'Indenting', title: 'Provisioning Note (N1)', ref: 'Provisioning_Note', formats: ['mpr_car'] },
+  emd: { seq: 2, phase: 'TENDERING', agency: 'Tendering', title: 'EMD Stage Acceptance Note (N2)', ref: 'EMD_Stage_Acceptance', formats: [] },
   tec_req: { seq: 3, phase: 'TECHNICAL', agency: 'Tendering', title: 'TEC Request Note', ref: 'TEC_Req', formats: [] },
   tec_report: { seq: 4, phase: 'TECHNICAL', agency: 'Indenting', title: 'TEC Report Note', ref: 'TEC_Report', formats: ['tec_statement'] },
   pbo: { seq: 5, phase: 'COMMERCIAL', agency: 'Tendering', title: 'Price Bid Opening Note', ref: 'PBO_Req', formats: ['tec_statement'] },
@@ -37,23 +37,20 @@ const STAGE_META = {
 const AGENCIES = ['Indenting', 'Tendering'];
 const CASCADE_NODES = {
   provisioning: {
-    stageNo: null, owner: 'Indenting', checklist: true, title: 'Provisioning -- raise the indent',
-    options: [{ noteId: 'provisioning', label: 'PROVISIONING NOTE', next: 'tender_doc' }]
-  },
-  tender_doc: {
-    stageNo: null, owner: 'Tendering', checklist: true, title: 'Tendering -- float the tender document',
-    options: [{ noteId: 'tender_doc', label: 'TENDER DOCUMENT (GeM / E-Proc)', next: 'tender_opened' }]
+    stageNo: 1, owner: 'Indenting', checklist: true, title: 'Provisioning -- raise the indent (N1)',
+    description: 'Tender Document is prepared directly from the Provisioning Checklist and Standard Terms & Conditions (72 STC clauses) without separate note generation.',
+    options: [{ noteId: 'provisioning', label: 'PROVISIONING NOTE (N1)', next: 'tender_opened' }]
   },
   tender_opened: {
-    stageNo: 1, owner: 'Tendering', title: 'Tender opened -- post tender opening scenario',
+    stageNo: 2, owner: 'Tendering', title: 'Tender floated & opened -- post tender opening scenario (N2)',
     options: [
-      { noteId: 'emd', label: 'EMD STAGE ACCEPTANCE NOTE', next: 'post_emd' },
-      { noteId: 'retender', label: 'RETENDER NOTE', next: 'post_retender', recommend: 'retender_required' },
-      { noteId: 'tec_req', label: 'TEC REQ NOTE', next: 'tec_stage' }
+      { noteId: 'emd', label: 'EMD STAGE ACCEPTANCE NOTE (N2)', next: 'post_emd' },
+      { noteId: 'tec_req', label: 'TEC REQ NOTE (N2)', next: 'tec_stage' },
+      { noteId: 'retender', label: 'RETENDER NOTE', next: 'post_retender', recommend: 'retender_required' }
     ]
   },
   post_emd: {
-    stageNo: 2, owner: 'Tendering', title: 'After EMD stage acceptance',
+    stageNo: 3, owner: 'Tendering', title: 'After EMD stage acceptance',
     options: [
       { noteId: 'tec_req', label: 'TEC REQ NOTE', next: 'tec_stage' },
       { noteId: 'retender', label: 'RETENDER NOTE', next: 'post_retender', recommend: 'retender_required' },

@@ -1,57 +1,42 @@
-import { useState } from 'react';
 import PaymentAdviceNote from './PaymentAdviceNote.jsx';
 import RecommendationReport from './RecommendationReport.jsx';
 
-// Stages where Recommendation Report - CPPC is applicable (Payment Desk & HOD workflow)
+// Stages where Recommendation Report - CPPC is the active document:
+// 1. At HOD: 'sent_to_hod' (HOD only sees Recommendation Report - CPPC)
+// 2. At Payment Desk 2nd time: 'stamped_by_hod' (forwarding to CPPC)
+// 3. Sent to CPPC & Paid: 'sent_to_cppc', 'paid'
+// Stages where Payment Advice Document is the active document:
+// 1. Purchase Officer verification: 'forwarded_to_officer'
+// 2. Payment Desk 1st visit: 'at_payment_desk' (checklist verification & forward to HOD)
 const RECO_STAGES = new Set(['sent_to_hod', 'stamped_by_hod', 'sent_to_cppc', 'paid']);
-const RECO_ROLES = new Set(['payment_desk', 'hod_imm', 'admin']);
 
-export default function PaDocumentView({ pa, role, backPath, remarkPanel, actionBar, officerRemark }) {
-  // Recommendation Report is ONLY allowed for HOD and Payment Desk (and admin)
-  const isDeskOrHodStage = pa.status === 'at_payment_desk' || RECO_STAGES.has(pa.status);
-  const isDeskOrHodPath = backPath === '/process-payment' || backPath === '/hod-approval';
-  const isDeskOrHodRole = RECO_ROLES.has(role);
-
-  const canViewReco = (isDeskOrHodRole || isDeskOrHodPath) && isDeskOrHodStage;
-
-  const defaultReco = canViewReco && RECO_STAGES.has(pa.status);
-  const [docType, setDocType] = useState(null);
-  const showReco = canViewReco && (docType ? docType === 'reco' : defaultReco);
+export default function PaDocumentView({ pa, backPath, remarkPanel, actionBar, officerRemark }) {
+  const isRecoDocument = RECO_STAGES.has(pa.status);
 
   return (
     <div className="pa-doc-view">
       <div className="pa-doc-toolbar no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-        {canViewReco ? (
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              className={!showReco ? 'btn btn-inline' : 'btn btn-secondary btn-inline'}
-              style={{ fontSize: '0.85rem', padding: '6px 12px' }}
-              onClick={() => setDocType('advice')}
-            >
-              📄 Payment Advice Document
-            </button>
-            <button
-              type="button"
-              className={showReco ? 'btn btn-inline' : 'btn btn-secondary btn-inline'}
-              style={{ fontSize: '0.85rem', padding: '6px 12px' }}
-              onClick={() => setDocType('reco')}
-            >
-              📑 Recommendation Report (CPPC)
-            </button>
-          </div>
-        ) : (
-          <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text-subtle, #475569)' }}>
-            📄 Stamped Payment Advice Document
-          </div>
-        )}
+        <div style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--color-primary, #1e3a8a)' }}>
+          {pa.status === 'sent_to_hod'
+            ? '📑 Payment Recommendation Report - CPPC (For HOD Approval & Stamp)'
+            : pa.status === 'stamped_by_hod'
+            ? '📑 Payment Recommendation Report - CPPC (HOD Stamped — For CPPC Dispatch)'
+            : pa.status === 'sent_to_cppc' || pa.status === 'paid'
+            ? '📑 Payment Recommendation Report - CPPC'
+            : pa.status === 'at_payment_desk'
+            ? '📄 Payment Advice Document (From Payment Desk to HOD)'
+            : pa.status === 'forwarded_to_officer'
+            ? '📄 Payment Advice Document (Officer Verification)'
+            : '📄 Payment Advice Document'}
+        </div>
         <button type="button" className="btn btn-secondary" onClick={() => window.print()}>
           Download / Print
         </button>
       </div>
+
       <div className="note-print-area">
-        {showReco ? (
-          <RecommendationReport pa={pa} previewOfficerRemark={officerRemark} />
+        {isRecoDocument ? (
+          <RecommendationReport pa={pa} />
         ) : (
           <PaymentAdviceNote pa={pa} previewOfficerRemark={officerRemark} />
         )}
@@ -65,3 +50,5 @@ export default function PaDocumentView({ pa, role, backPath, remarkPanel, action
     </div>
   );
 }
+
+

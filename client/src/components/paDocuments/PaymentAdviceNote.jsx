@@ -187,36 +187,13 @@ export default function PaymentAdviceNote({ pa, previewOfficerRemark }) {
           </div>
         )}
 
-        {/* 1. HOD (IMM) Signature & Stamp */}
-        {(() => {
-          const hodStep = (pa.history ?? []).find((h) => h.action === 'hod_stamp');
-          return (
-            <div className={'hal-doc-stamp-box' + (hodStep ? ' hal-doc-stamp-signed' : '')} style={{ flex: 1, minWidth: 220, padding: '14px' }}>
-              <div className="hal-doc-stamp-title" style={{ fontWeight: 600, color: 'var(--color-primary, #1e3a8a)', marginBottom: '4px' }}>
-                1. HOD (IMM) Approval Signature
-              </div>
-              {hodStep ? (
-                <>
-                  <div className="hal-doc-stamp-label">✔ HOD (IMM) — Approved &amp; Stamped</div>
-                  <div className="hal-doc-stamp-meta">{hodStep.date} · V. Rao</div>
-                  {hodStep.remark && <div className="hal-doc-stamp-remark">"{hodStep.remark}"</div>}
-                </>
-              ) : (
-                <div className="hal-doc-stamp-label hal-doc-stamp-empty">
-                  HOD (IMM) — Stamp &amp; Signature
-                </div>
-              )}
-            </div>
-          );
-        })()}
-
-        {/* 2. Payment Desk Signature & Stamp */}
+        {/* Payment Desk Signature & Stamp */}
         {(() => {
           const deskStep = (pa.history ?? []).find((h) => h.action === 'desk_forward_hod' || h.action === 'desk_forward_cppc');
           return (
             <div className={'hal-doc-stamp-box' + (deskStep ? ' hal-doc-stamp-signed' : '')} style={{ flex: 1, minWidth: 220, padding: '14px' }}>
               <div className="hal-doc-stamp-title" style={{ fontWeight: 600, color: 'var(--color-primary, #1e3a8a)', marginBottom: '4px' }}>
-                2. Payment Desk Signature
+                Payment Desk Verification &amp; Stamp
               </div>
               {deskStep ? (
                 <>

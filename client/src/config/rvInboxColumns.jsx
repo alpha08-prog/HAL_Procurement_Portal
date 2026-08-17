@@ -76,29 +76,70 @@ export function rvInboxColumns(role, handlers = {}) {
       label: 'Actions',
       render: (row) => {
         const busy = handlers.busyRvNo === row.rvNo;
-        const isRvValueLess = Number(row.rvValue) < Number(row.invoiceValue ?? row.poValue);
-        const creditNoteRequired = row.creditNoteRequired || isRvValueLess;
-        const needsCreditNote = creditNoteRequired && !row.creditNoteUploaded;
+        const invoiceVal = Number(row.invoiceValue ?? row.poValue ?? 0);
+        const rvVal = Number(row.rvValue ?? 0);
+        const diffAmount = Math.abs(invoiceVal - rvVal);
+        const hasDiscrepancy = diffAmount > 0;
+        const isRvValueLess = rvVal < invoiceVal;
+        const creditNoteWaived = Boolean(row.creditNoteWaived);
+        const creditNoteUploaded = Boolean(row.creditNoteUploaded);
+        const needsCreditNoteDecision = (row.creditNoteRequired ?? isRvValueLess) && !creditNoteWaived && !creditNoteUploaded;
+
         return (
           <div className="queue-buttons" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {needsCreditNote && (
-              <button
-                className="btn btn-secondary"
-                disabled={busy}
-                onClick={() => handlers.onCreditNote?.(row)}
-                title="RV value is less than claimed invoice value. Upload credit note to proceed."
-              >
-                Upload Credit Note
-              </button>
+            {hasDiscrepancy && (
+              <>
+                {needsCreditNoteDecision ? (
+                  <button
+                    className="btn btn-secondary"
+                    disabled={busy}
+                    onClick={() => (handlers.onReceiptComparison || handlers.onCreditNote)?.(row)}
+                    title={`Discrepancy of ${formatINR(diffAmount)} between Invoice and RV. Review receipts to decide or upload credit note.`}
+                    style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}
+                  >
+                    ⚖️ Review Receipts / CN
+                  </button>
+                ) : creditNoteWaived ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span className="action-note" style={{ color: '#15803d', fontWeight: 600 }}>
+                      CN Waived ({formatINR(diffAmount)}) ✓
+                    </span>
+                    <button
+                      className="btn btn-secondary"
+                      disabled={busy}
+                      onClick={() => (handlers.onReceiptComparison || handlers.onCreditNote)?.(row)}
+                      style={{ fontSize: '0.75rem', padding: '2px 6px' }}
+                      title="View receipt comparison & waiver details"
+                    >
+                      ⚖️ View Decision
+                    </button>
+                  </div>
+                ) : creditNoteUploaded ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span className="action-note">Credit note {row.creditNoteNo ?? 'uploaded'} ✓</span>
+                    <button
+                      className="btn btn-secondary"
+                      disabled={busy}
+                      onClick={() => (handlers.onReceiptComparison || handlers.onCreditNote)?.(row)}
+                      style={{ fontSize: '0.75rem', padding: '2px 6px' }}
+                      title="View credit note & receipt details"
+                    >
+                      ⚖️ View CN
+                    </button>
+                  </div>
+                ) : null}
+              </>
             )}
-            {creditNoteRequired && row.creditNoteUploaded && (
-              <span className="action-note">Credit note {row.creditNoteNo ?? 'uploaded'} ✓</span>
-            )}
+
             {row.paStatus === 'rv_pending' ? (
               <button
                 className="btn"
-                disabled={busy || needsCreditNote}
-                title={needsCreditNote ? 'Generate and upload the credit note first.' : undefined}
+                disabled={busy || needsCreditNoteDecision}
+                title={
+                  needsCreditNoteDecision
+                    ? `Discrepancy of ${formatINR(diffAmount)} found. Review receipts & decide on credit note to proceed.`
+                    : undefined
+                }
                 onClick={() => handlers.onGenerate?.(row)}
               >
                 Generate payment advice

@@ -119,7 +119,14 @@ function ReferenceButtons({ pa, showForwarding, setShowForwarding, onOpenLdSheet
     ['gem', 'GeM Contract', pa.gemContractNo, pa.gemContractNo ? `GeM Contract ${pa.gemContractNo} · Date ${formatDate(pa.gemContractDate)}` : 'No GeM contract linked']
   ];
 
-  if (pa.creditNoteUploaded || pa.creditNoteNo) {
+  if (pa.creditNoteWaived) {
+    references.push([
+      'cn-waiver',
+      'Credit Note Waived',
+      `Diff: ${formatINR(Math.abs((pa.invoiceValue || 0) - (pa.rvValue || 0)))}`,
+      `Credit Note Waived by Purchase Maker · Reason: ${pa.creditNoteWaiverReason || 'Minor difference accepted'} · Difference: ${formatINR(Math.abs((pa.invoiceValue || 0) - (pa.rvValue || 0)))}`
+    ]);
+  } else if (pa.creditNoteUploaded || pa.creditNoteNo) {
     references.push([
       'cn',
       'Credit Note',
@@ -133,7 +140,7 @@ function ReferenceButtons({ pa, showForwarding, setShowForwarding, onOpenLdSheet
     ['QC Acceptance Certificate', pa.qcDate ? `Accepted on ${formatDate(pa.qcDate)}` : 'Pending'],
     ['Warranty Certificate', pa.attachments?.warranty === 'Yes'],
     ['Revised Bank Details', pa.attachments?.bankChange === 'Yes'],
-    ['Credit Note Uploaded', pa.creditNoteUploaded ? `Yes (${pa.creditNoteNo ?? 'CN-Attached'})` : 'Not required / Pending']
+    ['Credit Note Status', pa.creditNoteWaived ? `Waived (${pa.creditNoteWaiverReason || 'Discrepancy approved'})` : pa.creditNoteUploaded ? `Yes (${pa.creditNoteNo ?? 'CN-Attached'})` : 'Not required / Pending']
   ];
 
   const hasLd = pa.ldAmount > 0 || pa.ldApplicable === 'Yes' || (pa.ldWeeks || 0) > 0;
@@ -146,7 +153,7 @@ function ReferenceButtons({ pa, showForwarding, setShowForwarding, onOpenLdSheet
             📄 {label}{value ? ` · ${value}` : ''}
           </button>
         ))}
-        {!pa.creditNoteUploaded && onOpenCreditNoteModal && (
+        {!pa.creditNoteUploaded && !pa.creditNoteWaived && onOpenCreditNoteModal && (
           <button type="button" className="btn btn-secondary" onClick={onOpenCreditNoteModal}>
             📄 Upload Credit Note
           </button>
@@ -192,7 +199,7 @@ const OFFICER_REMARKS = [
   'Forwarded with the applicable LD deduction.'
 ];
 const DESK_REMARKS = [
-  'Recommendation report checked & stamped. Forwarded to HOD for approval.',
+  'Payment advice checklist verified & stamped. Forwarded to HOD for approval.',
   'Verified and forwarded for HOD approval.',
   'All supporting documents checked and recommended to HOD.'
 ];

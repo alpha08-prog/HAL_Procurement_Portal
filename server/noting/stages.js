@@ -2,20 +2,21 @@
 // server cannot import the Python module, so the sequence + titles are duplicated here
 // (as server/routes/ai.js already does for STAGE_META). Used by reports (current stage)
 // and the cabinet next-action prompt (Phase 7). Keep in sync if ai/stages.py changes.
+// Tender Document is prepared directly from the Provisioning Checklist and 72 STC clauses without note generation.
+// Note 1 (N1) is Provisioning, Note 2 (N2) is EMD / TEC Request.
 export const STAGE_ORDER = [
-  'provisioning', 'tender_doc', 'emd', 'tec_req', 'tec_report', 'pbo', 'pnc_req', 'pnc_rec', 'pp', 'po'
+  'provisioning', 'emd', 'tec_req', 'tec_report', 'pbo', 'pnc_req', 'pnc_rec', 'pp', 'po'
 ];
 
 export const STAGE_TITLE = {
   provisioning: 'Provisioning Note',
-  tender_doc: 'Tender Document',
-  emd: 'EMD Stage Acceptance',
-  tec_req: 'TEC Request',
-  tec_report: 'TEC Report',
-  pbo: 'Price Bid Opening',
-  pnc_req: 'PNC Request',
-  pnc_rec: 'PNC Recommendation',
-  pp: 'Purchase Proposal',
+  emd: 'EMD Stage Acceptance Note',
+  tec_req: 'TEC Request Note',
+  tec_report: 'TEC Report Note',
+  pbo: 'Price Bid Opening Note',
+  pnc_req: 'PNC Request Note',
+  pnc_rec: 'PNC Recommendation Note',
+  pp: 'Purchase Proposal Note',
   po: 'Purchase Order + Contract'
 };
 
@@ -30,15 +31,16 @@ export const NEEDBASED = {
   po_amendment: { title: 'PO Amendment', next: null }
 };
 
-export const VALID_STAGES = new Set([...STAGE_ORDER, ...Object.keys(NEEDBASED)]);
+export const VALID_STAGES = new Set([...STAGE_ORDER, ...Object.keys(NEEDBASED), 'tender_doc']);
 
 export const stageTitle = (id) => STAGE_TITLE[id] || NEEDBASED[id]?.title || (id ? id : '—');
 
 // The stage at which the tendering phase begins — stamps files.tendering_start so the
-// live-status report can show "time since tendering" (email point 27).
-export const TENDERING_START_STAGE = 'tender_doc';
+// live-status report can show "time since tendering".
+export const TENDERING_START_STAGE = 'emd';
 
 export function nextStage(id) {
+  if (id === 'provisioning') return 'emd';
   if (Object.hasOwn(NEEDBASED, id)) return NEEDBASED[id].next;
   const i = STAGE_ORDER.indexOf(id);
   return i >= 0 && i < STAGE_ORDER.length - 1 ? STAGE_ORDER[i + 1] : null;

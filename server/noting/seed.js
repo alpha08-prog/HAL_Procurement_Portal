@@ -118,8 +118,8 @@ const NOTES = [
   [1, 1, 1, 'AOD/IMM/2026/0001/N1', 'TXN-2026-000003', 'Provisioning Note', 'provisioning', 'ai',
     'Provisioning note for procurement of Night Vision Binocular against CAR/25/229. Estimated value ₹15,94,065. Requirement vetted by Indent Cell; provisioning approved by HOD (IMM) — case advanced to tendering.',
     'normal', 'approved', 5, 2, 'approved', 2, '2026-05-02', '2026-05-16'],
-  [2, 1, 2, 'AOD/IMM/2026/0001/N2', 'TXN-2026-000004', 'Tender Document', 'tender_doc', 'manual',
-    'Draft tender document for the NVB case, prepared for issue on GeM (two-bid system, reverse auction enabled). EMD ₹31,900; delivery 120 days; PBG 10%. Approved for publication.',
+  [2, 1, 2, 'AOD/IMM/2026/0001/N2', 'TXN-2026-000004', 'EMD Stage Acceptance Note', 'emd', 'manual',
+    'EMD stage acceptance note for the NVB case against CAR/25/229. Tender published on GeM based on provisioning checklist and 72 standard clauses. EMD ₹31,900 verified; case advanced to technical evaluation.',
     'normal', 'approved', 5, 2, 'approved', 2, '2026-05-18', '2026-06-02'],
   [3, 2, 1, 'AOD/IMM/2026/0002/N1', 'TXN-2026-000008', 'Administrative Approval Note', null, 'manual',
     'Standalone administrative note seeking approval for purchase of office furniture for the IMM section. No MPR/CAR/SPR/CPR reference. Returned once by Bill Passing for the comparative statement; resubmitted to CM (Purchase).',
@@ -159,10 +159,10 @@ const STEPS = [
   [1, 2, 6, 2, 'forward', 'actioned', 'approve', 'Concurred & Forwarded. Placed for approval.', '2026-05-06', '2026-05-08', '2026-05-16'],
   [1, 3, 2, 2, 'approve', 'actioned', 'approve', 'Approved. Proceed with tendering.', '2026-05-16', null, '2026-05-16'],
 
-  // note 2 (Tender Document NVB)
-  [2, 1, 5, 6, 'forward', 'actioned', 'forward', 'Draft tender document uploaded for verification.', '2026-05-19', '2026-05-20', '2026-05-22'],
-  [2, 2, 6, 2, 'forward', 'actioned', 'approve', 'Draft tender document verified against PM Issue-4.', '2026-05-22', '2026-05-25', '2026-06-02'],
-  [2, 3, 2, 2, 'approve', 'actioned', 'approve', 'Tender document approved for issue on GeM.', '2026-06-02', null, '2026-06-02'],
+  // note 2 (EMD Stage Acceptance NVB)
+  [2, 1, 5, 6, 'forward', 'actioned', 'forward', 'EMD stage acceptance note submitted for verification.', '2026-05-19', '2026-05-20', '2026-05-22'],
+  [2, 2, 6, 2, 'forward', 'actioned', 'approve', 'EMD compliance verified against tender terms.', '2026-05-22', '2026-05-25', '2026-06-02'],
+  [2, 3, 2, 2, 'approve', 'actioned', 'approve', 'EMD stage acceptance approved. Proceed with TEC evaluation.', '2026-06-02', null, '2026-06-02'],
 
   // note 3 (Standalone Administrative Furniture)
   [3, 1, 6, 7, 'forward', 'actioned', 'send_back', 'Placed for budget vetting.', '2026-06-11', '2026-06-12', '2026-06-14'],

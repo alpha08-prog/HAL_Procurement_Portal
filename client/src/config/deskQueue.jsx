@@ -131,7 +131,7 @@ export const deskQueueConfig = {
       transition: 'desk_forward_hod',
       primary: true,
       when: (row) => row.status === 'at_payment_desk',
-      modalTitle: 'Stamp & forward recommendation report to HOD',
+      modalTitle: 'Stamp & forward Payment Advice to HOD',
       submitLabel: 'Stamp & Forward',
       fields: [
         {
@@ -140,7 +140,7 @@ export const deskQueueConfig = {
           type: 'textarea',
           placeholder: 'Add note for HOD…',
           quickOptions: [
-            'Recommendation report checked & stamped. Forwarded to HOD for approval.',
+            'Payment Advice checklist verified & stamped. Forwarded to HOD for approval.',
             'Verified and forwarded for HOD approval.',
             'All supporting documents checked and recommended to HOD.'
           ]

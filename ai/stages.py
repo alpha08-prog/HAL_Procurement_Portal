@@ -1,10 +1,10 @@
-ORDER = ["provisioning","tender_doc","emd","tec_req","tec_report","pbo","pnc_req","pnc_rec","pp","po"]
+ORDER = ["provisioning","emd","tec_req","tec_report","pbo","pnc_req","pnc_rec","pp","po"]
 
 STAGES = {
  "provisioning": {"seq":0,"phase":"PROVISIONING","note":"Provisioning Note","file":"F1","resp":"Indenting",
    "new":["item_description","car_no","car_date","budget_year","budget_type","amount_figures","amount_in_words","dop_clause","reference_no"],
    "formats":["mpr_car"],"carry":None,"cond":None,"ref":False},
- "tender_doc": {"seq":1,"phase":"TENDERING","note":"Tender Document","file":None,"resp":"Tendering",
+ "tender_doc": {"seq":1,"phase":"TENDERING","note":"Tender Document (Checklist + 72 Clauses)","file":None,"resp":"Tendering",
    "new":["tender_type","commercial_conditions","ifs_enquiry_no","tender_no"],
    "formats":["sd_format","pbg_format"],"carry":None,"cond":None,"ref":False},
  "emd": {"seq":2,"phase":"TENDERING","note":"EMD Stage Acceptance Note","file":"F2","resp":"Tendering",

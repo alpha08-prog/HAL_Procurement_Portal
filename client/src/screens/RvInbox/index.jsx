@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DataGrid from '../../components/DataGrid.jsx';
-import CreditNoteModal from '../../components/CreditNoteModal.jsx';
+import ReceiptComparisonModal from '../../components/ReceiptComparisonModal.jsx';
 import { rvInboxColumns } from '../../config/rvInboxColumns.jsx';
 import { useRole } from '../../context/RoleContext.jsx';
 import { apiFetch } from '../../lib/api.js';
@@ -46,7 +46,7 @@ export default function RvInbox() {
     }
   };
 
-  const onCreditNote = (row) => {
+  const onReceiptComparison = (row) => {
     setCnModalRow(row);
   };
 
@@ -57,9 +57,26 @@ export default function RvInbox() {
           ? {
               ...item,
               creditNoteUploaded: true,
+              creditNoteWaived: false,
+              creditNoteRequired: true,
               creditNoteNo: data.creditNoteNo,
               creditNoteFileName: data.fileName,
               creditNoteRemarks: data.remarks
+            }
+          : item
+      )
+    );
+  };
+
+  const handleWaiverSuccess = (data) => {
+    setRows((current) =>
+      current?.map((item) =>
+        item.rvNo === data.rvNo
+          ? {
+              ...item,
+              creditNoteWaived: true,
+              creditNoteRequired: false,
+              creditNoteWaiverReason: data.creditNoteWaiverReason
             }
           : item
       )
@@ -89,7 +106,14 @@ export default function RvInbox() {
         <div className="grid-empty">Could not load RVs: {error}</div>
       ) : (
         <DataGrid
-          columns={rvInboxColumns(role, { onGenerate, onCreditNote, onViewDraft, onViewPa, busyRvNo })}
+          columns={rvInboxColumns(role, {
+            onGenerate,
+            onCreditNote: onReceiptComparison,
+            onReceiptComparison,
+            onViewDraft,
+            onViewPa,
+            busyRvNo
+          })}
           rows={rows}
           rowKey="rvNo"
           emptyMessage="No RVs pending payment."
@@ -97,10 +121,11 @@ export default function RvInbox() {
       )}
 
       {cnModalRow && (
-        <CreditNoteModal
+        <ReceiptComparisonModal
           row={cnModalRow}
           onClose={() => setCnModalRow(null)}
-          onSuccess={handleCnSuccess}
+          onWaiverSuccess={handleWaiverSuccess}
+          onCnSuccess={handleCnSuccess}
         />
       )}
     </section>

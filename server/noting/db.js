@@ -23,6 +23,10 @@ function ensureColumn(table, column, decl) {
 }
 ensureColumn('files', 'line_no', 'TEXT');
 ensureColumn('members', 'grade', 'TEXT');
+ensureColumn('attachments', 'storage_path', 'TEXT');
+ensureColumn('attachments', 'file_size_bytes', 'INTEGER');
+ensureColumn('attachments', 'mime_type', 'TEXT');
+ensureColumn('attachments', 'sha256_hash', 'TEXT');
 
 // Thin helpers. Params are positional `?` bound via spread (node:sqlite anonymous params).
 export const all = (sql, ...p) => db.prepare(sql).all(...p);

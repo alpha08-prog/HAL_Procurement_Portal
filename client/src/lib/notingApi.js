@@ -49,7 +49,19 @@ export const fetchSummary = (txnId) => getJson(`/api/noting/notes/${encodeURICom
 
 // Attachments (Phase 5)
 export const fetchAttachments = (txnId) => getJson(`/api/noting/notes/${encodeURIComponent(txnId)}/attachments`);
-export const addAttachment = (txnId, payload) => postJson(`/api/noting/notes/${encodeURIComponent(txnId)}/attachments`, payload);
+export const addAttachment = (txnId, payload) => {
+  if (payload instanceof FormData) {
+    return apiFetch(`/api/noting/notes/${encodeURIComponent(txnId)}/attachments`, {
+      method: 'POST',
+      body: payload
+    }).then(async (res) => {
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || `API error ${res.status}`);
+      return data;
+    });
+  }
+  return postJson(`/api/noting/notes/${encodeURIComponent(txnId)}/attachments`, payload);
+};
 
 // Clarifications (Phase 4)
 export const fetchClarifications = (txnId) => getJson(`/api/noting/notes/${encodeURIComponent(txnId)}/clarifications`);

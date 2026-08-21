@@ -220,6 +220,115 @@ def extract_notes(pdf_path: str) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# Routing chain (routing table + note bodies, merged and cleaned)
+# ---------------------------------------------------------------------------
+
+def scrub_watermark(cell: str) -> str:
+    """Strip the print-ID digits that bleed into routing-table cells.
+
+    Every page of a HAL eFile print carries its Print ID as a watermark
+    ("9110638885943600561202517217122"), and PyMuPDF's table reader interleaves those
+    digits with the real text:
+
+        "9 5 8 8 HIRALAL KESHI"            -> "HIRALAL KESHI"
+        "2 2 1 18/07/2025"                 -> "18/07/2025"
+        "7 1 2 7 AIRCRAFT OVERHAUL 1 DIV"  -> "AIRCRAFT OVERHAUL DIV"
+        "8 3 6 N10"                        -> "N10"
+
+    Only lone single digits are dropped, and only from cells that hold more than one
+    token -- so a legitimate single-digit cell (Sr.No "1".."9") is left alone, and
+    dates, note ids and multi-digit serials survive intact.
+    """
+    tokens = str(cell or "").split()
+    if len(tokens) <= 1:
+        return " ".join(tokens)
+    kept = [t for t in tokens if not (len(t) == 1 and t.isdigit())]
+    return " ".join(kept) if kept else " ".join(tokens)
+
+
+def _two_factor_ids(text: str) -> set[str]:
+    """Transaction ids whose hop was marked "(Two-Factor Authenticated)".
+
+    The marker sits between the signatory's date and that hop's Transaction ID. The
+    look-back is bounded by the *previous* Transaction ID, otherwise a 2FA hop leaks
+    its marker onto the hop that follows it.
+    """
+    out = set()
+    marks = list(re.finditer(r"Transaction ID:\s*([0-9A-Fa-f-]+)", text))
+    for i, m in enumerate(marks):
+        start = marks[i - 1].end() if i else 0
+        if re.search(r"two[\s-]*factor", text[start:m.start()], re.IGNORECASE):
+            out.add(m.group(1))
+    return out
+
+
+def _clean_remark(s: str, print_id: str | None) -> str:
+    """A hop's remark with the page furniture taken out.
+
+    Note bodies that straddle a page break pick up the Print ID watermark and a
+    "Page n of m" line; neither is part of what the officer wrote.
+    """
+    t = " ".join(str(s or "").split())
+    if print_id:
+        t = t.replace(print_id, " ")
+    t = re.sub(r"\b\d{25,}\b", " ", t)                 # the watermark, wherever it lands
+    t = re.sub(r"Page\s+\d+\s+of\s+\d+", " ", t, flags=re.IGNORECASE)
+    return " ".join(t.split())
+
+
+def extract_routing_chain(pdf_path: str) -> list[dict]:
+    """The approval chain a HAL eFile note prints on itself, as one clean list.
+
+    Merges the two views the document gives of the same hops. Who each hop was is taken
+    from the page-1 routing table -- it is the only place the *department* appears, its
+    columns come out clean once the watermark is scrubbed, and its dates are already
+    DD/MM/YYYY. What each hop said comes from the note bodies -- the only place the
+    remark, the per-hop transaction id and the 2FA marker appear.
+
+    Taking names from the table also sidesteps extract_notes()' signatory regex, which
+    on N10 starts its match at the trailing "CFA" of the previous sentence.
+
+    One dict per hop:
+        note, seq, name, designation, dept, division, date, comment, txn_id, two_factor
+
+    On the F1 Provisioning Note this yields all 14 hops, N1..N14.
+    """
+    table = [{k: scrub_watermark(v) for k, v in row.items()}
+             for row in extract_routing_table(pdf_path)]
+    by_note = {}
+    for row in table:
+        key = row.get("note", "").strip().upper()
+        if re.fullmatch(r"N\d+", key):
+            by_note[key] = row
+
+    text = _full_text(_read_pages(pdf_path))
+    tfa = _two_factor_ids(text)
+    pid = re.search(r"Print ID:\s*(\d+)", text)
+    print_id = pid.group(1) if pid else None
+
+    def _one_line(s):
+        return " ".join(str(s or "").split())
+
+    chain = []
+    for note in extract_notes(pdf_path):
+        key = f"N{note['note_number']}"
+        row = by_note.get(key, {})
+        chain.append({
+            "note": key,
+            "seq": int(note["note_number"]),
+            "name": _one_line(row.get("name") or note.get("signatory")),
+            "designation": _one_line(row.get("designation") or note.get("designation")),
+            "dept": _one_line(row.get("dept")),
+            "division": _one_line(row.get("division") or note.get("division")),
+            "date": _one_line(row.get("date") or note.get("date")),
+            "comment": _clean_remark(note.get("content"), print_id),
+            "txn_id": note.get("transaction_id"),
+            "two_factor": note.get("transaction_id") in tfa,
+        })
+    return chain
+
+
+# ---------------------------------------------------------------------------
 # Core public API
 # ---------------------------------------------------------------------------
 

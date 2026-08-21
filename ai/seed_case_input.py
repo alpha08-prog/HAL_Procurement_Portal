@@ -2,7 +2,7 @@ import json, re, sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from tools.pdf_extractor import extract_from_pdf
+from tools.pdf_extractor import extract_from_pdf, extract_routing_chain
 from tools.docx_extractor import extract_from_docx, read_text
 from tools.patterns.f1_patterns import F1_PATTERNS
 from tools.patterns.f2_patterns import F2_PATTERNS
@@ -42,8 +42,26 @@ def _accepted(phrase):
         return []
     return [p.strip(" .,") for p in re.split(r"\s+and\s+(?=M/s)", phrase) if p.strip()]
 
+def _routing(pdf):
+    """The approval chain the F1 note prints on itself -- 14 hops, N1..N14.
+
+    extract_from_pdf has always returned this (as `routing_table` and `notes`) and this
+    seeder has always thrown it away. It is the only record in sampleData of who
+    actually signs inside an agency, so it is the fixture approval_check.py replays
+    against, and hop N1 is where the originating department comes from.
+    """
+    chain = extract_routing_chain(pdf)
+    return [{"note": h["note"], "seq": h["seq"], "name": h["name"],
+             "designation": h["designation"], "dept": h["dept"],
+             "division": h["division"], "date": h["date"],
+             "comment": h["comment"], "txn_id": h["txn_id"],
+             "two_factor": h["two_factor"]} for h in chain]
+
+
 def main():
-    f1 = extract_from_pdf(str(N / "F1 Approved Provisioning Note 6005612025.pdf"), F1_PATTERNS)
+    f1_pdf = str(N / "F1 Approved Provisioning Note 6005612025.pdf")
+    f1 = extract_from_pdf(f1_pdf, F1_PATTERNS)
+    routing = _routing(f1_pdf)
     f2 = extract_from_docx(str(N / "F2 EMD Stage Accpetance of offer note.docx"), F2_PATTERNS)
     f4 = extract_from_docx(str(N / "F4 Note for Price bid Opening.docx"), F4_PATTERNS)
     f4t = read_text(str(N / "F4 Note for Price bid Opening.docx"))
@@ -54,6 +72,15 @@ def main():
     bidders = _bidders(f2["tables"])
     ci = {
         "_provenance": "AUTO-SEEDED from sampleData only (F1 pdf + F2/F4/F5/F6/F7 docx). Regenerate: python ai/seed_case_input.py. NOT hand-authored, NO internet/API.",
+        "_file_id": f1.get("file_id"),
+        # Who raised it and where -- read off hop N1 of the note's own routing table.
+        "originating": {"dept": routing[0]["dept"] if routing else None,
+                        "division": routing[0]["division"] if routing else None,
+                        "by": routing[0]["name"] if routing else None,
+                        "designation": routing[0]["designation"] if routing else None},
+        # The internal approval chain as it actually ran. Consumed by approval_run.py
+        # --replay-f1 and asserted by approval_check.py.
+        "observed_routing": routing,
         "requisition": {"item_description": f1.get("item_description"), "car_no": f1.get("car_no"),
             "car_date": f1.get("car_date"), "reference_no": f1.get("reference_no"), "quantity": 5,
             "budget_year": f1.get("budget_year"), "budget_type": f1.get("budget_type"),
@@ -84,6 +111,9 @@ def main():
     acc = [b for b in bidders if b["emd"] == "Accepted"]
     print(f"seeded {OUT.name} from sampleData ✓ — {len(bidders)} bidders ({len(acc)} accepted), "
           f"{len(ci['tec']['rejected'])} TEC-rejected, item={ci['requisition']['item_description']}")
+    print(f"  observed approval chain: {len(routing)} hops "
+          f"({routing[0]['note'] if routing else '-'}..{routing[-1]['note'] if routing else '-'}), "
+          f"raised by {ci['originating']['designation']} / {ci['originating']['dept']}")
 
 if __name__ == "__main__":
     main()

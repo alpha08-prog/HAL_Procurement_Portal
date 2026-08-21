@@ -36,10 +36,14 @@ def print_outputs(case):
     for fid, d in case.formats.items():
         print(f"  [{fid}] {d}")
 
-def run_auto():
+def run_auto(case_path=None):
+    case_path = Path(case_path) if case_path else CASE_INPUT
     print(f"\n{SEP}\nHAL PROCUREMENT PIPELINE — full graph run\n{SEP}")
-    print(f"[input] reading external case data → {CASE_INPUT.name}  (notes F1–F7 are NOT inputs; references only)")
-    inputs = to_stage_inputs(load(str(CASE_INPUT)))
+    print(f"[input] reading external case data → {case_path.name}  (notes F1–F7 are NOT inputs; references only)")
+    raw = load(str(case_path))
+    if raw.get("_fixture"):
+        print(f"[input] ⚠ FIXTURE — this case is fabricated test data, not sampleData")
+    inputs = to_stage_inputs(raw)
     OUT.mkdir(parents=True, exist_ok=True)
     print_io(inputs)
     case = run_pipeline(inputs, output_path=str(OUT / "case_full.json"))
@@ -60,6 +64,8 @@ def main():
                    help="run the whole linear ORDER unattended (the old behaviour)")
     ap.add_argument("--agency", choices=["Indenting", "Tendering"],
                     help="interactive mode: skip the who-are-you prompt")
+    ap.add_argument("--case", help="case facts to run (default ai/case_input.json; "
+                                   "try ai/fixtures/case_input_E33046.json)")
     args, rest = ap.parse_known_args()
 
     # Interactive unless asked otherwise — but never when stdin is not a terminal,
@@ -67,9 +73,10 @@ def main():
     interactive = args.interactive or (not args.auto and sys.stdin.isatty())
     if interactive:
         import interactive as cascade_cli
-        argv = (["--agency", args.agency] if args.agency else []) + rest
+        argv = (["--agency", args.agency] if args.agency else []) + \
+               (["--case", args.case] if args.case else []) + rest
         return cascade_cli.main(argv)
-    run_auto()
+    run_auto(args.case)
     return 0
 
 if __name__ == "__main__":

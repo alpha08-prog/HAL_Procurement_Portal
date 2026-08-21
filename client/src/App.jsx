@@ -17,6 +17,14 @@ import Cabinet from './screens/Noting/Cabinet.jsx';
 import NoteDetail from './screens/Noting/NoteDetail.jsx';
 import Reports from './screens/Noting/Reports.jsx';
 import Organisation from './screens/Noting/Organisation.jsx';
+import AiCases from './screens/AiCases/index.jsx';
+import AiCaseView from './screens/AiCases/CaseView.jsx';
+import ApprovalIntake from './screens/Approvals/Intake.jsx';
+import ApprovalChains from './screens/Approvals/Chains.jsx';
+import ApprovalChainView from './screens/Approvals/ChainView.jsx';
+import ApprovalCommittees from './screens/Approvals/Committees.jsx';
+import ApprovalBids from './screens/Approvals/Bids.jsx';
+import ApprovalDirectory from './screens/Approvals/Directory.jsx';
 import Generate from './screens/Contracts/Generate.jsx';
 import ContractRegister from './screens/Contracts/Register.jsx';
 import ContractView from './screens/Contracts/ContractView.jsx';
@@ -57,6 +65,14 @@ export default function App() {
               <Route path="/noting/reports" element={<Reports />} />
               <Route path="/noting/note/:txnId" element={<NoteDetail />} />
               <Route path="/noting/org" element={<Organisation />} />
+              <Route path="/ai-cases" element={<AiCases />} />
+              <Route path="/ai-cases/:id" element={<AiCaseView />} />
+              <Route path="/approvals/intake" element={<ApprovalIntake />} />
+              <Route path="/approvals/chains" element={<ApprovalChains />} />
+              <Route path="/approvals/chain/:id" element={<ApprovalChainView />} />
+              <Route path="/approvals/committees" element={<ApprovalCommittees />} />
+              <Route path="/approvals/bids" element={<ApprovalBids />} />
+              <Route path="/approvals/directory" element={<ApprovalDirectory />} />
               <Route path="/contracts/generate" element={<Generate />} />
               <Route path="/contracts/register" element={<ContractRegister />} />
               <Route path="/contracts/view/:id" element={<ContractView />} />

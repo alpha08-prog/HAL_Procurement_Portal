@@ -1,134 +1,29 @@
-// Read-only views of the AI pipeline outputs (ai/outputs/) for the frontend.
-// The pipeline (ai/) is never modified here — this route only consumes what it wrote.
+// Views of the AI pipeline for the frontend.
+//
+// Two halves:
+//   * read-only — what the Python CLI wrote into ai/outputs/ (notes, PDFs)
+//   * interactive — aiCases.js, where signed-in positions walk the cascade in the browser
+//     and notes are generated live. Mounted here so everything stays under /api/ai/*.
+//
+// The cascade graph and stage metadata used to be duplicated in this file; they now come
+// from server/ai/cascadeGraph.js so the route that publishes the graph and the walker that
+// executes it cannot drift apart.
 import { Router } from 'express';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  AGENCIES, CASCADE_NODES, POST_TENDER_FORMATS, SHORT_CLOSURE_MESSAGE, START, STAGE_META
+} from '../ai/cascadeGraph.js';
+import aiCasesRouter from './aiCases.js';
 
 const router = Router();
+router.use(aiCasesRouter);
 
 const OUT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'ai', 'outputs');
 const CASE_FULL = path.join(OUT, 'case_full.json');
 const PDF_DIR = path.join(OUT, 'pdf');
 const PDF_NAME = /^\d{2}_[A-Za-z_]+\.pdf$/;
-
-// Mirror of ai/stages.py (ALL_STAGES + REF) — note title / sequence / annexure-format ids
-// per stage. The server can't import the Python module directly.
-// Tender Document is prepared directly from Provisioning Checklist + 72 STC clauses without separate note generation.
-const STAGE_META = {
-  provisioning: { seq: 1, phase: 'PROVISIONING', agency: 'Indenting', title: 'Provisioning Note (N1)', ref: 'Provisioning_Note', formats: ['mpr_car'] },
-  emd: { seq: 2, phase: 'TENDERING', agency: 'Tendering', title: 'EMD Stage Acceptance Note (N2)', ref: 'EMD_Stage_Acceptance', formats: [] },
-  tec_req: { seq: 3, phase: 'TECHNICAL', agency: 'Tendering', title: 'TEC Request Note', ref: 'TEC_Req', formats: [] },
-  tec_report: { seq: 4, phase: 'TECHNICAL', agency: 'Indenting', title: 'TEC Report Note', ref: 'TEC_Report', formats: ['tec_statement'] },
-  pbo: { seq: 5, phase: 'COMMERCIAL', agency: 'Tendering', title: 'Price Bid Opening Note', ref: 'PBO_Req', formats: ['tec_statement'] },
-  pnc_req: { seq: 6, phase: 'COMMERCIAL', agency: 'Tendering', title: 'PNC Request Note', ref: 'PNC_Req', formats: ['commercial_eval', 'comparative_statement', 'price_justification', 'pnc_agenda'] },
-  pnc_rec: { seq: 7, phase: 'COMMERCIAL', agency: 'Tendering', title: 'PNC Recommendation Note', ref: 'PNC_Recc', formats: ['pnc_recommendation'] },
-  pp: { seq: 8, phase: 'COMMERCIAL', agency: 'Tendering', title: 'Purchase Proposal Note', ref: 'Purchase_Proposal', formats: ['purchase_proposal'] },
-  po: { seq: 9, phase: 'COMMERCIAL', agency: 'Tendering', title: 'Purchase Order + HAL Contract', ref: 'PO_HAL_Contract', formats: ['purchase_order', 'hal_contract'] },
-  retender: { seq: 10, phase: 'TENDERING', agency: 'Tendering', title: 'Retender Note', ref: 'Retender_Note', formats: [], needBased: true },
-  short_closure: { seq: 11, phase: 'ANY', agency: 'Tendering', title: 'Short Closure Note', ref: 'Short_Closure_Note', formats: [], needBased: true, terminal: true },
-  tec_query: { seq: 12, phase: 'TECHNICAL', agency: 'Indenting', title: 'TEC Query Note', ref: 'TEC_Query_Note', formats: [], needBased: true },
-  advance_payment: { seq: 13, phase: 'COMMERCIAL', agency: 'Tendering', title: 'Advance Payment Note', ref: 'Advance_Payment_Note', formats: ['advance_payment'], needBased: true },
-  po_amendment: { seq: 14, phase: 'COMMERCIAL', agency: 'Tendering', title: 'PO Amendment Note', ref: 'PO_Amendment_Note', formats: [], needBased: true }
-};
-
-// Mirror of ai/cascade.py in API-friendly form. This lets the backend expose the new
-// responsibility cascade without executing the interactive Python CLI.
-const AGENCIES = ['Indenting', 'Tendering'];
-const CASCADE_NODES = {
-  provisioning: {
-    stageNo: 1, owner: 'Indenting', checklist: true, title: 'Provisioning -- raise the indent (N1)',
-    description: 'Tender Document is prepared directly from the Provisioning Checklist and Standard Terms & Conditions (72 STC clauses) without separate note generation.',
-    options: [{ noteId: 'provisioning', label: 'PROVISIONING NOTE (N1)', next: 'tender_opened' }]
-  },
-  tender_opened: {
-    stageNo: 2, owner: 'Tendering', title: 'Tender floated & opened -- post tender opening scenario (N2)',
-    options: [
-      { noteId: 'emd', label: 'EMD STAGE ACCEPTANCE NOTE (N2)', next: 'post_emd' },
-      { noteId: 'tec_req', label: 'TEC REQ NOTE (N2)', next: 'tec_stage' },
-      { noteId: 'retender', label: 'RETENDER NOTE', next: 'post_retender', recommend: 'retender_required' }
-    ]
-  },
-  post_emd: {
-    stageNo: 3, owner: 'Tendering', title: 'After EMD stage acceptance',
-    options: [
-      { noteId: 'tec_req', label: 'TEC REQ NOTE', next: 'tec_stage' },
-      { noteId: 'retender', label: 'RETENDER NOTE', next: 'post_retender', recommend: 'retender_required' },
-      { noteId: 'short_closure', label: 'SHORT CLOSURE NOTE', next: null }
-    ]
-  },
-  post_retender: {
-    stageNo: 2, owner: 'Tendering', title: 'After retender',
-    options: [
-      { noteId: 'tec_req', label: 'TEC REQ NOTE', next: 'tec_stage' },
-      { noteId: 'short_closure', label: 'SHORT CLOSURE NOTE', next: null }
-    ]
-  },
-  tec_stage: {
-    stageNo: 3, owner: 'Indenting', title: 'Technical evaluation -- with the TEC / indenting agency',
-    options: [
-      { noteId: 'tec_query', label: 'TEC QUERY NOTE', next: 'tec_stage' },
-      { noteId: 'tec_report', label: 'TEC REPORT NOTE', next: 'post_tec_report' }
-    ]
-  },
-  post_tec_report: {
-    stageNo: 4, owner: 'Tendering', title: 'TEC report received -- back with the tendering agency',
-    options: [
-      { noteId: 'pbo', label: 'PRICE BID OPENING NOTE', next: 'post_pbo' },
-      { noteId: 'retender', label: 'RETENDER NOTE', next: 'post_retender', recommend: 'retender_required' },
-      { noteId: 'short_closure', label: 'SHORT CLOSURE NOTE', next: null }
-    ]
-  },
-  post_pbo: {
-    stageNo: 4, owner: 'Tendering', title: 'Price bids opened -- L1 established',
-    options: [
-      { noteId: 'pnc_req', label: 'PNC REQ NOTE', next: 'pnc_stage', recommend: 'pnc_required' },
-      { noteId: 'pp', label: 'PP NOTE (straight to proposal, no negotiation)', next: 'post_pp' },
-      { noteId: 'retender', label: 'RETENDER NOTE', next: 'post_retender', recommend: 'retender_required' },
-      { noteId: 'short_closure', label: 'SHORT CLOSURE NOTE', next: null }
-    ]
-  },
-  pnc_stage: {
-    stageNo: 5, owner: 'Tendering', title: 'PNC approved -- negotiation held',
-    options: [
-      { noteId: 'pnc_rec', label: 'PNC RECOMMENDATION', next: 'post_pnc_rec' },
-      { noteId: 'retender', label: 'RETENDER NOTE', next: 'post_retender', recommend: 'retender_required' },
-      { noteId: 'short_closure', label: 'SHORT CLOSURE NOTE', next: null }
-    ]
-  },
-  post_pnc_rec: {
-    stageNo: 6, owner: 'Tendering', title: 'PNC recommendation on file',
-    options: [
-      { noteId: 'pp', label: 'PP NOTE', next: 'post_pp' },
-      { noteId: 'advance_payment', label: 'ADVANCE PAYMENT NOTE', next: 'post_pnc_rec' },
-      { noteId: 'short_closure', label: 'SHORT CLOSURE NOTE', next: null }
-    ]
-  },
-  post_pp: {
-    stageNo: 7, owner: 'Tendering', title: 'Purchase proposal approved by CFA',
-    options: [{ noteId: 'po', label: 'PO + HAL CONTRACT', next: 'post_po' }]
-  },
-  post_po: {
-    stageNo: 8, owner: 'Tendering', title: 'PO / contract placed',
-    options: [
-      { noteId: 'po_amendment', label: 'PO AMENDMENT NOTE', next: 'post_po' },
-      { noteId: 'short_closure', label: 'SHORT CLOSURE NOTE', next: null }
-    ]
-  }
-};
-
-const POST_TENDER_FORMATS = [
-  { id: 'tec_statement', title: 'TEC Report', owner: 'Indenting', requiredFor: 'Price Bid Opening, PNC & Purchase Proposal' },
-  { id: 'commercial_eval', title: 'Commercial Evaluation Report', owner: 'Tendering', requiredFor: 'PNC & Purchase Proposal' },
-  { id: 'comparative_statement', title: 'Comparative Statement', owner: 'Tendering', requiredFor: 'PNC & Purchase Proposal' },
-  { id: 'price_justification', title: 'Price Justification Statement', owner: 'Tendering', requiredFor: 'PNC & Purchase Proposal' },
-  { id: 'pnc_agenda', title: 'Agenda of Negotiation', owner: 'Tendering', requiredFor: 'PNC Approval & PNC Recommendation' },
-  { id: 'pnc_recommendation', title: 'PNC Recommendation', owner: 'Tendering', requiredFor: 'Purchase Proposal' },
-  { id: 'purchase_proposal', title: 'Purchase Proposal', owner: 'Tendering', requiredFor: 'Purchase Order / Contract' },
-  { id: 'purchase_order', title: 'Purchase Order', owner: 'Tendering', requiredFor: 'Contract / PO Amendment' },
-  { id: 'hal_contract', title: 'Contract', owner: 'Tendering', requiredFor: 'PO Amendment' },
-  { id: 'advance_payment', title: 'Advance Payment Format', owner: 'Tendering', requiredFor: 'Advance Payment Note / Purchase Proposal' }
-];
 
 // full_output parity with ai/case_object.py: carry-forward prose + the stage's new section.
 function fullOutput(cf, gen, sid) {
@@ -218,15 +113,16 @@ router.get('/notes', (req, res) => {
   res.json({ exists: true, item: data.data?.item_description ?? null, notes, skipped: data.skipped || [] });
 });
 
-// GET /api/ai/cascade — responsibility graph and stage metadata from the new AI folder.
+// GET /api/ai/cascade — the responsibility graph and stage metadata, straight from
+// server/ai/cascadeGraph.js (one copy, shared with the interactive walker).
 router.get('/cascade', (req, res) => {
   res.json({
-    start: 'provisioning',
+    start: START,
     agencies: AGENCIES,
     stages: STAGE_META,
     nodes: CASCADE_NODES,
     postTenderFormats: POST_TENDER_FORMATS,
-    shortClosureMessage: 'Requirement is closed and no more further action on this requisition no.'
+    shortClosureMessage: SHORT_CLOSURE_MESSAGE
   });
 });
 

@@ -1,4 +1,4 @@
-`"""Responsibility cascade -- a machine-readable copy of
+"""Responsibility cascade -- a machine-readable copy of
 
     sampleData/HAL PURCHASE FORMATS dt 22.06.2026/
         Note & Format Generation Stages and responsibility cascadeing.xlsx

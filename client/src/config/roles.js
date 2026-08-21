@@ -65,6 +65,17 @@ export const SCREENS = [
     visibleTo: ['indentor', 'purchase_maker', 'purchase_officer', 'hod_imm', 'admin']
   },
 
+  // Module F — the live AI cascade. A case is a shared file held by one of the two
+  // agencies at a time; every role can open the queue and read a file, but only positions
+  // belonging to the holding agency can raise its next note (enforced server-side, see
+  // server/ai/access.js). /ai-cases/:id is a detail route, deliberately not listed.
+  {
+    path: '/ai-cases',
+    title: 'AI Procurement Cases',
+    navLabel: 'AI Cases',
+    visibleTo: ALL_ROLES
+  },
+
   // Module C — e-File Noting Workflow. Every HAL user can initiate/route notes, so
   // these are visible to all roles. `group` drives the nav divider in Header.
   {
@@ -153,6 +164,45 @@ export const SCREENS = [
     title: 'Contract Terms & Conditions Library',
     navLabel: 'Clause Library',
     group: 'Contracts',
+    visibleTo: ALL_ROLES
+  },
+
+  // Module E — internal approval chains. Filling the checklist and starting a file belong
+  // to the indentor and the purchase chain; the directory and the bid evaluation are
+  // readable by everyone. /approvals/chain/:id is a detail route, deliberately not listed.
+  {
+    path: '/approvals/intake',
+    title: 'Indent Intake — Checklist',
+    navLabel: 'Indent Intake',
+    group: 'Approvals',
+    visibleTo: ['indentor', 'purchase_maker', 'purchase_officer', 'hod_imm', 'admin']
+  },
+  {
+    path: '/approvals/chains',
+    title: 'Approval Files',
+    navLabel: 'Approval Files',
+    group: 'Approvals',
+    visibleTo: ALL_ROLES
+  },
+  {
+    path: '/approvals/committees',
+    title: 'Committees — TEC & PNC',
+    navLabel: 'Committees',
+    group: 'Approvals',
+    visibleTo: ['indentor', 'purchase_maker', 'purchase_officer', 'hod_imm', 'admin']
+  },
+  {
+    path: '/approvals/bids',
+    title: 'Bid Evaluation',
+    navLabel: 'Bid Evaluation',
+    group: 'Approvals',
+    visibleTo: ALL_ROLES
+  },
+  {
+    path: '/approvals/directory',
+    title: 'Personnel Directory',
+    navLabel: 'Directory',
+    group: 'Approvals',
     visibleTo: ALL_ROLES
   }
 ];

@@ -18,7 +18,12 @@ npm run dev   # starts mock API on :3001 and Vite on :5173
 
 Open http://localhost:5173. The Vite dev server proxies `/api` to Express.
 
-**New here?** `WORKFLOW_GUIDE.md` walks through every screen and button of the AI
+**New here? Start with [`USER_GUIDE.md`](USER_GUIDE.md).** It covers how to run the portal
+(including the mistakes everyone makes once) and then every flow in detail — who acts, what
+they may and may not do, and why the system refuses what it refuses. It is the guide to the
+whole portal, including the Approvals and AI Cases modules.
+
+`WORKFLOW_GUIDE.md` goes deeper on the older parts: every screen and button of the AI
 Documents viewer, the e-File Noting workflow and Contract Generation — including which
 demo account shows which feature and a suggested 15-minute demo order.
 

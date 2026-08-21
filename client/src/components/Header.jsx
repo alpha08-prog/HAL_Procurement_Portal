@@ -60,9 +60,11 @@ export default function Header() {
   const paymentScreens = screens.filter((s) => !s.group);
   const notingScreens = screens.filter((s) => s.group === 'Noting');
   const contractScreens = screens.filter((s) => s.group === 'Contracts');
+  const approvalScreens = screens.filter((s) => s.group === 'Approvals');
 
   const isNotingActive = location.pathname.startsWith('/noting');
   const isContractsActive = location.pathname.startsWith('/contracts');
+  const isApprovalsActive = location.pathname.startsWith('/approvals');
 
   return (
     <header className="app-header">
@@ -146,6 +148,18 @@ export default function Header() {
             >
               Organisation
             </NavLink>
+          </>
+        )}
+
+        {/* Approvals dropdown — internal approval chains, committees, bid evaluation */}
+        {approvalScreens.length > 0 && (
+          <>
+            <span className="app-nav-divider" aria-hidden="true" />
+            <NavDropdown label="Approvals" isActive={isApprovalsActive}>
+              {approvalScreens.map((s) => (
+                <Link key={s.path} to={s.path}>{s.navLabel}</Link>
+              ))}
+            </NavDropdown>
           </>
         )}
 

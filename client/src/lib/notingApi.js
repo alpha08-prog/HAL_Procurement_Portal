@@ -4,8 +4,9 @@ import { apiFetch } from './api.js';
 
 async function getJson(path) {
   const res = await apiFetch(path);
-  if (!res.ok) throw new Error(`API error ${res.status}`);
-  return res.json();
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(data?.error || `API error ${res.status}`);
+  return data;
 }
 
 async function postJson(path, payload) {
@@ -15,7 +16,13 @@ async function postJson(path, payload) {
     body: JSON.stringify(payload)
   });
   const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(data?.error || `API error ${res.status}`);
+  if (!res.ok) {
+    const err = new Error(data?.error || `API error ${res.status}`);
+    err.status = res.status;
+    err.needsOverride = Boolean(data?.needsOverride);
+    err.advised = data?.advised ?? null;
+    throw err;
+  }
   return data;
 }
 
@@ -32,6 +39,12 @@ export const initiateFile = (payload) => postJson('/api/noting/files', payload);
 export const addNote = (filePk, payload) => postJson(`/api/noting/files/${filePk}/notes`, payload);
 export const saveDraft = (txnId, payload) => postJson(`/api/noting/notes/${encodeURIComponent(txnId)}/draft`, payload);
 export const sendForCheck = (txnId, payload) => postJson(`/api/noting/notes/${encodeURIComponent(txnId)}/send-check`, payload);
+
+// AI Cascade integration
+export const fetchAiCascade = (txnId) => getJson(`/api/noting/notes/${encodeURIComponent(txnId)}/ai-cascade`);
+export const fetchAiNoteForm = (txnId, noteId) => getJson(`/api/noting/notes/${encodeURIComponent(txnId)}/ai-form/${noteId}`);
+export const raiseAiNote = (txnId, payload) => postJson(`/api/noting/notes/${encodeURIComponent(txnId)}/ai-raise`, payload);
+export const handOverAiCase = (txnId, payload) => postJson(`/api/noting/notes/${encodeURIComponent(txnId)}/ai-handover`, payload);
 
 // Routing (Phase 2)
 export const fetchInbox = () => getJson('/api/noting/inbox');
@@ -82,3 +95,4 @@ export const fetchUpcoming = () => getJson('/api/noting/upcoming');
 export const fetchDashboard = () => getJson('/api/noting/dashboard');
 export const delegateAuthority = (payload) => postJson('/api/noting/delegation', payload);
 export const cancelDelegation = () => postJson('/api/noting/delegation/cancel', {});
+

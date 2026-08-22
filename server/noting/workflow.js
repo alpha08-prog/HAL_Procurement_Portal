@@ -244,7 +244,8 @@ export function addNote(file, me, { stageId = null, title, body = '', classifica
   }
   const isCaseMember =
     file.initiator_id === me.id ||
-    all('SELECT id FROM notes WHERE file_pk = ?', file.id).some((n) => participants(n.id).has(me.id));
+    all('SELECT id FROM notes WHERE file_pk = ?', file.id).some((n) => participants(n.id).has(me.id)) ||
+    Boolean(file.ai_case_id);
   if (!isCaseMember) fail(403, 'Only a member of this case can add the next note');
 
   const today = nowISO();

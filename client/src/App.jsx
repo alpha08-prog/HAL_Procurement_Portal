@@ -3,6 +3,7 @@ import RequireAuth from './components/RequireAuth.jsx';
 import { firstScreenForRole } from './config/roles.js';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { RoleProvider, useRole } from './context/RoleContext.jsx';
+import PortalHub from './screens/PortalHub/index.jsx';
 import AiDocuments from './screens/AiDocuments/index.jsx';
 import ForwardAdvice from './screens/ForwardAdvice/index.jsx';
 import HodApproval from './screens/HodApproval/index.jsx';
@@ -36,8 +37,7 @@ import RvInbox from './screens/RvInbox/index.jsx';
 
 // Lands an authenticated user on the first screen their role can see.
 function HomeRedirect() {
-  const { role } = useRole();
-  return <Navigate to={firstScreenForRole(role)} replace />;
+  return <Navigate to="/portal" replace />;
 }
 
 export default function App() {
@@ -48,6 +48,7 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route element={<RequireAuth />}>
+              <Route path="/portal" element={<PortalHub />} />
               <Route path="/rv-inbox" element={<RvInbox />} />
               <Route path="/payment-advice" element={<PaymentAdvice />} />
               <Route path="/forward-advice" element={<ForwardAdvice />} />

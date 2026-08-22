@@ -217,8 +217,7 @@ export function canAccessPath(role, path) {
   return screensForRole(role).some((s) => s.path === path);
 }
 
-// Where a role should land after login / on "/". Payment Register is visible to all,
-// so it's a safe fallback for roles without a dedicated first screen.
+// Where a role should land after login / on "/". Portal Hub is the main launchpad for all roles.
 export function firstScreenForRole(role) {
-  return screensForRole(role)[0]?.path ?? '/payment-register';
+  return '/portal';
 }

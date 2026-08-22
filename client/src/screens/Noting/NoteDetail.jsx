@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Attachments from '../../components/Attachments.jsx';
 import Clarifications from '../../components/Clarifications.jsx';
 import RoutingTimeline from '../../components/RoutingTimeline.jsx';
@@ -14,6 +14,8 @@ import {
 import {
   addNote,
   decideNote,
+  fetchAiCascade,
+  fetchAiNoteForm,
   fetchAlerts,
   fetchGrants,
   fetchHistory,
@@ -23,6 +25,8 @@ import {
   fetchSummary,
   forwardNote,
   grantAccess,
+  handOverAiCase,
+  raiseAiNote,
   retractNote,
   retrieveNote,
   saveDraft,
@@ -30,8 +34,20 @@ import {
   sendForCheck
 } from '../../lib/notingApi.js';
 
+const STAGE_STEPS = [
+  { id: 'provisioning', no: 1, label: '1. Provisioning (N1)' },
+  { id: 'tender_opened', no: 2, label: '2. Tender Opened (N2)' },
+  { id: 'tec_stage', no: 3, label: '3. Technical (TEC)' },
+  { id: 'post_pbo', no: 4, label: '4. Commercial (PBO)' },
+  { id: 'pnc_stage', no: 5, label: '5. Negotiation (PNC)' },
+  { id: 'post_pnc_rec', no: 6, label: '6. Recommendation' },
+  { id: 'post_pp', no: 7, label: '7. Proposal (PP)' },
+  { id: 'post_po', no: 8, label: '8. PO / Contract' }
+];
+
 export default function NoteDetail() {
   const { txnId } = useParams();
+  const navigate = useNavigate();
   const [sp] = useSearchParams();
   const grantToken = sp.get('grant');
   const [data, setData] = useState(null);
@@ -43,12 +59,24 @@ export default function NoteDetail() {
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
+
+  // AI Cascade state
+  const [aiCascade, setAiCascade] = useState(null);
+  const [aiPick, setAiPick] = useState(null);
+  const [aiForm, setAiForm] = useState(null);
+  const [aiFields, setAiFields] = useState({});
+  const [aiConfirm, setAiConfirm] = useState(null);
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [showFormatsModal, setShowFormatsModal] = useState(false);
+  const [selectedFormat, setSelectedFormat] = useState(null);
+  const [aiBusy, setAiBusy] = useState(false);
   
   const [showCoverPage, setShowCoverPage] = useState(true);
   const [isEditingDraft, setIsEditingDraft] = useState(false);
   const [draftTitle, setDraftTitle] = useState('');
   const [draftClassification, setDraftClassification] = useState('normal');
   const [accordionOpen, setAccordionOpen] = useState({
+    cascade: true,
     routing: true,
     attachments: true,
     clarifications: false,
@@ -62,6 +90,12 @@ export default function NoteDetail() {
   const [generatedShareLink, setGeneratedShareLink] = useState(null);
   const [busy, setBusy] = useState(false);
 
+  const loadCascade = useCallback(() => {
+    fetchAiCascade(txnId)
+      .then((d) => setAiCascade(d))
+      .catch((err) => console.warn('Could not load AI cascade state:', err));
+  }, [txnId]);
+
   const load = useCallback(() => {
     fetchNote(txnId, grantToken)
       .then((d) => {
@@ -74,7 +108,8 @@ export default function NoteDetail() {
     fetchHistory(txnId).then((d) => setSteps(d.history || [])).catch(() => setSteps([]));
     fetchGrants(txnId).then((d) => setGrants(d.grants || [])).catch(() => setGrants([]));
     fetchAlerts().then((d) => setAlerts((d.alerts || []).filter((a) => a.txn_id === txnId))).catch(() => setAlerts([]));
-  }, [txnId, grantToken]);
+    loadCascade();
+  }, [txnId, grantToken, loadCascade]);
 
   useEffect(() => {
     load();
@@ -85,7 +120,7 @@ export default function NoteDetail() {
   if (error && !data) return <div className="grid-empty">Could not load e-file: {error}</div>;
   if (!data) return <div className="grid-empty">Loading e-file…</div>;
 
-  const { note, file, initiator, custodian } = data;
+  const { note, file, initiator, custodian, allNotes = [] } = data;
   const isHolder = me && me.id === note.custodian_id;
   const routable = ['draft', 'in_check', 'routed'].includes(note.status);
   const decidable = ['routed', 'in_check'].includes(note.status);
@@ -98,7 +133,7 @@ export default function NoteDetail() {
   // Check if current user decided this note and can retrieve it from cabinet
   const canRetrieve = me && closed && note.decided_by === me.id;
 
-  // Prior holders for send-back restriction (initiator + prior senders)
+  // Prior holders for send-back restriction
   const priorHolderIds = new Set([note.initiator_id].filter(Boolean));
   steps.forEach((s) => {
     if (s.from_id) priorHolderIds.add(s.from_id);
@@ -205,6 +240,77 @@ export default function NoteDetail() {
     }
   };
 
+  // AI Cascade actions
+  const handleOpenAiModal = async (noteId) => {
+    setError(null);
+    setAiConfirm(null);
+    setAiPick(noteId);
+    setAiForm(null);
+    setShowAiModal(true);
+    try {
+      const f = await fetchAiNoteForm(txnId, noteId);
+      setAiForm(f);
+      setAiFields(Object.fromEntries(f.fields.map((x) => [x.key, x.value])));
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
+  const handleGenerateAiNote = async (override = false) => {
+    setAiBusy(true);
+    setError(null);
+    try {
+      const out = await raiseAiNote(txnId, {
+        noteId: aiPick,
+        fields: aiFields,
+        override
+      });
+
+      setShowAiModal(false);
+      setAiPick(null);
+      setAiForm(null);
+      setAiConfirm(null);
+
+      if (out.skipped) {
+        setSuccessMsg(`Note was skipped — rule ${out.branch?.rule} evaluated to false.`);
+        loadCascade();
+      } else {
+        setSuccessMsg(`✓ Successfully generated and raised Note ${out.note?.seq || ''} (${out.result?.title || aiPick})!`);
+        if (out.txnId) {
+          navigate(`/noting/note/${out.txnId}`);
+        } else {
+          load();
+        }
+      }
+    } catch (e) {
+      if (e.needsOverride) {
+        setAiConfirm({ message: e.message, advised: e.advised });
+      } else {
+        setError(e.message);
+      }
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
+  const handleAiHandover = async (toAgency) => {
+    setAiBusy(true);
+    setError(null);
+    try {
+      const out = await handOverAiCase(txnId, { toAgency });
+      setSuccessMsg(`✓ File custody successfully transferred to the ${out.case?.holdingAgency || toAgency} Agency.`);
+      loadCascade();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
+  const kase = aiCascade?.case;
+  const permissions = kase?.permissions;
+  const currentStageNo = kase?.node?.stageNo || 1;
+
   return (
     <section className="screen">
       {/* Leak Alerts Banner */}
@@ -216,7 +322,7 @@ export default function NoteDetail() {
 
       {successMsg && (
         <div className="banner banner-success" style={{ marginBottom: 12 }}>
-          ✓ {successMsg}
+          {successMsg}
         </div>
       )}
 
@@ -238,6 +344,16 @@ export default function NoteDetail() {
           >
             {showCoverPage ? 'Hide Cover Page' : 'Show Cover Page'}
           </button>
+          {kase && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ padding: '2px 8px', fontSize: 11 }}
+              onClick={() => setShowFormatsModal(true)}
+            >
+              📑 Formats on File ({kase.formatsOnFile?.length || 0})
+            </button>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {canRetract && (
@@ -282,6 +398,47 @@ export default function NoteDetail() {
           <StatusBadge value={note.status} />
         </div>
       </div>
+
+      {/* AI Responsibility Cascade Progression Bar */}
+      {kase && (
+        <div className="ai-cascade-banner" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '12px 16px', marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 16 }}>⚡</span>
+              <strong style={{ fontSize: 13, color: 'var(--accent)' }}>HAL AI Responsibility Cascade Engine</strong>
+              <span className={`pill ${kase.holdingAgency === 'Indenting' ? 'pill-warning' : 'pill-info'}`}>
+                Held by: {kase.holdingAgency} Agency
+              </span>
+              <span className="pill pill-neutral">Handovers: {kase.handovers || 0}</span>
+            </div>
+            {permissions?.canHandOver && (
+              <button
+                type="button"
+                className="btn"
+                style={{ padding: '4px 10px', fontSize: 11 }}
+                onClick={() => handleAiHandover(permissions.stageOwner || (kase.holdingAgency === 'Indenting' ? 'Tendering' : 'Indenting'))}
+                disabled={aiBusy}
+              >
+                🔄 Move File to {permissions.stageOwner || (kase.holdingAgency === 'Indenting' ? 'Tendering' : 'Indenting')} Agency
+              </button>
+            )}
+          </div>
+
+          {/* Stepper tracker */}
+          <div className="ef-cascade-stepper">
+            {STAGE_STEPS.map((st) => {
+              const isActive = currentStageNo === st.no;
+              const isPast = currentStageNo > st.no;
+              return (
+                <div key={st.id} className={`ef-cascade-step ${isActive ? 'active' : ''} ${isPast ? 'completed' : ''}`}>
+                  <div className="step-circle">{isPast ? '✓' : st.no}</div>
+                  <div className="step-label">{st.label}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {generatedShareLink && (
         <div className="banner banner-restricted" style={{ marginBottom: 12 }}>
@@ -334,11 +491,31 @@ export default function NoteDetail() {
             </div>
           )}
 
-          {/* Routing Trail / Note History Tabs */}
-          <div className="ef-routing-tabs">
-            <button type="button" className="ef-routing-tab-arrow">◄</button>
-            <button type="button" className="ef-routing-tab active">N{note.seq} ({note.title})</button>
-            <button type="button" className="ef-routing-tab-arrow">►</button>
+          {/* Multi-Note Tabs: All Notes on this File */}
+          <div className="ef-routing-tabs" style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {allNotes.length > 0 ? (
+              allNotes.map((n) => (
+                <Link
+                  key={n.txn_id}
+                  to={`/noting/note/${n.txn_id}`}
+                  className={`ef-routing-tab ${n.txn_id === txnId ? 'active' : ''}`}
+                  style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                >
+                  <span>N{n.seq}: {n.title}</span>
+                  <span style={{
+                    fontSize: 9,
+                    padding: '1px 5px',
+                    borderRadius: 4,
+                    background: n.status === 'approved' ? '#e2f4e8' : n.status === 'draft' ? '#fdf3d7' : '#e3eefb',
+                    color: n.status === 'approved' ? '#1e7d43' : n.status === 'draft' ? '#8a6100' : '#1d5fa7'
+                  }}>
+                    {n.status}
+                  </span>
+                </Link>
+              ))
+            ) : (
+              <div className="ef-routing-tab active">N{note.seq} ({note.title})</div>
+            )}
           </div>
 
           {/* Existing Note Content Display / Draft Edit Mode */}
@@ -479,6 +656,51 @@ export default function NoteDetail() {
               </div>
             </div>
           )}
+
+          {/* AI Cascade Next Note Actions */}
+          {kase && kase.status === 'open' && kase.options?.length > 0 && (
+            <div className="form-section" style={{ marginTop: 24, border: '1px solid var(--accent-soft)', background: '#fafcff', borderRadius: 'var(--radius)', padding: 16 }}>
+              <div className="form-section-title" style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>⚡ AI Cascade: Allowed Notes at Current Stage ({kase.node?.title || 'Next Step'})</span>
+                <span className="pill pill-info">{kase.holdingAgency} Agency</span>
+              </div>
+              <p className="field-hint" style={{ marginBottom: 12 }}>
+                The HAL Responsibility Cascade determines valid notes at each milestone. Choose a note below to draft it with the language model and attach its deterministic annexures to this e-file.
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+                {kase.options.map((opt) => (
+                  <div key={opt.noteId} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 12, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--accent)', marginBottom: 4 }}>
+                        {opt.label}
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                        {opt.advice?.advised && <span className="pill pill-warning">advised — {opt.advice.rule}()</span>}
+                        {opt.needBased && <span className="tag">need-based</span>}
+                        {opt.terminal && <span className="pill pill-danger">closes file</span>}
+                      </div>
+                      {opt.advice?.note && <div className="field-hint" style={{ fontSize: 11, marginBottom: 6 }}>{opt.advice.note}</div>}
+                      {opt.formats?.length > 0 && (
+                        <div className="field-hint" style={{ fontSize: 11 }}>
+                          📄 Formats: {opt.formats.join(', ')}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ marginTop: 12, width: '100%', fontSize: 12 }}
+                      disabled={aiBusy}
+                      onClick={() => handleOpenAiModal(opt.noteId)}
+                    >
+                      Draft &amp; Raise with AI →
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Accordion Panel */}
@@ -508,6 +730,26 @@ export default function NoteDetail() {
                 <ul>
                   {summary.facts?.map((f, i) => (
                     <li key={i}>{f}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Formats on File Accordion */}
+          {kase && kase.formatsOnFile?.length > 0 && (
+            <div className="ef-accordion-item open">
+              <div className="ef-accordion-trigger" style={{ cursor: 'pointer' }} onClick={() => setShowFormatsModal(true)}>
+                <span>📑 Formats on File ({kase.formatsOnFile.length})</span>
+                <span className="arrow">↗</span>
+              </div>
+              <div className="ef-accordion-content" style={{ display: 'block' }}>
+                <ul style={{ paddingLeft: 16, margin: 0, fontSize: 11 }}>
+                  {kase.formatsOnFile.map((f) => (
+                    <li key={f.id} style={{ marginBottom: 4 }}>
+                      <strong>{f.title}</strong>{' '}
+                      <span className="tag" style={{ fontSize: 9 }}>{f.owner}</span>
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -576,6 +818,176 @@ export default function NoteDetail() {
         </div>
       </div>
 
+      {/* AI Note Generator Modal */}
+      {showAiModal && (
+        <div className="modal-backdrop">
+          <div className="modal" style={{ maxWidth: 680, maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="modal-header">
+              <h2>⚡ AI Note Generator: {aiForm?.title || aiPick}</h2>
+              <button type="button" className="btn-close" onClick={() => setShowAiModal(false)}>✕</button>
+            </div>
+
+            <div className="modal-body">
+              {!aiForm ? (
+                <div className="grid-empty">Loading note inputs and seeded facts…</div>
+              ) : (
+                <>
+                  <div className="field-hint" style={{ marginBottom: 12 }}>
+                    {aiForm.hint}
+                  </div>
+
+                  {aiForm.carryFrom && (
+                    <div className="banner banner-info" style={{ marginBottom: 12 }}>
+                      ℹ️ Carries forward prose from <strong>{aiForm.carryFrom}</strong> in code. Only new fields below are drafted by the language model.
+                    </div>
+                  )}
+
+                  {aiForm.prereqWarnings?.length > 0 && (
+                    <div className="banner banner-warning" style={{ marginBottom: 12 }}>
+                      <strong>Prerequisite Formats Pending (Warning):</strong>
+                      <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                        {aiForm.prereqWarnings.map((w) => (
+                          <li key={w.id}>
+                            {w.title} — owned by {w.owner} Agency {w.required ? '(Required)' : '(Optional)'}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {aiConfirm && (
+                    <div className="banner banner-restricted" style={{ marginBottom: 12 }}>
+                      ⚠️ {aiConfirm.message}
+                      <div style={{ marginTop: 8 }}>
+                        <button
+                          type="button"
+                          className="btn"
+                          style={{ fontSize: 11 }}
+                          onClick={() => handleGenerateAiNote(true)}
+                          disabled={aiBusy}
+                        >
+                          Raise Anyway (Record Advisory Override)
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="form-grid">
+                    {aiForm.fields?.map((f) => (
+                      <label className="field-label field-wide" key={f.key}>
+                        <span>
+                          {f.label} {f.seeded && <span className="tag" style={{ fontSize: 9 }}>seeded</span>}
+                        </span>
+                        {f.list ? (
+                          <textarea
+                            className="field-input"
+                            rows={2}
+                            value={aiFields[f.key] ?? ''}
+                            placeholder="semicolons separate list items"
+                            onChange={(e) => setAiFields({ ...aiFields, [f.key]: e.target.value })}
+                          />
+                        ) : (
+                          <input
+                            className="field-input"
+                            value={aiFields[f.key] ?? ''}
+                            onChange={(e) => setAiFields({ ...aiFields, [f.key]: e.target.value })}
+                          />
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="btn"
+                disabled={aiBusy || !aiForm}
+                onClick={() => handleGenerateAiNote(false)}
+              >
+                {aiBusy ? 'Generating with AI (SLM)…' : '✨ Generate Note & Add to File'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={aiBusy}
+                onClick={() => setShowAiModal(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Formats on File Modal */}
+      {showFormatsModal && (
+        <div className="modal-backdrop">
+          <div className="modal" style={{ maxWidth: 750, maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="modal-header">
+              <h2>📑 Formats on File ({kase?.formatsOnFile?.length || 0})</h2>
+              <button type="button" className="btn-close" onClick={() => setShowFormatsModal(false)}>✕</button>
+            </div>
+
+            <div className="modal-body">
+              {(!kase?.formatsOnFile || kase.formatsOnFile.length === 0) ? (
+                <div className="grid-empty">No annexure formats generated yet.</div>
+              ) : (
+                <div>
+                  <table className="mini-table" style={{ width: '100%', marginBottom: 16 }}>
+                    <thead>
+                      <tr>
+                        <th>Annexure Name</th>
+                        <th>Owning Agency</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {kase.formatsOnFile.map((f) => (
+                        <tr key={f.id}>
+                          <td style={{ fontWeight: 600 }}>{f.title}</td>
+                          <td><span className="tag">{f.owner || '—'}</span></td>
+                          <td>
+                            <button
+                              type="button"
+                              className="btn btn-inline"
+                              style={{ padding: '2px 8px', fontSize: 11 }}
+                              onClick={() => setSelectedFormat(selectedFormat?.id === f.id ? null : f)}
+                            >
+                              {selectedFormat?.id === f.id ? 'Hide Data' : 'View Data'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {selectedFormat && (
+                    <div style={{ background: '#f8fafc', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 12 }}>
+                      <h4 style={{ margin: '0 0 8px 0', fontSize: 13, color: 'var(--accent)' }}>
+                        Annexure Details: {selectedFormat.title}
+                      </h4>
+                      <pre style={{ fontSize: 11, background: '#fff', padding: 10, borderRadius: 4, overflowX: 'auto', border: '1px solid var(--border)' }}>
+                        {JSON.stringify(selectedFormat.fields, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowFormatsModal(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Member Picker Modal */}
       <MemberPickerModal
         isOpen={showMemberPicker}
         onClose={() => setShowMemberPicker(false)}

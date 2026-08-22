@@ -22,6 +22,7 @@ function ensureColumn(table, column, decl) {
   if (!cols.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${decl}`);
 }
 ensureColumn('files', 'line_no', 'TEXT');
+ensureColumn('files', 'ai_case_id', 'INTEGER');
 ensureColumn('members', 'grade', 'TEXT');
 ensureColumn('attachments', 'storage_path', 'TEXT');
 ensureColumn('attachments', 'file_size_bytes', 'INTEGER');

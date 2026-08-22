@@ -12,18 +12,19 @@ export default function Initiate() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [source, setSource] = useState('ai');
+  const [sourceCase, setSourceCase] = useState('nvb');
   const [ai, setAi] = useState(null);
   const [files, setFiles] = useState([]);
   const [members, setMembers] = useState([]);
   
   const [form, setForm] = useState({
-    title: '',
+    title: 'Procurement of Night Vision Binoculars for HAL Nashik Division',
     kind: 'CAR',
-    carNo: '',
+    carNo: 'CAR/25/229',
     classification: 'normal',
     priority: 'Medium',
-    noteTitle: '',
-    stageId: '',
+    noteTitle: 'Provisioning Note (N1)',
+    stageId: 'provisioning',
     body: '',
     parentFileId: '',
     lineNo: ''
@@ -43,7 +44,19 @@ export default function Initiate() {
   useEffect(() => {
     let cancelled = false;
     fetchAiNotes()
-      .then((d) => !cancelled && setAi(d))
+      .then((d) => {
+        if (cancelled) return;
+        setAi(d);
+        if (d?.exists && d.notes?.length > 0) {
+          const n1 = d.notes[0];
+          setForm((prev) => ({
+            ...prev,
+            title: prev.title || d.item || 'Procurement Case',
+            noteTitle: n1.title || 'Provisioning Note (N1)',
+            body: `<p>${(n1.fullOutput || n1.newSection || '').replace(/\n/g, '<br/>')}</p>`
+          }));
+        }
+      })
       .catch(() => !cancelled && setAi({ exists: false, notes: [] }));
     fetchFiles()
       .then((d) => !cancelled && setFiles(d.files))
@@ -55,6 +68,27 @@ export default function Initiate() {
   }, []);
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+
+  const handleSourceCaseChange = (sc) => {
+    setSourceCase(sc);
+    if (sc === 'nvb') {
+      set({
+        title: 'Procurement of Night Vision Binoculars for HAL Nashik Division',
+        kind: 'CAR',
+        carNo: 'CAR/25/229',
+        noteTitle: 'Provisioning Note (N1)',
+        stageId: 'provisioning'
+      });
+    } else if (sc === 'fixture') {
+      set({
+        title: 'Procurement of Aircraft Hydraulic Spares',
+        kind: 'MPR',
+        carNo: 'MPR/26/104',
+        noteTitle: 'Provisioning Note (N1)',
+        stageId: 'provisioning'
+      });
+    }
+  };
 
   const pickAiNote = (stageId) => {
     const n = ai?.notes?.find((x) => x.stageId === stageId);
@@ -110,6 +144,7 @@ export default function Initiate() {
         kind: form.kind,
         carNo: form.kind === 'standalone' ? undefined : form.carNo,
         source,
+        sourceCase: source === 'ai' ? sourceCase : undefined,
         stageId: source === 'ai' ? form.stageId : undefined,
         body: form.body,
         classification: form.classification,
@@ -186,7 +221,7 @@ export default function Initiate() {
                 className={'btn' + (source === 'ai' ? '' : ' btn-secondary')}
                 onClick={() => setSource('ai')}
               >
-                AI-drafted
+                AI-drafted (Pipeline)
               </button>
               <button
                 type="button"
@@ -200,23 +235,18 @@ export default function Initiate() {
             {source === 'ai' && (
               <div className="form-grid" style={{ marginTop: 'var(--space-4)' }}>
                 <label className="field-wide">
-                  <span className="field-label">AI-generated note template</span>
-                  {aiReady ? (
-                    <select
-                      className="field-input"
-                      value={form.stageId}
-                      onChange={(e) => pickAiNote(e.target.value)}
-                    >
-                      <option value="">— select a generated note —</option>
-                      {ai.notes.map((n) => (
-                        <option key={n.stageId} value={n.stageId}>
-                          {String(n.seq).padStart(2, '0')} · {n.title}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="field-hint">No AI outputs found — draft manually.</div>
-                  )}
+                  <span className="field-label">Procurement Requisition Source</span>
+                  <select
+                    className="field-input"
+                    value={sourceCase}
+                    onChange={(e) => handleSourceCaseChange(e.target.value)}
+                  >
+                    <option value="nvb">Night Vision Binoculars (CAR/25/229 — ₹25 Lakhs) [HAL Nashik Sample Case]</option>
+                    <option value="fixture">Aircraft Hydraulic Spares (MPR/26/104 — ₹40 Lakhs) [Fabricated Case]</option>
+                  </select>
+                  <span className="field-hint" style={{ marginTop: 4, display: 'block' }}>
+                    ✨ Connected to the HAL AI Responsibility Cascade engine. Initialises N1 Provisioning Note with automatic MPR/CAR annexure formatting and activates stage-by-stage progression.
+                  </span>
                 </label>
               </div>
             )}

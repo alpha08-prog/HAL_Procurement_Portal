@@ -18,16 +18,16 @@ export default function PaDocumentView({ pa, backPath, remarkPanel, actionBar, o
       <div className="pa-doc-toolbar no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
         <div style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--color-primary, #1e3a8a)' }}>
           {pa.status === 'sent_to_hod'
-            ? '📑 Payment Recommendation Report - CPPC (For HOD Approval & Stamp)'
+            ? 'Payment Recommendation Report - CPPC (For HOD Approval & Stamp)'
             : pa.status === 'stamped_by_hod'
-            ? '📑 Payment Recommendation Report - CPPC (HOD Stamped — For CPPC Dispatch)'
+            ? 'Payment Recommendation Report - CPPC (HOD Stamped — For CPPC Dispatch)'
             : pa.status === 'sent_to_cppc' || pa.status === 'paid'
-            ? '📑 Payment Recommendation Report - CPPC'
+            ? 'Payment Recommendation Report - CPPC'
             : pa.status === 'at_payment_desk'
-            ? '📄 Payment Advice Document (From Payment Desk to HOD)'
+            ? 'Payment Advice Document (From Payment Desk to HOD)'
             : pa.status === 'forwarded_to_officer'
-            ? '📄 Payment Advice Document (Officer Verification)'
-            : '📄 Payment Advice Document'}
+            ? 'Payment Advice Document (Officer Verification)'
+            : 'Payment Advice Document'}
         </div>
         <button type="button" className="btn btn-secondary" onClick={() => window.print()}>
           Download / Print

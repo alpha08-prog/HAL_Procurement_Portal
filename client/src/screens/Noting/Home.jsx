@@ -54,7 +54,7 @@ export default function Home() {
     <section className="screen">
       <div className="ef-dashboard-header" style={{ marginBottom: 16 }}>
         <div>
-          <h1 className="screen-title" style={{ margin: 0 }}>📊 E-FILE DASHBOARD</h1>
+          <h1 className="screen-title" style={{ margin: 0 }}>E-FILE DASHBOARD</h1>
           <p className="screen-sub" style={{ margin: 0 }}>
             {data?.me ? `Welcome ${data.me.name} — ${data.me.designation} (${data.me.pb})` : 'Performance & Workload Analytics'}
           </p>

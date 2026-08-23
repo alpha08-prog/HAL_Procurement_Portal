@@ -36,8 +36,8 @@ function FileNode({ file, depth = 0 }) {
           flexWrap: 'wrap'
         }}
       >
-        <span style={{ fontSize: depth === 0 ? 16 : 14 }}>
-          {depth === 0 ? '📁' : '↳ 📄'}
+        <span style={{ fontSize: depth === 0 ? 11 : 12, color: depth === 0 ? 'var(--accent)' : 'var(--muted)', fontWeight: 700 }}>
+          {depth === 0 ? '●' : '↳'}
         </span>
 
         <Link

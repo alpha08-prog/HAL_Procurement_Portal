@@ -34,6 +34,7 @@ import PaymentAdvice from './screens/PaymentAdvice/index.jsx';
 import PaymentRegister from './screens/PaymentRegister/index.jsx';
 import ProcessPayment from './screens/ProcessPayment/index.jsx';
 import RvInbox from './screens/RvInbox/index.jsx';
+import PaymentKpis from './screens/PaymentKpis/index.jsx';
 
 // Lands an authenticated user on the first screen their role can see.
 function HomeRedirect() {
@@ -55,7 +56,9 @@ export default function App() {
               <Route path="/process-payment" element={<ProcessPayment />} />
               <Route path="/hod-approval" element={<HodApproval />} />
               <Route path="/payment-register" element={<PaymentRegister />} />
+              <Route path="/payment-kpis" element={<PaymentKpis />} />
               <Route path="/ai-documents" element={<AiDocuments />} />
+              <Route path="/noting/ai-documents" element={<AiDocuments />} />
               <Route path="/noting" element={<NotingHome />} />
               <Route path="/noting/initiate" element={<Initiate />} />
               <Route path="/noting/inbox" element={<Inbox />} />

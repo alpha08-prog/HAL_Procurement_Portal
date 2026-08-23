@@ -61,14 +61,14 @@ export default function StampingModal({ isOpen, onClose, members = [], onConfirm
     <div className="ef-modal-overlay" onClick={onClose}>
       <div className="ef-modal" style={{ maxWidth: 680 }} onClick={(e) => e.stopPropagation()}>
         <div className="ef-modal-header">
-          <span>🔏 Document Stamping Authority Setup</span>
+          <span>Document Stamping Authority Setup</span>
           <button type="button" className="ef-modal-close" onClick={onClose}>✕</button>
         </div>
         <div className="ef-modal-body">
           {/* File Upload Box */}
           <div style={{ marginBottom: 16, background: '#f8fafc', padding: 12, borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
             <label className="field-label" style={{ fontWeight: 600 }}>
-              📄 Upload Document for Stamping (PDF only) <span className="req">*</span>
+              Upload Document for Stamping (PDF only) <span className="req">*</span>
             </label>
             <input
               type="file"
@@ -94,7 +94,7 @@ export default function StampingModal({ isOpen, onClose, members = [], onConfirm
               <input
                 className="field-input"
                 style={{ flex: 1, minWidth: 200 }}
-                placeholder="🔍 Search officer by Name, PB No, Designation..."
+                placeholder="Search officer by Name, PB No, Designation..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />

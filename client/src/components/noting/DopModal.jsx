@@ -119,7 +119,7 @@ export default function DopModal({ isOpen, onClose, onSave }) {
     <div className="ef-modal-overlay" onClick={onClose}>
       <div className="ef-modal" style={{ maxWidth: 880 }} onClick={(e) => e.stopPropagation()}>
         <div className="ef-modal-header">
-          <span>📜 Delegation of Powers (DOP-2025) Matrix</span>
+          <span>Delegation of Powers (DOP-2025) Matrix</span>
           <button type="button" className="ef-modal-close" onClick={onClose}>✕</button>
         </div>
         <div className="ef-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -132,9 +132,9 @@ export default function DopModal({ isOpen, onClose, onSave }) {
             <div style={{ display: 'flex', gap: 6 }}>
               {[
                 { id: 'all', label: 'All Clauses' },
-                { id: 'goods', label: '📦 Goods & Spares' },
-                { id: 'services', label: '🛠️ Services & Turnkey' },
-                { id: 'emergency', label: '⚡ Emergency (AOG)' }
+                { id: 'goods', label: 'Goods & Spares' },
+                { id: 'services', label: 'Services & Turnkey' },
+                { id: 'emergency', label: 'Emergency (AOG)' }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -154,17 +154,14 @@ export default function DopModal({ isOpen, onClose, onSave }) {
             <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
               <input
                 className="ef-search-input"
-                style={{ width: '100%', fontSize: 12, paddingLeft: 26 }}
-                placeholder="🔍 Search clause by Annexure, Category, Value, CFA..."
+                style={{ width: '100%', fontSize: 12, paddingLeft: 12 }}
+                placeholder="Search clause by Annexure, Category, Value, CFA..."
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
                   setSelectedRow(0);
                 }}
               />
-              <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', opacity: 0.5, pointerEvents: 'none', fontSize: 12 }}>
-                🔍
-              </span>
             </div>
           </div>
 

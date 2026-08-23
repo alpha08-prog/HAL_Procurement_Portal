@@ -150,7 +150,7 @@ export default function MemberPickerModal({
     <div className="ef-modal-overlay" onClick={onClose}>
       <div className="ef-modal" style={{ maxWidth: 860 }} onClick={(e) => e.stopPropagation()}>
         <div className="ef-modal-header">
-          <span>👥 {title}</span>
+          <span>{title}</span>
           <button type="button" className="ef-modal-close" onClick={onClose}>✕</button>
         </div>
 
@@ -164,7 +164,7 @@ export default function MemberPickerModal({
                 style={{ fontSize: 12, padding: '4px 10px' }}
                 onClick={() => setViewMode('list')}
               >
-                📋 Direct Search &amp; Filter
+                Direct Search &amp; Filter
               </button>
               <button
                 type="button"
@@ -172,7 +172,7 @@ export default function MemberPickerModal({
                 style={{ fontSize: 12, padding: '4px 10px' }}
                 onClick={() => setViewMode('hierarchy')}
               >
-                🏢 Nesting Sequence (Corporate › Complex › Division › Dept › Section)
+                Nesting Sequence (Corporate › Complex › Division › Dept › Section)
               </button>
             </div>
           </div>
@@ -290,7 +290,7 @@ export default function MemberPickerModal({
             >
               <div>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 700, marginBottom: 4, color: 'var(--accent)' }}>
-                  🏢 Department / Unit
+                  Department / Unit
                 </label>
                 <select
                   className="field-input"
@@ -312,7 +312,7 @@ export default function MemberPickerModal({
 
               <div>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 700, marginBottom: 4, color: 'var(--accent)' }}>
-                  🎖️ Grade / Designation
+                  Grade / Designation
                 </label>
                 <select
                   className="field-input"
@@ -334,7 +334,7 @@ export default function MemberPickerModal({
 
               <div>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 700, marginBottom: 4, color: 'var(--accent)' }}>
-                  👤 Select Officer by Name
+                  Select Officer by Name
                 </label>
                 <select
                   className="field-input"

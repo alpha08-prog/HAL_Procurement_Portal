@@ -245,7 +245,7 @@ export default function Initiate() {
                     <option value="fixture">Aircraft Hydraulic Spares (MPR/26/104 — ₹40 Lakhs) [Fabricated Case]</option>
                   </select>
                   <span className="field-hint" style={{ marginTop: 4, display: 'block' }}>
-                    ✨ Connected to the HAL AI Responsibility Cascade engine. Initialises N1 Provisioning Note with automatic MPR/CAR annexure formatting and activates stage-by-stage progression.
+                    Connected to the HAL AI Responsibility Cascade engine. Initialises N1 Provisioning Note with automatic MPR/CAR annexure formatting and activates stage-by-stage progression.
                   </span>
                 </label>
               </div>

@@ -65,9 +65,7 @@ export default function Cabinet() {
 
   return (
     <section className="screen">
-      <h1 className="screen-title">
-        <span style={{ marginRight: 8 }}>🗄️</span> CABINET
-      </h1>
+      <h1 className="screen-title">CABINET</h1>
       <p className="screen-sub">
         Files you initiated, routed or decided — retained after closure.
       </p>

@@ -48,9 +48,9 @@ body {
 
 .page:has(.portal-hub-screen) {
   max-width: 100%;
-  padding: 8px 24px 12px;
-  height: calc(100vh - 110px);
-  max-height: calc(100vh - 110px);
+  padding: 16px 24px;
+  height: calc(100vh - 105px);
+  max-height: calc(100vh - 105px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -3051,69 +3051,6 @@ body {
   display: flex;
   flex-direction: column;
 }
-.portal-hero {
-  background: linear-gradient(135deg, #072b4c, #0e4474 60%, #17548c);
-  color: #fff;
-  border-radius: 8px;
-  padding: 6px 18px;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-  box-shadow: 0 4px 16px rgba(7, 43, 76, 0.15);
-  box-sizing: border-box;
-  width: 100%;
-}
-.portal-hero-text {
-  flex: 1;
-  min-width: 240px;
-}
-.portal-eyebrow {
-  display: inline-block;
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: #93c5fd;
-  margin-bottom: 1px;
-}
-.portal-title {
-  font-size: 16.5px;
-  font-weight: 800;
-  margin: 0 0 1px 0;
-  color: #fff;
-  line-height: 1.2;
-}
-.portal-welcome-tag {
-  font-size: 11.5px;
-  color: #e2e8f0;
-}
-.portal-quick-stats {
-  display: flex;
-  gap: 8px;
-}
-.portal-stat-pill {
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-  padding: 3px 10px;
-  text-align: center;
-  min-width: 68px;
-  backdrop-filter: blur(4px);
-}
-.portal-stat-pill .stat-num {
-  display: block;
-  font-size: 15px;
-  font-weight: 800;
-  color: #fff;
-  line-height: 1.1;
-}
-.portal-stat-pill .stat-lbl {
-  font-size: 8.5px;
-  color: #cbd5e1;
-  text-transform: uppercase;
-  font-weight: 600;
-}
 
 /* ── 2x2 Equal Ratio Grid (Stretches Perfectly to Viewport) ── */
 .portal-modules-grid {
@@ -3122,8 +3059,9 @@ body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 14px;
   width: 100%;
+  height: 100%;
   box-sizing: border-box;
 }
 @media (max-width: 800px) {
@@ -3141,12 +3079,12 @@ body {
 .portal-module-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 16px;
+  border-radius: 12px;
+  padding: 14px 18px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
   min-height: 0;
   min-width: 0;
@@ -3160,14 +3098,14 @@ body {
 .portal-card-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 4px;
+  gap: 12px;
+  margin-bottom: 8px;
   flex-shrink: 0;
 }
 .portal-card-icon-wrap {
-  width: 32px;
-  height: 32px;
-  border-radius: 7px;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3183,7 +3121,7 @@ body {
   gap: 8px;
 }
 .portal-card-title {
-  font-size: 14.5px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--accent);
   margin: 0;
@@ -3194,10 +3132,10 @@ body {
 .portal-shortcuts-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 5px;
+  gap: 8px;
   flex: 1;
   align-content: center;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
   min-height: 0;
 }
 @media (max-width: 1200px) {
@@ -3208,23 +3146,20 @@ body {
 .portal-shortcut-btn {
   display: flex;
   align-items: center;
-  gap: 5px;
+  justify-content: flex-start;
   background: #f8fafc;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 8px;
-  font-size: 11px;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-size: 12px;
   font-weight: 600;
-  color: #1e293b;
+  color: #334155;
   text-decoration: none;
-  transition: all 0.12s ease;
+  transition: all 0.14s ease;
   min-width: 0;
   overflow: hidden;
   box-sizing: border-box;
-}
-.portal-shortcut-btn .shortcut-icon {
-  flex-shrink: 0;
-  font-size: 11.5px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 .portal-shortcut-btn .shortcut-label {
   overflow: hidden;
@@ -3234,29 +3169,31 @@ body {
   flex: 1;
 }
 .portal-shortcut-btn:hover {
-  background: var(--accent-soft);
+  background: #f1f5f9;
   color: var(--accent);
-  border-color: var(--accent);
+  border-color: #cbd5e1;
   transform: translateY(-1px);
   text-decoration: none;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
 }
 .portal-card-footer {
   flex-shrink: 0;
 }
 .portal-enter-btn {
   width: 100%;
-  padding: 7px 12px;
-  font-size: 12px;
+  padding: 8.5px 16px;
+  font-size: 12.5px;
   font-weight: 700;
   border: none;
-  border-radius: 6px;
+  border-radius: 7px;
   cursor: pointer;
-  transition: opacity 0.15s ease, filter 0.15s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  transition: opacity 0.15s ease, filter 0.15s ease, transform 0.15s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   letter-spacing: 0.02em;
 }
 .portal-enter-btn:hover {
-  filter: brightness(1.1);
+  filter: brightness(1.08);
+  transform: translateY(-1px);
 }
 
 

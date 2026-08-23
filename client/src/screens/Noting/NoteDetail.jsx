@@ -351,7 +351,7 @@ export default function NoteDetail() {
               style={{ padding: '2px 8px', fontSize: 11 }}
               onClick={() => setShowFormatsModal(true)}
             >
-              📑 Formats on File ({kase.formatsOnFile?.length || 0})
+              Formats on File ({kase.formatsOnFile?.length || 0})
             </button>
           )}
         </div>
@@ -364,7 +364,7 @@ export default function NoteDetail() {
               onClick={handleRetract}
               disabled={busy}
             >
-              ↩ Retract Hop
+              Retract Hop
             </button>
           )}
 
@@ -376,7 +376,7 @@ export default function NoteDetail() {
               onClick={handleRetrieve}
               disabled={busy}
             >
-              📥 Retrieve from Cabinet
+              Retrieve from Cabinet
             </button>
           )}
 
@@ -390,7 +390,7 @@ export default function NoteDetail() {
                 setShowMemberPicker(true);
               }}
             >
-              🔗 Share (Need-to-Know)
+              Share (Need-to-Know)
             </button>
           )}
 
@@ -404,7 +404,6 @@ export default function NoteDetail() {
         <div className="ai-cascade-banner" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '12px 16px', marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 16 }}>⚡</span>
               <strong style={{ fontSize: 13, color: 'var(--accent)' }}>HAL AI Responsibility Cascade Engine</strong>
               <span className={`pill ${kase.holdingAgency === 'Indenting' ? 'pill-warning' : 'pill-info'}`}>
                 Held by: {kase.holdingAgency} Agency
@@ -419,7 +418,7 @@ export default function NoteDetail() {
                 onClick={() => handleAiHandover(permissions.stageOwner || (kase.holdingAgency === 'Indenting' ? 'Tendering' : 'Indenting'))}
                 disabled={aiBusy}
               >
-                🔄 Move File to {permissions.stageOwner || (kase.holdingAgency === 'Indenting' ? 'Tendering' : 'Indenting')} Agency
+                Move File to {permissions.stageOwner || (kase.holdingAgency === 'Indenting' ? 'Tendering' : 'Indenting')} Agency
               </button>
             )}
           </div>
@@ -586,7 +585,7 @@ export default function NoteDetail() {
                       className="btn btn-secondary"
                       onClick={() => setIsEditingDraft((v) => !v)}
                     >
-                      ✏️ {isEditingDraft ? 'Close Editor' : 'Edit Draft'}
+                      {isEditingDraft ? 'Close Editor' : 'Edit Draft'}
                     </button>
 
                     <button
@@ -599,7 +598,7 @@ export default function NoteDetail() {
                         setShowMemberPicker(true);
                       }}
                     >
-                      🔍 Send for Check
+                      Send for Check
                     </button>
                   </>
                 )}
@@ -661,7 +660,7 @@ export default function NoteDetail() {
           {kase && kase.status === 'open' && kase.options?.length > 0 && (
             <div className="form-section" style={{ marginTop: 24, border: '1px solid var(--accent-soft)', background: '#fafcff', borderRadius: 'var(--radius)', padding: 16 }}>
               <div className="form-section-title" style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span>⚡ AI Cascade: Allowed Notes at Current Stage ({kase.node?.title || 'Next Step'})</span>
+                <span>AI Cascade: Allowed Notes at Current Stage ({kase.node?.title || 'Next Step'})</span>
                 <span className="pill pill-info">{kase.holdingAgency} Agency</span>
               </div>
               <p className="field-hint" style={{ marginBottom: 12 }}>
@@ -683,7 +682,7 @@ export default function NoteDetail() {
                       {opt.advice?.note && <div className="field-hint" style={{ fontSize: 11, marginBottom: 6 }}>{opt.advice.note}</div>}
                       {opt.formats?.length > 0 && (
                         <div className="field-hint" style={{ fontSize: 11 }}>
-                          📄 Formats: {opt.formats.join(', ')}
+                          Formats: {opt.formats.join(', ')}
                         </div>
                       )}
                     </div>
@@ -707,7 +706,7 @@ export default function NoteDetail() {
         <div className="ef-right-panel">
           <div className="ef-panel-actions">
             <button type="button" className="ef-panel-action" onClick={() => window.print()}>
-              🖨️ Download PDF
+              Download PDF
             </button>
             <button
               type="button"
@@ -716,7 +715,7 @@ export default function NoteDetail() {
                 if (!summary) fetchSummary(txnId).then((d) => setSummary(d.summary));
               }}
             >
-              📄 Proposal Summary
+              Proposal Summary
             </button>
           </div>
 
@@ -740,7 +739,7 @@ export default function NoteDetail() {
           {kase && kase.formatsOnFile?.length > 0 && (
             <div className="ef-accordion-item open">
               <div className="ef-accordion-trigger" style={{ cursor: 'pointer' }} onClick={() => setShowFormatsModal(true)}>
-                <span>📑 Formats on File ({kase.formatsOnFile.length})</span>
+                <span>Formats on File ({kase.formatsOnFile.length})</span>
                 <span className="arrow">↗</span>
               </div>
               <div className="ef-accordion-content" style={{ display: 'block' }}>
@@ -823,7 +822,7 @@ export default function NoteDetail() {
         <div className="modal-backdrop">
           <div className="modal" style={{ maxWidth: 680, maxHeight: '90vh', overflowY: 'auto' }}>
             <div className="modal-header">
-              <h2>⚡ AI Note Generator: {aiForm?.title || aiPick}</h2>
+              <h2>AI Note Generator: {aiForm?.title || aiPick}</h2>
               <button type="button" className="btn-close" onClick={() => setShowAiModal(false)}>✕</button>
             </div>
 
@@ -838,7 +837,7 @@ export default function NoteDetail() {
 
                   {aiForm.carryFrom && (
                     <div className="banner banner-info" style={{ marginBottom: 12 }}>
-                      ℹ️ Carries forward prose from <strong>{aiForm.carryFrom}</strong> in code. Only new fields below are drafted by the language model.
+                      Carries forward prose from <strong>{aiForm.carryFrom}</strong> in code. Only new fields below are drafted by the language model.
                     </div>
                   )}
 
@@ -907,7 +906,7 @@ export default function NoteDetail() {
                 disabled={aiBusy || !aiForm}
                 onClick={() => handleGenerateAiNote(false)}
               >
-                {aiBusy ? 'Generating with AI (SLM)…' : '✨ Generate Note & Add to File'}
+                {aiBusy ? 'Generating with AI (SLM)…' : 'Generate Note & Add to File'}
               </button>
               <button
                 type="button"
@@ -927,7 +926,7 @@ export default function NoteDetail() {
         <div className="modal-backdrop">
           <div className="modal" style={{ maxWidth: 750, maxHeight: '90vh', overflowY: 'auto' }}>
             <div className="modal-header">
-              <h2>📑 Formats on File ({kase?.formatsOnFile?.length || 0})</h2>
+              <h2>Formats on File ({kase?.formatsOnFile?.length || 0})</h2>
               <button type="button" className="btn-close" onClick={() => setShowFormatsModal(false)}>✕</button>
             </div>
 

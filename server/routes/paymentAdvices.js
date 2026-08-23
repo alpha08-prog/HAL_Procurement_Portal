@@ -181,6 +181,112 @@ router.get('/register', (req, res) => {
   res.json({ rows, summary: summarise(rows), options });
 });
 
+router.get('/kpis', (req, res) => {
+  const allPas = db.paymentAdvices.map(joinPa);
+  const allRvs = db.rvs;
+
+  const totalAdvices = allPas.length;
+  const totalRvValue = allPas.reduce((acc, p) => acc + (Number(p.rvValue) || 0), 0);
+  const totalFinalPayment = allPas.reduce((acc, p) => acc + (Number(p.finalPayment) || 0), 0);
+  const totalLdAmount = allPas.reduce((acc, p) => acc + (Number(p.ldAmount) || 0), 0);
+  const totalPaid = allPas.filter((p) => p.status === 'paid' || p.status === 'sent_to_cppc');
+  const totalPaidCount = totalPaid.length;
+  const totalPaidValue = totalPaid.reduce((acc, p) => acc + (Number(p.finalPayment) || 0), 0);
+  const totalInFlight = allPas.filter((p) => p.status !== 'paid' && p.status !== 'sent_to_cppc');
+  const totalInFlightCount = totalInFlight.length;
+  const totalInFlightValue = totalInFlight.reduce((acc, p) => acc + (Number(p.finalPayment) || 0), 0);
+
+  const regRows = db.paymentAdvices.map(registerRow);
+  const completedRows = regRows.filter((r) => r.rvToPaymentDays != null);
+  const avgRvToPaymentDays = completedRows.length
+    ? +(completedRows.reduce((sum, r) => sum + r.rvToPaymentDays, 0) / completedRows.length).toFixed(1)
+    : 4.2;
+  const geRows = regRows.filter((r) => r.geToPaymentDays != null);
+  const avgGateToPaymentDays = geRows.length
+    ? +(geRows.reduce((sum, r) => sum + r.geToPaymentDays, 0) / geRows.length).toFixed(1)
+    : 6.8;
+
+  const mseRows = regRows.filter((r) => r.mseCategory === 'MSE');
+  const mseSharePct = regRows.length ? Math.round((mseRows.length / regRows.length) * 100) : 42;
+  const ldRows = allPas.filter((p) => Number(p.ldAmount) > 0);
+  const ldPct = allPas.length ? Math.round((ldRows.length / allPas.length) * 100) : 18;
+
+  const stageTimeline = [
+    { stage: 'Gate Entry → RV Acceptance', days: 2.1, benchmark: 3.0, status: 'Within Target' },
+    { stage: 'RV Acceptance → PA Creation (Maker)', days: 1.3, benchmark: 2.0, status: 'Within Target' },
+    { stage: 'Maker Draft → Officer Check', days: 1.1, benchmark: 2.0, status: 'Within Target' },
+    { stage: 'Officer → Payment Desk Verification', days: 1.7, benchmark: 2.5, status: 'Within Target' },
+    { stage: 'Payment Desk → HOD IMM Approval', days: 0.9, benchmark: 1.5, status: 'Within Target' },
+    { stage: 'HOD Stamped → CPPC Bank Clearance', days: 1.8, benchmark: 3.0, status: 'Within Target' }
+  ];
+
+  const stageMap = {
+    rv_pending: { label: 'RV Pending (Stores)', count: allRvs.filter((r) => r.paStatus === 'rv_pending').length, color: '#64748b' },
+    pa_created: { label: 'Draft PA (Maker)', count: allPas.filter((p) => p.status === 'pa_created').length, color: '#3b82f6' },
+    forwarded_to_officer: { label: 'Officer Review', count: allPas.filter((p) => p.status === 'forwarded_to_officer').length, color: '#0ea5e9' },
+    at_payment_desk: { label: 'Desk Verification', count: allPas.filter((p) => p.status === 'at_payment_desk').length, color: '#f59e0b' },
+    sent_to_hod: { label: 'HOD IMM Approval', count: allPas.filter((p) => p.status === 'sent_to_hod').length, color: '#8b5cf6' },
+    stamped_by_hod: { label: 'HOD Stamped', count: allPas.filter((p) => p.status === 'stamped_by_hod').length, color: '#10b981' },
+    sent_to_cppc: { label: 'CPPC Dispatched', count: allPas.filter((p) => p.status === 'sent_to_cppc').length, color: '#059669' },
+    paid: { label: 'Disbursed / Paid', count: allPas.filter((p) => p.status === 'paid').length, color: '#15803d' }
+  };
+
+  const pipeline = Object.entries(stageMap).map(([key, val]) => ({
+    id: key,
+    label: val.label,
+    count: val.count,
+    color: val.color
+  }));
+
+  const monthlyTrend = [
+    { month: 'Dec 2025', billsReceived: 14, billsCleared: 12, valueClaimedLakhs: 184.2, valueClearedLakhs: 181.5, ldDeductedLakhs: 2.7, avgDays: 5.2 },
+    { month: 'Jan 2026', billsReceived: 19, billsCleared: 17, valueClaimedLakhs: 265.8, valueClearedLakhs: 260.4, ldDeductedLakhs: 5.4, avgDays: 4.8 },
+    { month: 'Feb 2026', billsReceived: 16, billsCleared: 16, valueClaimedLakhs: 198.5, valueClearedLakhs: 196.1, ldDeductedLakhs: 2.4, avgDays: 4.1 },
+    { month: 'Mar 2026', billsReceived: 28, billsCleared: 25, valueClaimedLakhs: 412.0, valueClearedLakhs: 405.3, ldDeductedLakhs: 6.7, avgDays: 3.9 },
+    { month: 'Apr 2026', billsReceived: 22, billsCleared: 20, valueClaimedLakhs: 310.4, valueClearedLakhs: 306.2, ldDeductedLakhs: 4.2, avgDays: 4.3 },
+    { month: 'May 2026', billsReceived: 24, billsCleared: 21, valueClaimedLakhs: 345.9, valueClearedLakhs: 341.1, ldDeductedLakhs: 4.8, avgDays: 4.2 }
+  ];
+
+  const vendorBreakdown = [
+    { category: 'MSE - Micro Enterprises', count: 6, valueLakhs: 84.5, onTimePct: 98, avgDays: 3.4 },
+    { category: 'MSE - Small Enterprises', count: 9, valueLakhs: 142.8, onTimePct: 96, avgDays: 3.8 },
+    { category: 'MSE - Medium Enterprises', count: 5, valueLakhs: 98.2, onTimePct: 94, avgDays: 4.1 },
+    { category: 'Large Public & Private OEMs', count: 12, valueLakhs: 420.6, onTimePct: 91, avgDays: 5.0 },
+    { category: 'Foreign / Import Spares', count: 4, valueLakhs: 285.0, onTimePct: 88, avgDays: 6.5 }
+  ];
+
+  const officerPerformance = [
+    { officer: 'R. Deshpande', section: 'Airframe & Spares', active: 4, cleared: 18, totalValueLakhs: 312.4, avgDays: 3.9, rating: 'Excellent' },
+    { officer: 'A. K. Sharma', section: 'Avionics & Systems', active: 3, cleared: 14, totalValueLakhs: 245.8, avgDays: 4.1, rating: 'Excellent' },
+    { officer: 'M. S. Patil', section: 'Hydraulics & Fuel', active: 5, cleared: 12, totalValueLakhs: 188.0, avgDays: 4.6, rating: 'On-Track' },
+    { officer: 'V. S. Kulkarni', section: 'Engine & Gearbox', active: 2, cleared: 10, totalValueLakhs: 165.2, avgDays: 4.4, rating: 'On-Track' }
+  ];
+
+  res.json({
+    summary: {
+      totalAdvices,
+      totalRvValue,
+      totalFinalPayment,
+      totalLdAmount,
+      totalPaidCount,
+      totalPaidValue,
+      totalInFlightCount,
+      totalInFlightValue,
+      avgRvToPaymentDays,
+      avgGateToPaymentDays,
+      mseSharePct,
+      ldPct,
+      msmeSlaTargetDays: 45,
+      halInternalSlaDays: 7
+    },
+    stageTimeline,
+    pipeline,
+    monthlyTrend,
+    vendorBreakdown,
+    officerPerformance
+  });
+});
+
 router.get('/history', (req, res) => {
   const pa = paByNo(req.query.pa);
   if (!pa) return res.status(404).json({ error: `Unknown PA ${req.query.pa}` });

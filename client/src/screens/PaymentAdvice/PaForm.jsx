@@ -150,24 +150,24 @@ function ReferenceButtons({ pa, showForwarding, setShowForwarding, onOpenLdSheet
       <div className="pa-reference-buttons" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
         {references.map(([key, label, value, text]) => (
           <button key={key} type="button" className="btn btn-secondary" onClick={() => setOpen({ label, text })}>
-            📄 {label}{value ? ` · ${value}` : ''}
+            {label}{value ? ` · ${value}` : ''}
           </button>
         ))}
         {!pa.creditNoteUploaded && !pa.creditNoteWaived && onOpenCreditNoteModal && (
           <button type="button" className="btn btn-secondary" onClick={onOpenCreditNoteModal}>
-            📄 Upload Credit Note
+            Upload Credit Note
           </button>
         )}
         {hasLd && (
           <button type="button" className="btn btn-secondary" onClick={onOpenLdSheet}>
-            📄 View / Generate LD Sheet
+            View / Generate LD Sheet
           </button>
         )}
         <button type="button" className="btn btn-secondary" onClick={() => setOpen({ label: 'Extra Documents & Attachments', extras: true })}>
-          📁 Extra Docs
+          Extra Docs
         </button>
         <button type="button" className={showForwarding ? 'btn' : 'btn btn-secondary'} onClick={() => setShowForwarding(!showForwarding)}>
-          🔍 {showForwarding ? 'Hide Forwarding Data' : 'View Forwarding Advice Data'}
+          {showForwarding ? 'Hide Forwarding Data' : 'View Forwarding Advice Data'}
         </button>
       </div>
       {open && (
@@ -380,10 +380,10 @@ export default function PaForm({ paNo }) {
       {isLdApplicable && (
         <div className="banner banner-warn no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '12px 0 16px 0', padding: '12px 16px', background: '#fffbe8', border: '1px solid #fde047', borderRadius: '6px', color: '#854d0e' }}>
           <div>
-            <strong>⚠️ Liquidated Damages (LD) Applicable:</strong> Total LD Deduction of <strong>{formatINR(pa.ldAmount)}</strong> ({pa.ldWeeks || 0} week(s) supply delay). Net proposed payment: <strong>{formatINR(pa.finalPayment)}</strong>.
+            <strong>Liquidated Damages (LD) Applicable:</strong> Total LD Deduction of <strong>{formatINR(pa.ldAmount)}</strong> ({pa.ldWeeks || 0} week(s) supply delay). Net proposed payment: <strong>{formatINR(pa.finalPayment)}</strong>.
           </div>
           <button type="button" className="btn btn-secondary" style={{ whiteSpace: 'nowrap', marginLeft: '12px' }} onClick={() => setShowLdSheetModal(true)}>
-            📄 View LD Sheet
+            View LD Sheet
           </button>
         </div>
       )}
@@ -409,14 +409,14 @@ export default function PaForm({ paNo }) {
             className={activeTab === 'doc' ? 'btn' : 'btn btn-secondary'}
             onClick={() => setViewTab('doc')}
           >
-            📄 {isOfficerStage ? 'Stamped Payment Advice Document' : 'Draft Payment Advice Document'}
+            {isOfficerStage ? 'Stamped Payment Advice Document' : 'Draft Payment Advice Document'}
           </button>
           <button
             type="button"
             className={activeTab === 'form' ? 'btn' : 'btn btn-secondary'}
             onClick={() => setViewTab('form')}
           >
-            📋 Verification Form Grid
+            Verification Form Grid
           </button>
         </div>
       )}

@@ -47,9 +47,7 @@ export default function SentBox() {
 
   return (
     <section className="screen">
-      <h1 className="screen-title">
-        <span style={{ marginRight: 8 }}>📤</span> SENTBOX
-      </h1>
+      <h1 className="screen-title">SENTBOX</h1>
 
       <div className="ef-tabs">
         <button type="button" className={`ef-tab${tab === 'sentbox' ? ' active' : ''}`} onClick={() => setTab('sentbox')}>

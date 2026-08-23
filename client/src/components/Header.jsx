@@ -4,6 +4,7 @@ import { roleLabel } from '../config/roles.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useRole } from '../context/RoleContext.jsx';
 import RoleSwitcher from './RoleSwitcher.jsx';
+import ModuleIcon from './ModuleIcon.jsx';
 
 function initialsOf(name = '') {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -12,11 +13,11 @@ function initialsOf(name = '') {
 }
 
 const MODULES_CONFIG = [
-  { id: 'hub', label: 'Portal Hub', icon: '🏠', path: '/portal', desc: 'Main Launchpad' },
-  { id: 'noting', label: 'E-File Noting & AI', icon: '🗂️', path: '/noting/inbox', desc: 'FLITE & AI Cascade' },
-  { id: 'payments', label: 'Payment Desk', icon: '💳', path: '/rv-inbox', desc: 'RV & Bill Clearance' },
-  { id: 'approvals', label: 'Bid Approvals', icon: '⚖️', path: '/approvals/chains', desc: 'DOP-2025 & Committees' },
-  { id: 'contracts', label: 'Contracts Suite', icon: '📜', path: '/contracts/register', desc: 'Agreements & 72 STC' }
+  { id: 'hub', label: 'Portal Hub', path: '/portal', desc: 'Main Launchpad' },
+  { id: 'noting', label: 'E-File Noting & AI', path: '/noting/inbox', desc: 'FLITE & AI Cascade' },
+  { id: 'payments', label: 'Payment Desk', path: '/rv-inbox', desc: 'RV & Bill Clearance' },
+  { id: 'approvals', label: 'Bid Approvals', path: '/approvals/chains', desc: 'DOP-2025 & Committees' },
+  { id: 'contracts', label: 'Contracts Suite', path: '/contracts/register', desc: 'Agreements & 72 STC' }
 ];
 
 export default function Header() {
@@ -45,7 +46,7 @@ export default function Header() {
   // Determine current active module from path
   const path = location.pathname;
   let activeModuleId = 'hub';
-  if (path.startsWith('/noting') || path.startsWith('/ai-cases')) {
+  if (path.startsWith('/noting') || path.startsWith('/ai-cases') || path === '/ai-documents' || path.startsWith('/ai-documents')) {
     activeModuleId = 'noting';
   } else if (
     path === '/rv-inbox' ||
@@ -54,7 +55,7 @@ export default function Header() {
     path === '/process-payment' ||
     path === '/hod-approval' ||
     path === '/payment-register' ||
-    path === '/ai-documents'
+    path === '/payment-kpis'
   ) {
     activeModuleId = 'payments';
   } else if (path.startsWith('/approvals')) {
@@ -87,7 +88,9 @@ export default function Header() {
               onClick={() => setSwitcherOpen((v) => !v)}
               title="Click to switch workspace modules"
             >
-              <span className="mod-icon">{currentMod.icon}</span>
+              <span className="mod-icon" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                <ModuleIcon id={currentMod.id} size={15} color="#fff" />
+              </span>
               <span className="mod-name">{currentMod.label}</span>
               <span className="mod-arrow">{switcherOpen ? '▲' : '▼'}</span>
             </button>
@@ -105,7 +108,9 @@ export default function Header() {
                       navigate(m.path);
                     }}
                   >
-                    <span className="item-icon">{m.icon}</span>
+                    <span className="item-icon" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--accent)' }}>
+                      <ModuleIcon id={m.id} size={18} color="var(--accent)" />
+                    </span>
                     <div className="item-details">
                       <div className="item-title">{m.label}</div>
                       <div className="item-desc">{m.desc}</div>
@@ -136,7 +141,7 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Scoped Nav Row — ONLY displays links for active module, fixing overflow */}
+      {/* Scoped Nav Row — clean, professional labels without gimmicky emojis */}
       <nav className="app-nav">
         {activeModuleId !== 'hub' && (
           <span className="app-nav-item">
@@ -151,20 +156,20 @@ export default function Header() {
           <>
             <span className="app-nav-item">
               <NavLink to="/portal" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                🏠 Portal Overview
+                Portal Overview
               </NavLink>
             </span>
             <span className="app-nav-item">
-              <Link to="/noting/inbox" className="app-nav-link">🗂️ E-File Noting</Link>
+              <Link to="/noting/inbox" className="app-nav-link">E-File Noting</Link>
             </span>
             <span className="app-nav-item">
-              <Link to="/rv-inbox" className="app-nav-link">💳 Payment Desk</Link>
+              <Link to="/rv-inbox" className="app-nav-link">Payment Desk</Link>
             </span>
             <span className="app-nav-item">
-              <Link to="/approvals/chains" className="app-nav-link">⚖️ Approvals</Link>
+              <Link to="/approvals/chains" className="app-nav-link">Approvals</Link>
             </span>
             <span className="app-nav-item">
-              <Link to="/contracts/register" className="app-nav-link">📜 Contracts</Link>
+              <Link to="/contracts/register" className="app-nav-link">Contracts</Link>
             </span>
           </>
         )}
@@ -174,42 +179,47 @@ export default function Header() {
           <>
             <span className="app-nav-item">
               <NavLink to="/noting/inbox" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                📥 Inbox
+                Inbox
               </NavLink>
             </span>
             <span className="app-nav-item">
               <NavLink to="/noting/sentbox" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                📤 SentBox
+                SentBox
               </NavLink>
             </span>
             <span className="app-nav-item">
               <NavLink to="/noting/cabinet" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                🗄️ Cabinet
+                Cabinet
               </NavLink>
             </span>
             <span className="app-nav-item">
               <NavLink to="/noting/initiate" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                📝 + Create E-File
+                + Create E-File
               </NavLink>
             </span>
             <span className="app-nav-item">
               <NavLink to="/noting/files" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                📁 Drafts &amp; Files
+                Drafts &amp; Files
               </NavLink>
             </span>
             <span className="app-nav-item">
               <NavLink to="/noting/upcoming" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                🕒 Upcoming
+                Upcoming
               </NavLink>
             </span>
             <span className="app-nav-item">
               <NavLink to="/noting/reports" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                📊 Reports
+                Reports
               </NavLink>
             </span>
             <span className="app-nav-item">
               <NavLink to="/noting/org" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                🏢 Organisation
+                Organisation
+              </NavLink>
+            </span>
+            <span className="app-nav-item">
+              <NavLink to="/noting/ai-documents" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
+                AI Documents
               </NavLink>
             </span>
           </>
@@ -220,37 +230,37 @@ export default function Header() {
           <>
             <span className="app-nav-item">
               <NavLink to="/rv-inbox" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                📋 RV Inbox
+                RV Inbox
               </NavLink>
             </span>
             <span className="app-nav-item">
               <NavLink to="/payment-advice" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                ✍️ Payment Advice
+                Payment Advice
               </NavLink>
             </span>
             <span className="app-nav-item">
               <NavLink to="/forward-advice" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                ➡️ Forward Advice
+                Forward Advice
               </NavLink>
             </span>
             <span className="app-nav-item">
               <NavLink to="/process-payment" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                💰 Process Payment
+                Process Payment
               </NavLink>
             </span>
             <span className="app-nav-item">
               <NavLink to="/hod-approval" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                ✅ HOD Approval
+                HOD Approval
               </NavLink>
             </span>
             <span className="app-nav-item">
               <NavLink to="/payment-register" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                📑 Payment Register
+                Payment Register
               </NavLink>
             </span>
             <span className="app-nav-item">
-              <NavLink to="/ai-documents" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                📄 AI Documents
+              <NavLink to="/payment-kpis" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
+                Payment KPIs
               </NavLink>
             </span>
           </>
@@ -261,27 +271,27 @@ export default function Header() {
           <>
             <span className="app-nav-item">
               <NavLink to="/approvals/chains" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                🔀 Approval Chains
+                Approval Chains
               </NavLink>
             </span>
             <span className="app-nav-item">
               <NavLink to="/approvals/bids" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                🎯 Bid Evaluation
+                Bid Evaluation
               </NavLink>
             </span>
             <span className="app-nav-item">
               <NavLink to="/approvals/committees" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                👥 Committees
+                Committees
               </NavLink>
             </span>
             <span className="app-nav-item">
               <NavLink to="/approvals/intake" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                📑 Indent Intake
+                Indent Intake
               </NavLink>
             </span>
             <span className="app-nav-item">
               <NavLink to="/approvals/directory" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                📖 Directory
+                Directory
               </NavLink>
             </span>
           </>
@@ -292,17 +302,17 @@ export default function Header() {
           <>
             <span className="app-nav-item">
               <NavLink to="/contracts/register" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                📜 Contract Register
+                Contract Register
               </NavLink>
             </span>
             <span className="app-nav-item">
               <NavLink to="/contracts/generate" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                📄 Generate Contract
+                Generate Contract
               </NavLink>
             </span>
             <span className="app-nav-item">
               <NavLink to="/contracts/library" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                📚 72 STC Clause Library
+                72 STC Clause Library
               </NavLink>
             </span>
           </>

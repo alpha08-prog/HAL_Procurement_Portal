@@ -10,7 +10,7 @@ export default function FinalReviewModal({ isOpen, onClose, formData, onSubmit, 
     <div className="ef-modal-overlay" onClick={onClose}>
       <div className="ef-modal" style={{ maxWidth: 700 }} onClick={(e) => e.stopPropagation()}>
         <div className="ef-modal-header">
-          <span>📋 Final Review &amp; Note Submission</span>
+          <span>Final Review &amp; Note Submission</span>
           <button type="button" className="ef-modal-close" onClick={onClose}>✕</button>
         </div>
         <div className="ef-modal-body">

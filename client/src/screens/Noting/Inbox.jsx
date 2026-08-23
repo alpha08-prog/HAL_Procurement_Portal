@@ -93,9 +93,7 @@ export default function Inbox() {
 
   return (
     <section className="screen">
-      <h1 className="screen-title">
-        <span style={{ marginRight: 8 }}>📥</span> INBOX
-      </h1>
+      <h1 className="screen-title">INBOX</h1>
 
       {/* Tabs */}
       <div className="ef-tabs">

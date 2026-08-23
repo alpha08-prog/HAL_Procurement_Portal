@@ -59,10 +59,10 @@ export const SCREENS = [
     visibleTo: ALL_ROLES
   },
   {
-    path: '/ai-documents',
-    title: 'AI Documents',
-    navLabel: 'AI Documents',
-    visibleTo: ['indentor', 'purchase_maker', 'purchase_officer', 'hod_imm', 'admin']
+    path: '/payment-kpis',
+    title: 'Payment Desk KPIs & Processing Analytics',
+    navLabel: 'Payment KPIs',
+    visibleTo: ALL_ROLES
   },
 
   // Module F — the live AI cascade. A case is a shared file held by one of the two
@@ -140,6 +140,13 @@ export const SCREENS = [
     navLabel: 'Organisation',
     group: 'Noting',
     visibleTo: ALL_ROLES
+  },
+  {
+    path: '/noting/ai-documents',
+    title: 'AI Generated Noting Documents',
+    navLabel: 'AI Documents',
+    group: 'Noting',
+    visibleTo: ['indentor', 'purchase_maker', 'purchase_officer', 'hod_imm', 'admin']
   },
 
   // Module D — Contract Generation. The register and the STC library are readable by

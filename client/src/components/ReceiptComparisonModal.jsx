@@ -228,7 +228,7 @@ export default function ReceiptComparisonModal({ row, onClose, onWaiverSuccess, 
           <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
             <div>
               <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
-                📄 Claimed Invoice Value
+                Claimed Invoice Value
               </div>
               <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#0f172a' }}>
                 {formatINR(invoiceVal)}
@@ -239,7 +239,7 @@ export default function ReceiptComparisonModal({ row, onClose, onWaiverSuccess, 
             </div>
             <div>
               <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
-                🏛️ Accepted RV Value
+                Accepted RV Value
               </div>
               <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#15803d' }}>
                 {formatINR(rvVal)}
@@ -247,7 +247,7 @@ export default function ReceiptComparisonModal({ row, onClose, onWaiverSuccess, 
             </div>
             <div>
               <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
-                ⚖️ Discrepancy Amount
+                Discrepancy Amount
               </div>
               <div
                 style={{
@@ -272,7 +272,7 @@ export default function ReceiptComparisonModal({ row, onClose, onWaiverSuccess, 
               border: `1px solid ${isMinor ? '#86efac' : '#fcd34d'}`
             }}
           >
-            {isMinor ? `🟢 Minor / Rounding Variance (${formatINR(diffAmount)})` : `🟡 Material Discrepancy (${formatINR(diffAmount)})`}
+            {isMinor ? `Minor / Rounding Variance (${formatINR(diffAmount)})` : `Material Discrepancy (${formatINR(diffAmount)})`}
           </div>
         </div>
 
@@ -290,7 +290,6 @@ export default function ReceiptComparisonModal({ row, onClose, onWaiverSuccess, 
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '1.1rem' }}>📄</span>
                 <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e293b' }}>
                   Vendor Tax Invoice (Claim)
                 </span>
@@ -340,7 +339,6 @@ export default function ReceiptComparisonModal({ row, onClose, onWaiverSuccess, 
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '1px solid #bfdbfe', paddingBottom: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '1.1rem' }}>🏛️</span>
                 <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e3a8a' }}>
                   HAL Stores Receipt Voucher (RV)
                 </span>
@@ -431,7 +429,7 @@ export default function ReceiptComparisonModal({ row, onClose, onWaiverSuccess, 
                 style={{ cursor: 'pointer' }}
               />
               <div>
-                <div style={{ fontSize: '0.95rem' }}>❌ NO — Credit Note NOT Required (Waive)</div>
+                <div style={{ fontSize: '0.95rem' }}>NO — Credit Note NOT Required (Waive)</div>
                 <div style={{ fontSize: '0.75rem', fontWeight: 400, color: '#64748b', marginTop: '2px' }}>
                   Ideal for ₹1 rounding, fractional tax, or acceptable variances. Enables PA immediately.
                 </div>
@@ -467,7 +465,7 @@ export default function ReceiptComparisonModal({ row, onClose, onWaiverSuccess, 
                 style={{ cursor: 'pointer' }}
               />
               <div>
-                <div style={{ fontSize: '0.95rem' }}>📄 YES — Credit Note Required & Upload</div>
+                <div style={{ fontSize: '0.95rem' }}>YES — Credit Note Required &amp; Upload</div>
                 <div style={{ fontSize: '0.75rem', fontWeight: 400, color: '#64748b', marginTop: '2px' }}>
                   Attach formal vendor credit note document and reference number.
                 </div>
@@ -532,7 +530,7 @@ export default function ReceiptComparisonModal({ row, onClose, onWaiverSuccess, 
                   disabled={busy}
                   style={{ background: '#16a34a', borderColor: '#16a34a', color: '#ffffff', fontWeight: 600 }}
                 >
-                  {busy ? 'Processing...' : '✅ Confirm: No Credit Note Required & Enable PA'}
+                  {busy ? 'Processing...' : 'Confirm: No Credit Note Required & Enable PA'}
                 </button>
               </div>
             </form>
@@ -571,7 +569,7 @@ export default function ReceiptComparisonModal({ row, onClose, onWaiverSuccess, 
                       className="btn btn-secondary"
                       style={{ cursor: 'pointer', padding: '6px 12px', fontSize: '0.875rem', whiteSpace: 'nowrap' }}
                     >
-                      📁 Browse PDF
+                      Browse PDF
                     </label>
                     <span style={{ fontSize: '0.8125rem', color: '#475569', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                       {fileName}
@@ -605,7 +603,7 @@ export default function ReceiptComparisonModal({ row, onClose, onWaiverSuccess, 
                   disabled={busy}
                   style={{ fontWeight: 600 }}
                 >
-                  {busy ? 'Uploading...' : '📤 Upload Credit Note & Enable PA'}
+                  {busy ? 'Uploading...' : 'Upload Credit Note & Enable PA'}
                 </button>
               </div>
             </form>

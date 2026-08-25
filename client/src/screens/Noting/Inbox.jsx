@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchInbox, fetchMembers, delegateAuthority, cancelDelegation } from '../../lib/notingApi.js';
+import Pagination from '../../components/Pagination.jsx';
+import { cancelDelegation, delegateAuthority, fetchInbox, fetchMembers } from '../../lib/notingApi.js';
 
 function PriorityBadge({ value }) {
   const cls = value === 'High' ? 'ef-priority-high' : value === 'Medium' ? 'ef-priority-medium' : 'ef-priority-low';
@@ -17,6 +18,8 @@ export default function Inbox() {
   const [tab, setTab] = useState('inbox');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(new Set());
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [showDelegation, setShowDelegation] = useState(false);
   const [delegationForm, setDelegationForm] = useState({ fromDate: '', toDate: '', toMemberId: '', reason: '' });
   const [members, setMembers] = useState([]);
@@ -34,6 +37,11 @@ export default function Inbox() {
     return () => { cancelled = true; };
   }, []);
 
+  // Reset page when search or tab changes
+  useEffect(() => {
+    setPage(1);
+  }, [search, tab]);
+
   const filtered = rows?.filter((r) => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
@@ -44,6 +52,11 @@ export default function Inbox() {
       (r.file_id || '').toLowerCase().includes(q)
     );
   });
+
+  const totalFiltered = filtered?.length || 0;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const paginated = filtered?.slice((safePage - 1) * pageSize, safePage * pageSize) || [];
 
   const toggleSelect = (id) => {
     setSelected((prev) => {
@@ -114,7 +127,7 @@ export default function Inbox() {
       </div>
 
       {/* Legend + Search */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
         <div className="ef-legend">
           <span className="ef-legend-item">
             <span className="ef-legend-dot clarification" />
@@ -142,67 +155,81 @@ export default function Inbox() {
       ) : filtered.length === 0 ? (
         <div className="grid-empty">Your inbox is empty.</div>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table className="ef-inbox-table">
-            <thead>
-              <tr>
-                <th style={{ width: 36 }}>
-                  <input type="checkbox" checked={selected.size === filtered.length && filtered.length > 0} onChange={selectAll} />
-                </th>
-                <th>SL</th>
-                <th>DAYS</th>
-                <th>File Ref.No</th>
-                <th>SENDER</th>
-                <th>SUBJECT</th>
-                <th>Initiator Dept</th>
-                <th>RECEIVED ON</th>
-                <th>PRIORITY</th>
-                <th>Approval Sought Summary</th>
-                <th>Clarifications</th>
-                <th>Mark Unread</th>
-                <th>FILE ID</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((r, i) => {
-                const p = r.priority || 'Medium';
-                const rowCls = p === 'High' ? 'ef-row-high' : p === 'Medium' ? 'ef-row-medium' : 'ef-row-low';
-                const days = daysSince(r.created_at);
-                return (
-                  <tr key={r.txn_id} className={rowCls}>
-                    <td>
-                      <input type="checkbox" checked={selected.has(r.txn_id)} onChange={() => toggleSelect(r.txn_id)} />
-                    </td>
-                    <td>{i + 1}</td>
-                    <td><DaysBadge days={days} /></td>
-                    <td style={{ maxWidth: 160 }}>{r.ref_no}</td>
-                    <td style={{ fontSize: 11 }}>{r.initiator_name || '—'}</td>
-                    <td style={{ maxWidth: 280 }}>
-                      <Link
-                        to={`/noting/note/${r.txn_id}`}
-                        className={`subject-link${p === 'High' ? ' urgent' : ''}`}
-                      >
-                        {r.title}
-                      </Link>
-                    </td>
-                    <td style={{ fontSize: 11 }}>{r.department || '—'}</td>
-                    <td style={{ whiteSpace: 'nowrap', fontSize: 11 }}>
-                      {r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : '—'}
-                    </td>
-                    <td><PriorityBadge value={p} /></td>
-                    <td style={{ maxWidth: 200, fontSize: 11 }}>
-                      {r.body ? (r.body.length > 80 ? r.body.slice(0, 80) + '…' : r.body) : '—'}
-                    </td>
-                    <td style={{ textAlign: 'center' }}>0/0</td>
-                    <td><button type="button" className="ef-mark-btn">Mark</button></td>
-                    <td>
-                      <span className="ef-file-id">#{r.file_id || r.txn_id}</span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="grid-container">
+          <div className="grid-wrap">
+            <table className="ef-inbox-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 36 }}>
+                    <input type="checkbox" checked={selected.size === filtered.length && filtered.length > 0} onChange={selectAll} />
+                  </th>
+                  <th>SL</th>
+                  <th>DAYS</th>
+                  <th>File Ref.No</th>
+                  <th>SENDER</th>
+                  <th>SUBJECT</th>
+                  <th>Initiator Dept</th>
+                  <th>RECEIVED ON</th>
+                  <th>PRIORITY</th>
+                  <th>Approval Sought Summary</th>
+                  <th>Clarifications</th>
+                  <th>Mark Unread</th>
+                  <th>FILE ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginated.map((r, i) => {
+                  const p = r.priority || 'Medium';
+                  const rowCls = p === 'High' ? 'ef-row-high' : p === 'Medium' ? 'ef-row-medium' : 'ef-row-low';
+                  const days = daysSince(r.created_at);
+                  const sl = (safePage - 1) * pageSize + i + 1;
+                  return (
+                    <tr key={r.txn_id} className={rowCls}>
+                      <td>
+                        <input type="checkbox" checked={selected.has(r.txn_id)} onChange={() => toggleSelect(r.txn_id)} />
+                      </td>
+                      <td>{sl}</td>
+                      <td><DaysBadge days={days} /></td>
+                      <td style={{ maxWidth: 160 }}>{r.ref_no}</td>
+                      <td style={{ fontSize: 11 }}>{r.initiator_name || '—'}</td>
+                      <td style={{ maxWidth: 280 }}>
+                        <Link
+                          to={`/noting/note/${r.txn_id}`}
+                          className={`subject-link${p === 'High' ? ' urgent' : ''}`}
+                        >
+                          {r.title}
+                        </Link>
+                      </td>
+                      <td style={{ fontSize: 11 }}>{r.department || '—'}</td>
+                      <td style={{ whiteSpace: 'nowrap', fontSize: 11 }}>
+                        {r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : '—'}
+                      </td>
+                      <td><PriorityBadge value={p} /></td>
+                      <td style={{ maxWidth: 200, fontSize: 11 }}>
+                        {r.body ? (r.body.length > 80 ? r.body.slice(0, 80) + '…' : r.body) : '—'}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>0/0</td>
+                      <td><button type="button" className="ef-mark-btn">Mark</button></td>
+                      <td>
+                        <span className="ef-file-id">#{r.file_id || r.txn_id}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="grid-footer">
+            <Pagination
+              currentPage={safePage}
+              totalItems={totalFiltered}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              pageSizeOptions={[20, 50, 100]}
+            />
+          </div>
         </div>
       )}
 

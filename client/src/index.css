@@ -49,9 +49,7 @@ body {
 .page:has(.portal-hub-screen) {
   max-width: 100%;
   padding: 16px 24px;
-  height: calc(100vh - 105px);
-  max-height: calc(100vh - 105px);
-  overflow: hidden;
+  min-height: calc(100vh - 105px);
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -235,8 +233,14 @@ body {
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   position: relative;
   z-index: 1000;
-  overflow: visible;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
   box-sizing: border-box;
+}
+
+.app-nav::-webkit-scrollbar {
+  display: none;
 }
 
 .app-nav-link {
@@ -458,12 +462,19 @@ body {
   color: var(--muted);
 }
 
-/* DataGrid */
-.grid-wrap {
+/* DataGrid & Tables */
+.grid-container {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.grid-wrap {
+  background: var(--surface);
   overflow-x: auto;
+  width: 100%;
 }
 
 .grid {
@@ -481,7 +492,7 @@ body {
   letter-spacing: 0.04em;
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--border);
-  background: var(--bg);
+  background: #f8fafc;
   white-space: nowrap;
 }
 
@@ -497,6 +508,145 @@ body {
 
 .grid tbody tr:hover {
   background: var(--accent-soft);
+}
+
+.grid-footer {
+  border-top: 1px solid var(--border);
+  background: #f8fafc;
+  padding: 8px 16px;
+}
+
+/* Pagination component */
+.pagination-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12.5px;
+  color: var(--muted);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.pagination-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.pagination-info strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.pagination-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.pagination-size-wrap {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+}
+
+.pagination-size-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.pagination-size-select {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  outline: none;
+}
+
+.pagination-size-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pagination-pages {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  user-select: none;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: #b0c9e3;
+}
+
+.pagination-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 1px 4px rgba(11, 61, 107, 0.22);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+}
+
+.pagination-nav-btn {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.pagination-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 28px;
+  font-size: 12px;
+  color: var(--muted);
+  user-select: none;
 }
 
 .align-right {
@@ -2579,10 +2729,6 @@ body {
 .contract-page-footer::after {
   content: " · Page " counter(page);
 }
-
-@media print {
-  .contract-doc { overflow: visible; }
-  /* Fixed elements repeat on every printed page in Chrome — the tamper watermark and
 
 @media print {
   .contract-doc { overflow: visible; }

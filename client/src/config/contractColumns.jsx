@@ -113,9 +113,17 @@ export const HISTORY_COLUMNS = [
 
 // Matrix grid: one row per clause, one dynamic column per contract type with tone classes.
 const cellTone = (v) => (v === 'Y' ? 'mx-y' : v === 'N' ? 'mx-n' : v === 'TBD' ? 'mx-tbd' : 'mx-cond');
-export const matrixColumns = (contractTypes) => [
+export const matrixColumns = (contractTypes, onOpen) => [
   { key: 'matrix_no', label: 'No', align: 'right' },
-  { key: 'title', label: 'Clause' },
+  {
+    key: 'title',
+    label: 'Clause',
+    render: (r) => onOpen ? (
+      <button type="button" className="link-btn" onClick={() => onOpen(r)}>
+        {r.title}
+      </button>
+    ) : r.title
+  },
   ...contractTypes.map((t) => ({
     key: t.id,
     label: t.label,

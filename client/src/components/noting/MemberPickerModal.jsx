@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Pagination from '../Pagination.jsx';
 
 export default function MemberPickerModal({
   isOpen,
@@ -12,6 +13,8 @@ export default function MemberPickerModal({
   const [gradeFilter, setGradeFilter] = useState('');
   const [selectedMemberId, setSelectedMemberId] = useState('');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
 
   // Hierarchy drill-down state
   const [selectedComplex, setSelectedComplex] = useState('');
@@ -115,6 +118,16 @@ export default function MemberPickerModal({
       return true;
     });
   }, [parsedMembers, viewMode, selectedComplex, selectedDivision, selectedDepartment, selectedSection, deptFilter, gradeFilter, search]);
+
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [viewMode, deptFilter, gradeFilter, selectedComplex, selectedDivision, selectedDepartment, selectedSection, search]);
+
+  const totalFiltered = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const paginated = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   if (!isOpen) return null;
 
@@ -402,7 +415,7 @@ export default function MemberPickerModal({
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((m) => (
+                  {paginated.map((m) => (
                     <tr
                       key={m.id}
                       style={String(m.id) === String(selectedMemberId) ? { background: 'var(--accent-soft)' } : {}}
@@ -429,6 +442,16 @@ export default function MemberPickerModal({
               </table>
             )}
           </div>
+
+          {filtered.length > 0 && (
+            <Pagination
+              currentPage={safePage}
+              totalItems={totalFiltered}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              showTotalInfo={true}
+            />
+          )}
         </div>
 
         <div className="ef-modal-footer">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import Pagination from '../../components/Pagination.jsx';
 import { addNote, fetchCabinet } from '../../lib/notingApi.js';
 
 function PriorityBadge({ value }) {
@@ -15,6 +16,8 @@ export default function Cabinet() {
   const [subTab, setSubTab] = useState('all'); // 'all' | 'approved' | 'rejected'
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const load = () =>
     fetchCabinet()
@@ -24,6 +27,10 @@ export default function Cabinet() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, filterTab, subTab]);
 
   const advance = async (row) => {
     if (busy) return;
@@ -59,6 +66,11 @@ export default function Cabinet() {
       (r.reason || '').toLowerCase().includes(q)
     );
   });
+
+  const totalFiltered = filtered?.length || 0;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const paginated = filtered?.slice((safePage - 1) * pageSize, safePage * pageSize) || [];
 
   const openCount = safeRows.filter((r) => r.file_status === 'open').length;
   const closedCount = safeRows.filter((r) => r.file_status !== 'open').length;
@@ -137,67 +149,83 @@ export default function Cabinet() {
       ) : filtered.length === 0 ? (
         <div className="grid-empty">Your cabinet is empty for this view.</div>
       ) : (
-        <div style={{ overflowX: 'auto', marginTop: 12 }}>
-          <table className="ef-inbox-table">
-            <thead>
-              <tr>
-                <th>SL</th>
-                <th>Closed / Placed Date</th>
-                <th>File Ref.No</th>
-                <th>SUBJECT</th>
-                <th>ORIGINATOR</th>
-                <th>ROLE IN FILE</th>
-                <th>PRIORITY</th>
-                <th>Status</th>
-                <th>Action / Next Note</th>
-                <th>FILE ID</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((r, i) => (
-                <tr key={r.file_pk || i}>
-                  <td>{i + 1}</td>
-                  <td style={{ whiteSpace: 'nowrap', fontSize: 11 }}>
-                    {r.placed_at ? new Date(r.placed_at).toLocaleDateString('en-IN') : '—'}
-                  </td>
-                  <td>{r.file_id}</td>
-                  <td style={{ maxWidth: 280 }}>
-                    <Link to={`/noting/note/${r.txn_id || r.last_txn}`} className="subject-link">
-                      {r.title}
-                    </Link>
-                  </td>
-                  <td style={{ fontSize: 11 }}>{r.initiator_name || '—'}</td>
-                  <td>
-                    <span className="tag" style={{ textTransform: 'capitalize', fontSize: 10 }}>
-                      {r.reason || 'Participant'}
-                    </span>
-                  </td>
-                  <td><PriorityBadge value={r.priority || 'Medium'} /></td>
-                  <td>
-                    <span className={`tag ${r.status === 'approved' ? 'tag-note-approved' : r.status === 'rejected' ? 'tag-note-rejected' : 'tag-note-routed'}`}>
-                      {r.status || 'Closed'}
-                    </span>
-                  </td>
-                  <td>
-                    {r.next_stage ? (
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        style={{ fontSize: 11, padding: '3px 8px' }}
-                        disabled={busy}
-                        onClick={() => advance(r)}
-                      >
-                        + Create {r.next_stage_title || r.next_stage}
-                      </button>
-                    ) : (
-                      <span style={{ fontSize: 11, color: 'var(--muted)' }}>Archived</span>
-                    )}
-                  </td>
-                  <td><span className="ef-file-id">#{r.file_id}</span></td>
+        <div className="grid-container" style={{ marginTop: 12 }}>
+          <div className="grid-wrap">
+            <table className="ef-inbox-table">
+              <thead>
+                <tr>
+                  <th>SL</th>
+                  <th>Closed / Placed Date</th>
+                  <th>File Ref.No</th>
+                  <th>SUBJECT</th>
+                  <th>ORIGINATOR</th>
+                  <th>ROLE IN FILE</th>
+                  <th>PRIORITY</th>
+                  <th>Status</th>
+                  <th>Action / Next Note</th>
+                  <th>FILE ID</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {paginated.map((r, i) => {
+                  const sl = (safePage - 1) * pageSize + i + 1;
+                  return (
+                    <tr key={r.file_pk || i}>
+                      <td>{sl}</td>
+                      <td style={{ whiteSpace: 'nowrap', fontSize: 11 }}>
+                        {r.placed_at ? new Date(r.placed_at).toLocaleDateString('en-IN') : '—'}
+                      </td>
+                      <td>{r.file_id}</td>
+                      <td style={{ maxWidth: 280 }}>
+                        <Link to={`/noting/note/${r.txn_id || r.last_txn}`} className="subject-link">
+                          {r.title}
+                        </Link>
+                      </td>
+                      <td style={{ fontSize: 11 }}>{r.initiator_name || '—'}</td>
+                      <td>
+                        <span className="tag" style={{ textTransform: 'capitalize', fontSize: 10 }}>
+                          {r.reason || 'Participant'}
+                        </span>
+                      </td>
+                      <td><PriorityBadge value={r.priority || 'Medium'} /></td>
+                      <td>
+                        <span className={`tag ${r.status === 'approved' ? 'tag-note-approved' : r.status === 'rejected' ? 'tag-note-rejected' : 'tag-note-routed'}`}>
+                          {r.status || 'Closed'}
+                        </span>
+                      </td>
+                      <td>
+                        {r.next_stage ? (
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            style={{ fontSize: 11, padding: '3px 8px' }}
+                            disabled={busy}
+                            onClick={() => advance(r)}
+                          >
+                            + Create {r.next_stage_title || r.next_stage}
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: 11, color: 'var(--muted)' }}>Archived</span>
+                        )}
+                      </td>
+                      <td><span className="ef-file-id">#{r.file_id}</span></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="grid-footer">
+            <Pagination
+              currentPage={safePage}
+              totalItems={totalFiltered}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              pageSizeOptions={[20, 50, 100]}
+            />
+          </div>
         </div>
       )}
     </section>

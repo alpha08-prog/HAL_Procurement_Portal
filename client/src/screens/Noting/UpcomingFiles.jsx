@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import Pagination from '../../components/Pagination.jsx';
 import { fetchUpcoming } from '../../lib/notingApi.js';
 
 export default function UpcomingFiles() {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   useEffect(() => {
     let cancelled = false;
@@ -15,15 +18,25 @@ export default function UpcomingFiles() {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
   const filtered = rows?.filter((r) => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
       (r.title || '').toLowerCase().includes(q) ||
       (r.ref_no || '').toLowerCase().includes(q) ||
-      (r.custodian_name || '').toLowerCase().includes(q)
+      (r.custodian_name || '').toLowerCase().includes(q) ||
+      (r.file_id || '').toLowerCase().includes(q)
     );
   });
+
+  const totalFiltered = filtered?.length || 0;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const paginated = filtered?.slice((safePage - 1) * pageSize, safePage * pageSize) || [];
 
   return (
     <section className="screen">
@@ -50,41 +63,57 @@ export default function UpcomingFiles() {
       ) : filtered.length === 0 ? (
         <div className="grid-empty">No upcoming files found in your workflow pipeline.</div>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table className="ef-inbox-table">
-            <thead>
-              <tr>
-                <th>SL</th>
-                <th>File Ref.No</th>
-                <th>SUBJECT</th>
-                <th>Currently With</th>
-                <th>Received On</th>
-                <th>Current Routing Position</th>
-                <th>Your Position</th>
-                <th>FILE ID</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((r, i) => (
-                <tr key={r.txn_id || i}>
-                  <td>{i + 1}</td>
-                  <td>{r.ref_no}</td>
-                  <td style={{ maxWidth: 300 }}>
-                    <Link to={`/noting/note/${r.txn_id}`} className="subject-link">
-                      {r.title}
-                    </Link>
-                  </td>
-                  <td style={{ fontSize: 11 }}>{r.custodian_name || '—'}</td>
-                  <td style={{ whiteSpace: 'nowrap', fontSize: 11 }}>
-                    {r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : '—'}
-                  </td>
-                  <td style={{ textAlign: 'center', fontWeight: 600 }}>Step #{r.current_step || 1}</td>
-                  <td style={{ textAlign: 'center', fontWeight: 600, color: 'var(--accent)' }}>Step #{r.your_step || 2}</td>
-                  <td><span className="ef-file-id">#{r.file_id || r.txn_id}</span></td>
+        <div className="grid-container">
+          <div className="grid-wrap">
+            <table className="ef-inbox-table">
+              <thead>
+                <tr>
+                  <th>SL</th>
+                  <th>File Ref.No</th>
+                  <th>SUBJECT</th>
+                  <th>Currently With</th>
+                  <th>Received On</th>
+                  <th>Current Routing Position</th>
+                  <th>Your Position</th>
+                  <th>FILE ID</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {paginated.map((r, i) => {
+                  const sl = (safePage - 1) * pageSize + i + 1;
+                  return (
+                    <tr key={r.txn_id || i}>
+                      <td>{sl}</td>
+                      <td>{r.ref_no}</td>
+                      <td style={{ maxWidth: 300 }}>
+                        <Link to={`/noting/note/${r.txn_id}`} className="subject-link">
+                          {r.title}
+                        </Link>
+                      </td>
+                      <td style={{ fontSize: 11 }}>{r.custodian_name || '—'}</td>
+                      <td style={{ whiteSpace: 'nowrap', fontSize: 11 }}>
+                        {r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : '—'}
+                      </td>
+                      <td style={{ textAlign: 'center', fontWeight: 600 }}>Step #{r.current_step || 1}</td>
+                      <td style={{ textAlign: 'center', fontWeight: 600, color: 'var(--accent)' }}>Step #{r.your_step || 2}</td>
+                      <td><span className="ef-file-id">#{r.file_id || r.txn_id}</span></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="grid-footer">
+            <Pagination
+              currentPage={safePage}
+              totalItems={totalFiltered}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              pageSizeOptions={[20, 50, 100]}
+            />
+          </div>
         </div>
       )}
     </section>

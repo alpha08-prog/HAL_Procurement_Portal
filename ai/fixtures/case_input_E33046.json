@@ -1,0 +1,142 @@
+{
+  "_provenance": "DERIVED by ai/bid_sheet.py from ai/fixtures/TechnicalBid_E-33046_FILLED.xlsx. THE BIDS ARE FABRICATED TEST DATA -- see ai/fixtures/make_bid_E33046.py. The tender reference, item, quantity, 12 specification lines and 18 terms come verbatim from sampleData/TechnicalBid E-33046.pdf; the bidders, their compliance answers and every price are invented. This file is a FIXTURE and is NOT ai/case_input.json, which is seeded from sampleData only.",
+  "_fixture": true,
+  "_tender_ref": "NK-M-1989(2544-1C)-MP-E-33046",
+  "requisition": {
+    "item_description": "250W HIGH BAY LED LIGHT FITTING",
+    "car_no": "CAR/26/118",
+    "car_date": "11 May 2026",
+    "reference_no": "PM/1989/LED/2026/044",
+    "quantity": 2150,
+    "budget_year": "2026-27",
+    "budget_type": "Revenue Budget",
+    "mpr_estimate": "10,655,400",
+    "amount_in_words": "One Crore Six Lakh Fifty Five Thousand Four Hundred Only",
+    "dop_clause": "Annexure III B, Sl No 1a"
+  },
+  "tender": {
+    "tender_no": "GEM/2026/B/7729104",
+    "tender_date": "05-06-2026",
+    "tender_enquiry": "E-33046",
+    "tender_type": "GeM Custom Bid (Open), Two Bid, Line-wise",
+    "total_bids": 6
+  },
+  "bidders": [
+    {
+      "name": "Dummy Vendor 1 Lighting Pvt. Ltd.",
+      "udyam": "UDYAM-MH-19-0100001",
+      "mse": "Yes - Small",
+      "nic": "27400",
+      "emd": "Accepted",
+      "emd_reason": "Waiver valid - manufacturer of the offered product in NIC 27400",
+      "nature": "Manufacturer"
+    },
+    {
+      "name": "Dummy Vendor 2 Illumination Systems",
+      "udyam": "UDYAM-MH-26-0100002",
+      "mse": "Yes - Micro",
+      "nic": "27400",
+      "emd": "Accepted",
+      "emd_reason": "Waiver valid - manufacturer of the offered product in NIC 27400",
+      "nature": "Manufacturer"
+    },
+    {
+      "name": "Dummy Vendor 3 Electricals Ltd.",
+      "udyam": "N/A - Non-MSME",
+      "mse": "No - Non-MSME",
+      "nic": "27400",
+      "emd": "Accepted",
+      "emd_reason": "EMD paid through SB Collect",
+      "nature": "Manufacturer / OEM"
+    },
+    {
+      "name": "Dummy Vendor 4 Lumen Technologies",
+      "udyam": "UDYAM-KR-03-0100004",
+      "mse": "Yes - Small",
+      "nic": "27400",
+      "emd": "Accepted",
+      "emd_reason": "Waiver valid - manufacturer of the offered product in NIC 27400",
+      "nature": "Manufacturer"
+    },
+    {
+      "name": "Dummy Vendor 5 Trading Company",
+      "udyam": "UDYAM-DL-06-0100005",
+      "mse": "Yes - Micro",
+      "nic": "46592",
+      "emd": "Not Accepted",
+      "emd_reason": "Waiver claim rejected - not a manufacturer of the offered product",
+      "nature": "Stockist / Retailer"
+    },
+    {
+      "name": "Dummy Vendor 6 Power & Light Corp.",
+      "udyam": "N/A - Non-MSME",
+      "mse": "No - Non-MSME",
+      "nic": "46592",
+      "emd": "Not Accepted",
+      "emd_reason": "Waiver claim rejected - not a manufacturer of the offered product",
+      "nature": "Authorised Dealer"
+    }
+  ],
+  "tec": {
+    "query": "TEC sought confirmation of BIS CRS registration and photometric test reports from the bidders; replies received and re-evaluated.",
+    "pm_clause": "8.5.6",
+    "accepted": [
+      "Dummy Vendor 1 Lighting Pvt. Ltd.",
+      "Dummy Vendor 3 Electricals Ltd."
+    ],
+    "rejected": [
+      {
+        "name": "Dummy Vendor 2 Illumination Systems",
+        "spec_slnos": "2, 7"
+      },
+      {
+        "name": "Dummy Vendor 4 Lumen Technologies",
+        "spec_slnos": "9, 10"
+      }
+    ]
+  },
+  "price_bid": {
+    "l1_vendor": "Dummy Vendor 1 Lighting Pvt. Ltd.",
+    "l1_price": "12,558,150",
+    "ra_status": "Reverse Auction floated on GeM; no bidder participated",
+    "cst_ref": "Annexure 21B"
+  },
+  "lpp": {
+    "contract": "HAL/NK/IMM/LED/2024/0451 dt 22.08.2024",
+    "date": "22.08.2024",
+    "price": "10,401,700",
+    "model": "LED-HB-250"
+  },
+  "counter_offer": {
+    "price": "11,162,800",
+    "date": "14.07.2026",
+    "savings_amount": "1,395,350"
+  },
+  "pnc": {
+    "committee": [
+      "AGM(Fin) - Chairman (senior-most & Finance)",
+      "AGM(IMM) - Member Secretary",
+      "DGM(Plant Maint.) - Member (user)",
+      "DGM(Purchase) - Member"
+    ]
+  },
+  "proposal": {
+    "id": "PP/AOD/IMM/2026/0331",
+    "vendor": "Dummy Vendor 1 Lighting Pvt. Ltd.",
+    "initiator": "<from the personnel directory>",
+    "initiator_desig": "Manager (IMM)",
+    "fca": "<Head of Finance>",
+    "fca_desig": "AGM (Finance)",
+    "cfa": "<Divisional Head Level-I>",
+    "cfa_desig": "GM (AOD)",
+    "dop_level": "Level I  [human-supplied: DOP-2025 value bands are not in sampleData]",
+    "value": "11,162,800"
+  },
+  "_computed": {
+    "price_variance_pct": 17.86,
+    "savings_pct": 11.11,
+    "sd_amount": 473000.0,
+    "pbg_amount": 946000.0,
+    "note": "computed by rules.py from the sheets, not transcribed"
+  }
+}

@@ -13,8 +13,28 @@ const twoLine = (a, b) => (
   </div>
 );
 
+// Payment-pending SLA: advices should clear within PENDING_LIMIT days; anything past
+// PENDING_WARN is flagged red as it approaches the limit. Tune the thresholds here.
+const PENDING_LIMIT = 30;
+const PENDING_WARN = 25;
+
+// A pending-days figure, rendered red once it crosses the warning threshold.
+const pendingValue = (days) => {
+  if (days == null) return <span>—</span>;
+  const over = days > PENDING_WARN;
+  return (
+    <span
+      className={over ? 'pending-over' : undefined}
+      title={over ? `Exceeds ${PENDING_WARN}-day warning (limit ${PENDING_LIMIT} days)` : undefined}
+    >
+      {days}
+    </span>
+  );
+};
+
 const BASE_COLUMNS = [
-  { key: 'rvNo', label: 'RV No / Date', render: (r) => twoLine(<strong>{r.rvNo}</strong>, formatDate(r.rvDate)) },
+  { key: 'rvNo', label: 'RV No / Reference No', render: (r) => twoLine(<strong>{r.rvNo}</strong>, <span style={{ fontSize: '0.75rem', color: 'var(--color-text-subtle, #4b5563)' }}>{r.refNo ?? `REF/${r.rvNo.replaceAll('/', '-')}`}</span>) },
+  { key: 'rvDate', label: 'RV Date', render: (r) => formatDate(r.rvDate) },
   { key: 'gateEntryNo', label: 'Gate Entry No / Date', render: (r) => twoLine(r.gateEntryNo, formatDate(r.gateEntryDate)) },
   { key: 'waybillNo', label: 'Waybill No', render: (r) => twoLine(r.waybillNo, formatDate(r.waybillDate)) },
   { key: 'poNo', label: 'PO No / Date', render: (r) => twoLine(r.poNo, formatDate(r.poDate)) },
@@ -31,11 +51,11 @@ const BASE_COLUMNS = [
   { key: 'rvValue', label: 'RV Value', align: 'right', render: (r) => <span className="num">{formatINR(r.rvValue)}</span> },
   {
     key: 'pendingDays',
-    label: 'Pending Days (RV / GE)',
+    label: 'Pending Days (RV / GE · limit 30)',
     align: 'right',
     render: (r) => (
       <span className="num">
-        {r.pendingDaysRv} / {r.pendingDaysGate}
+        {pendingValue(r.pendingDaysRv)} / {pendingValue(r.pendingDaysGate)}
       </span>
     )
   },
@@ -48,25 +68,104 @@ const BASE_COLUMNS = [
   { key: 'paymentGroup', label: 'Payment Group', render: (r) => paymentGroupStatus(r.paStatus) }
 ];
 
-// Roles that can generate a payment advice from this inbox.
-const CAN_GENERATE_PA = ['purchase_maker', 'admin'];
-
 export function rvInboxColumns(role, handlers = {}) {
-  if (!CAN_GENERATE_PA.includes(role)) return BASE_COLUMNS;
   return [
     ...BASE_COLUMNS,
     {
       key: 'actions',
       label: 'Actions',
-      render: (row) => (
-        <button
-          className="btn"
-          disabled={row.paStatus !== 'rv_pending' || handlers.busyRvNo === row.rvNo}
-          onClick={() => handlers.onGenerate?.(row)}
-        >
-          Generate payment advice
-        </button>
-      )
+      render: (row) => {
+        const busy = handlers.busyRvNo === row.rvNo;
+        const invoiceVal = Number(row.invoiceValue ?? row.poValue ?? 0);
+        const rvVal = Number(row.rvValue ?? 0);
+        const diffAmount = Math.abs(invoiceVal - rvVal);
+        const hasDiscrepancy = diffAmount > 0;
+        const isRvValueLess = rvVal < invoiceVal;
+        const creditNoteWaived = Boolean(row.creditNoteWaived);
+        const creditNoteUploaded = Boolean(row.creditNoteUploaded);
+        const needsCreditNoteDecision = (row.creditNoteRequired ?? isRvValueLess) && !creditNoteWaived && !creditNoteUploaded;
+
+        return (
+          <div className="queue-buttons" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {hasDiscrepancy && (
+              <>
+                {needsCreditNoteDecision ? (
+                  <button
+                    className="btn btn-secondary"
+                    disabled={busy}
+                    onClick={() => (handlers.onReceiptComparison || handlers.onCreditNote)?.(row)}
+                    title={`Discrepancy of ${formatINR(diffAmount)} between Invoice and RV. Review receipts to decide or upload credit note.`}
+                    style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}
+                  >
+                    ⚖️ Review Receipts / CN
+                  </button>
+                ) : creditNoteWaived ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span className="action-note" style={{ color: '#15803d', fontWeight: 600 }}>
+                      CN Waived ({formatINR(diffAmount)}) ✓
+                    </span>
+                    <button
+                      className="btn btn-secondary"
+                      disabled={busy}
+                      onClick={() => (handlers.onReceiptComparison || handlers.onCreditNote)?.(row)}
+                      style={{ fontSize: '0.75rem', padding: '2px 6px' }}
+                      title="View receipt comparison & waiver details"
+                    >
+                      ⚖️ View Decision
+                    </button>
+                  </div>
+                ) : creditNoteUploaded ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span className="action-note">Credit note {row.creditNoteNo ?? 'uploaded'} ✓</span>
+                    <button
+                      className="btn btn-secondary"
+                      disabled={busy}
+                      onClick={() => (handlers.onReceiptComparison || handlers.onCreditNote)?.(row)}
+                      style={{ fontSize: '0.75rem', padding: '2px 6px' }}
+                      title="View credit note & receipt details"
+                    >
+                      ⚖️ View CN
+                    </button>
+                  </div>
+                ) : null}
+              </>
+            )}
+
+            {row.paStatus === 'rv_pending' ? (
+              <button
+                className="btn"
+                disabled={busy || needsCreditNoteDecision}
+                title={
+                  needsCreditNoteDecision
+                    ? `Discrepancy of ${formatINR(diffAmount)} found. Review receipts & decide on credit note to proceed.`
+                    : undefined
+                }
+                onClick={() => handlers.onGenerate?.(row)}
+              >
+                Generate payment advice
+              </button>
+            ) : row.paStatus === 'pa_created' ? (
+              <button
+                className="btn"
+                disabled={busy}
+                onClick={() => handlers.onViewDraft?.(row)}
+                title="Open draft payment advice to edit & submit"
+              >
+                ✏️ View / Edit Draft PA
+              </button>
+            ) : (
+              <button
+                className="btn btn-secondary"
+                disabled={busy}
+                onClick={() => handlers.onViewPa?.(row)}
+                title="View active payment advice"
+              >
+                🔍 View PA
+              </button>
+            )}
+          </div>
+        );
+      }
     }
   ];
 }

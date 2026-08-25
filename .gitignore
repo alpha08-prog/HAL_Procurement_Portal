@@ -3,3 +3,7 @@ CLAUDE.md
 node_modules/
 dist/
 .env
+tokens.md
+*__pycache__*
+ai/outputs/
+server/data/

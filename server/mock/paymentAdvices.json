@@ -7,8 +7,8 @@
     "status": "pa_created",
     "createdDate": "2026-05-20",
     "createdBy": "purchase_maker",
-    "createdByName": "V. Sharma",
-    "createdByPb": "PB-44102",
+    "createdByName": "Yogesh M.",
+    "createdByPb": "PB-44731",
     "officer": "R. Deshpande",
     "rvValue": 23567200,
     "ldWeeks": 1,
@@ -78,11 +78,11 @@
     "rvNo": "ELE/26/092",
     "poNo": "IMM/PO/25-26/0402",
     "vendorId": "V002",
-    "status": "cleared_by_desk",
+    "status": "sent_to_hod",
     "createdDate": "2026-05-06",
     "createdBy": "purchase_maker",
-    "createdByName": "P. Joshi",
-    "createdByPb": "PB-44310",
+    "createdByName": "Yogesh M.",
+    "createdByPb": "PB-44731",
     "officer": "S. Kulkarni",
     "rvValue": 3548000,
     "ldWeeks": 2,
@@ -122,12 +122,12 @@
         "remark": "Verified against PO terms. Forwarded to payment desk."
       },
       {
-        "action": "desk_clear",
+        "action": "desk_forward_hod",
         "from": "at_payment_desk",
-        "to": "cleared_by_desk",
+        "to": "sent_to_hod",
         "by": "payment_desk",
         "date": "2026-05-12",
-        "remark": "Cleared by payment desk — forwarded for HOD approval."
+        "remark": "Forwarded to HOD (IMM) for approval."
       }
     ],
     "invoiceValue": 3548000,
@@ -177,8 +177,8 @@
     "status": "at_payment_desk",
     "createdDate": "2026-05-08",
     "createdBy": "purchase_maker",
-    "createdByName": "V. Sharma",
-    "createdByPb": "PB-44102",
+    "createdByName": "Yogesh M.",
+    "createdByPb": "PB-44731",
     "officer": "R. Deshpande",
     "rvValue": 482160,
     "ldWeeks": 0,
@@ -221,7 +221,7 @@
     "invoiceValue": 482160,
     "checkingOfficerPbNo": "PB-44821",
     "ldApplicable": "No",
-    "bankMismatch": true,
+    "bankMismatch": false,
     "securities": {
       "sd": {
         "applicable": "Yes",
@@ -262,11 +262,11 @@
     "rvNo": "RAW/26/210",
     "poNo": "IMM/PO/25-26/0341",
     "vendorId": "V005",
-    "status": "sent_to_cppc",
+    "status": "stamped_by_hod",
     "createdDate": "2026-04-28",
     "createdBy": "purchase_maker",
-    "createdByName": "P. Joshi",
-    "createdByPb": "PB-44310",
+    "createdByName": "Yogesh M.",
+    "createdByPb": "PB-44731",
     "officer": "S. Kulkarni",
     "rvValue": 7812945,
     "ldWeeks": 2,
@@ -278,8 +278,8 @@
     "invoiceNo": "HIL/MUM/26/2210",
     "invoiceDate": "2026-04-25",
     "makerRemark": "Delivery 2 weeks beyond PO schedule — LD applied.",
-    "pprNo": "PPR/26/0214",
-    "pprDate": "2026-05-12",
+    "pprNo": null,
+    "pprDate": null,
     "history": [
       {
         "action": "pa_created",
@@ -306,22 +306,20 @@
         "remark": "LD applicable — delivery 2 weeks late per PO schedule."
       },
       {
-        "action": "desk_clear",
+        "action": "desk_forward_hod",
         "from": "at_payment_desk",
-        "to": "cleared_by_desk",
+        "to": "sent_to_hod",
         "by": "payment_desk",
         "date": "2026-05-11",
-        "remark": "Cleared by payment desk — forwarded for HOD approval."
+        "remark": "Forwarded to HOD (IMM) for approval."
       },
       {
-        "action": "hod_approve",
-        "from": "cleared_by_desk",
-        "to": "sent_to_cppc",
+        "action": "hod_stamp",
+        "from": "sent_to_hod",
+        "to": "stamped_by_hod",
         "by": "hod_imm",
         "date": "2026-05-12",
-        "remark": "Approved — payment proposal forwarded to CPPC.",
-        "pprNo": "PPR/26/0214",
-        "pprDate": "2026-05-12"
+        "remark": "Approved & stamped — returned to payment desk for payment."
       }
     ],
     "invoiceValue": 7812945,
@@ -371,8 +369,8 @@
     "status": "paid",
     "createdDate": "2026-04-15",
     "createdBy": "purchase_maker",
-    "createdByName": "N. Patil",
-    "createdByPb": "PB-44588",
+    "createdByName": "Yogesh M.",
+    "createdByPb": "PB-44731",
     "officer": "A. Menon",
     "rvValue": 195300,
     "ldWeeks": 0,
@@ -412,30 +410,38 @@
         "remark": "In order."
       },
       {
-        "action": "desk_clear",
+        "action": "desk_forward_hod",
         "from": "at_payment_desk",
-        "to": "cleared_by_desk",
+        "to": "sent_to_hod",
         "by": "payment_desk",
         "date": "2026-04-24",
-        "remark": "Cleared by payment desk — forwarded for HOD approval."
+        "remark": "Forwarded to HOD (IMM) for approval."
       },
       {
-        "action": "hod_approve",
-        "from": "cleared_by_desk",
-        "to": "sent_to_cppc",
+        "action": "hod_stamp",
+        "from": "sent_to_hod",
+        "to": "stamped_by_hod",
         "by": "hod_imm",
         "date": "2026-04-27",
-        "remark": "Approved — payment proposal forwarded to CPPC.",
+        "remark": "Approved & stamped — returned to payment desk for payment."
+      },
+      {
+        "action": "desk_forward_cppc",
+        "from": "stamped_by_hod",
+        "to": "sent_to_cppc",
+        "by": "payment_desk",
+        "date": "2026-04-27",
+        "remark": "Forwarded to CPPC for final payment.",
         "pprNo": "PPR/26/0187",
         "pprDate": "2026-04-27"
       },
       {
-        "action": "paid",
+        "action": "cppc_pay",
         "from": "sent_to_cppc",
         "to": "paid",
         "by": "cppc",
         "date": "2026-05-06",
-        "remark": "Payment released by CPPC."
+        "remark": "Final payment released by CPPC."
       }
     ],
     "invoiceValue": 195300,
@@ -485,8 +491,8 @@
     "status": "paid",
     "createdDate": "2026-01-22",
     "createdBy": "purchase_maker",
-    "createdByName": "N. Patil",
-    "createdByPb": "PB-44588",
+    "createdByName": "Yogesh M.",
+    "createdByPb": "PB-44731",
     "officer": "A. Menon",
     "rvValue": 1860000,
     "ldWeeks": 0,
@@ -526,30 +532,38 @@
         "remark": "In order. Forwarded to payment desk."
       },
       {
-        "action": "desk_clear",
+        "action": "desk_forward_hod",
         "from": "at_payment_desk",
-        "to": "cleared_by_desk",
+        "to": "sent_to_hod",
         "by": "payment_desk",
         "date": "2026-01-27",
-        "remark": "Cleared by payment desk — forwarded for HOD approval."
+        "remark": "Forwarded to HOD (IMM) for approval."
       },
       {
-        "action": "hod_approve",
-        "from": "cleared_by_desk",
-        "to": "sent_to_cppc",
+        "action": "hod_stamp",
+        "from": "sent_to_hod",
+        "to": "stamped_by_hod",
         "by": "hod_imm",
         "date": "2026-01-29",
-        "remark": "Approved — payment proposal forwarded to CPPC.",
+        "remark": "Approved & stamped — returned to payment desk for payment."
+      },
+      {
+        "action": "desk_forward_cppc",
+        "from": "stamped_by_hod",
+        "to": "sent_to_cppc",
+        "by": "payment_desk",
+        "date": "2026-01-29",
+        "remark": "Forwarded to CPPC for final payment.",
         "pprNo": "PPR/26/0061",
         "pprDate": "2026-01-29"
       },
       {
-        "action": "paid",
+        "action": "cppc_pay",
         "from": "sent_to_cppc",
         "to": "paid",
         "by": "cppc",
         "date": "2026-02-05",
-        "remark": "Payment released by CPPC."
+        "remark": "Final payment released by CPPC."
       }
     ],
     "invoiceValue": 1860000,
@@ -599,8 +613,8 @@
     "status": "sent_to_cppc",
     "createdDate": "2026-02-10",
     "createdBy": "purchase_maker",
-    "createdByName": "P. Joshi",
-    "createdByPb": "PB-44310",
+    "createdByName": "Yogesh M.",
+    "createdByPb": "PB-44731",
     "officer": "S. Kulkarni",
     "rvValue": 5400000,
     "ldWeeks": 2,
@@ -640,20 +654,28 @@
         "remark": "LD applicable — verified against PO schedule."
       },
       {
-        "action": "desk_clear",
+        "action": "desk_forward_hod",
         "from": "at_payment_desk",
-        "to": "cleared_by_desk",
+        "to": "sent_to_hod",
         "by": "payment_desk",
         "date": "2026-02-16",
-        "remark": "Cleared by payment desk — forwarded for HOD approval."
+        "remark": "Forwarded to HOD (IMM) for approval."
       },
       {
-        "action": "hod_approve",
-        "from": "cleared_by_desk",
-        "to": "sent_to_cppc",
+        "action": "hod_stamp",
+        "from": "sent_to_hod",
+        "to": "stamped_by_hod",
         "by": "hod_imm",
         "date": "2026-02-18",
-        "remark": "Approved — payment proposal forwarded to CPPC.",
+        "remark": "Approved & stamped — returned to payment desk for payment."
+      },
+      {
+        "action": "desk_forward_cppc",
+        "from": "stamped_by_hod",
+        "to": "sent_to_cppc",
+        "by": "payment_desk",
+        "date": "2026-02-18",
+        "remark": "Forwarded to CPPC for final payment.",
         "pprNo": "PPR/26/0079",
         "pprDate": "2026-02-18"
       }

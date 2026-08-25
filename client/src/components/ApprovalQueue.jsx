@@ -87,8 +87,14 @@ export default function ApprovalQueue({ config }) {
       `/payment-advice?pa=${encodeURIComponent(row.paNo)}&back=${encodeURIComponent(config.backPath)}`
     );
 
+  const previewForm = (row) =>
+    navigate(
+      `/payment-advice?pa=${encodeURIComponent(row.paNo)}&back=${encodeURIComponent(config.backPath)}&view=1`
+    );
+
   const onAction = (row, action) => {
     if (action.kind === 'preview') return preview(row);
+    if (action.kind === 'form_preview') return previewForm(row);
     if (action.fields) return setModal({ row, action });
     return runTransition(row, action);
   };

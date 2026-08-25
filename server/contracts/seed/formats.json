@@ -1,0 +1,9 @@
+[
+  { "id": "pbg_bg", "label": "Bank Guarantee Format — Performance Bank Guarantee" },
+  { "id": "sd_bg", "label": "Bank Guarantee Format — Security Deposit" },
+  { "id": "adv_bg", "label": "Bank Guarantee Format — Advance Payment" },
+  { "id": "indemnity_bond", "label": "Indemnity Bond Format" },
+  { "id": "warranty_cert", "label": "Warranty Certificate Format" },
+  { "id": "service_level", "label": "Service Level Agreement Format" }
+]
+

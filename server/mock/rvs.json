@@ -1,6 +1,7 @@
 [
   {
     "rvNo": "COM/26/148",
+    "refNo": "REF/COM/26/148",
     "rvDate": "2026-05-18",
     "gateEntryNo": "GE/26/1031",
     "gateEntryDate": "2026-05-12",
@@ -25,10 +26,11 @@
     "mprDate": "2025-09-15",
     "invoiceNo": "INV/26-27/0002",
     "invoiceDate": "2026-05-18",
-    "invoiceValue": 9905883
+    "invoiceValue": 9905884
   },
   {
     "rvNo": "COM/26/151",
+    "refNo": "REF/COM/26/151",
     "rvDate": "2026-05-27",
     "gateEntryNo": "GE/26/1058",
     "gateEntryDate": "2026-05-22",
@@ -40,8 +42,10 @@
     "deliveryDueDate": "2026-05-25",
     "vendorId": "V002",
     "description": "Forged steel brackets — undercarriage assembly jigs",
-    "rvValue": 1248500,
+    "rvValue": 1100000,
     "paStatus": "rv_pending",
+    "creditNoteRequired": true,
+    "creditNoteUploaded": false,
     "poOfficer": "S. Kulkarni / PB-45110",
     "waybillNo": "WB/26/2071",
     "waybillDate": "2026-05-20",
@@ -57,6 +61,7 @@
   },
   {
     "rvNo": "ELE/26/097",
+    "refNo": "REF/ELE/26/097",
     "rvDate": "2026-05-09",
     "gateEntryNo": "GE/26/0987",
     "gateEntryDate": "2026-05-04",
@@ -85,6 +90,7 @@
   },
   {
     "rvNo": "COM/26/144",
+    "refNo": "REF/COM/26/144",
     "rvDate": "2026-04-30",
     "gateEntryNo": "GE/26/0942",
     "gateEntryDate": "2026-04-27",
@@ -113,6 +119,7 @@
   },
   {
     "rvNo": "RAW/26/210",
+    "refNo": "REF/RAW/26/210",
     "rvDate": "2026-04-21",
     "gateEntryNo": "GE/26/0901",
     "gateEntryDate": "2026-04-16",
@@ -125,7 +132,7 @@
     "vendorId": "V005",
     "description": "Aluminium alloy sheets AA2024 — raw material stores",
     "rvValue": 7812945,
-    "paStatus": "sent_to_cppc",
+    "paStatus": "stamped_by_hod",
     "poOfficer": "S. Kulkarni / PB-45110",
     "waybillNo": "WB/26/1901",
     "waybillDate": "2026-04-14",
@@ -141,6 +148,7 @@
   },
   {
     "rvNo": "COM/26/139",
+    "refNo": "REF/COM/26/139",
     "rvDate": "2026-04-10",
     "gateEntryNo": "GE/26/0863",
     "gateEntryDate": "2026-04-06",
@@ -169,6 +177,7 @@
   },
   {
     "rvNo": "ELE/26/092",
+    "refNo": "REF/ELE/26/092",
     "rvDate": "2026-05-02",
     "gateEntryNo": "GE/26/0968",
     "gateEntryDate": "2026-04-30",
@@ -181,7 +190,7 @@
     "vendorId": "V002",
     "description": "Forged undercarriage fittings — machine shop jigs",
     "rvValue": 3548000,
-    "paStatus": "cleared_by_desk",
+    "paStatus": "sent_to_hod",
     "poOfficer": "S. Kulkarni / PB-45110",
     "waybillNo": "WB/26/1971",
     "waybillDate": "2026-04-28",
@@ -197,6 +206,7 @@
   },
   {
     "rvNo": "COM/26/072",
+    "refNo": "REF/COM/26/072",
     "rvDate": "2026-01-20",
     "gateEntryNo": "GE/26/0712",
     "gateEntryDate": "2026-01-12",
@@ -225,6 +235,7 @@
   },
   {
     "rvNo": "RAW/26/065",
+    "refNo": "REF/RAW/26/065",
     "rvDate": "2026-02-04",
     "gateEntryNo": "GE/26/0689",
     "gateEntryDate": "2026-02-02",

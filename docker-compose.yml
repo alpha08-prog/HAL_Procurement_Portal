@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL Database Service
+  db:
+    image: postgres:16-alpine
+    container_name: hal_postgres_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hal_procurement}
+      POSTGRES_USER: ${POSTGRES_USER:-hal_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hal_password_2026}
+    volumes:
+      - hal_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hal_admin} -d ${POSTGRES_DB:-hal_procurement}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hal_network
+
+  # 2. Node.js Backend API Service
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: hal_backend_server
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-hal_admin}:${POSTGRES_PASSWORD:-hal_password_2026}@db:5432/${POSTGRES_DB:-hal_procurement}
+      JWT_SECRET: ${JWT_SECRET:-hal_nashik_procurement_secret_2026}
+      STORAGE_PATH: /app/uploads
+      DB_HOST: db
+      DB_PORT: 5432
+    volumes:
+      - hal_uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - hal_network
+
+  # 3. Web Portal (Nginx Frontend + API Reverse Proxy)
+  client:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    container_name: hal_frontend_portal
+    restart: unless-stopped
+    ports:
+      - "${PORT:-80}:80"
+    depends_on:
+      - server
+    networks:
+      - hal_network
+
+volumes:
+  hal_pgdata:
+    driver: local
+  hal_uploads:
+    driver: local
+
+networks:
+  hal_network:
+    driver: bridge

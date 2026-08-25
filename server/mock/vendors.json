@@ -13,7 +13,8 @@
       "name": "HDFC Bank",
       "accountNo": "50200012345678",
       "ifsc": "HDFC0000123"
-    }
+    },
+    "contact": "Sameer Kale, Sales Head — +91 98220 44811, sales@seatingsolutions.in"
   },
   {
     "id": "V002",
@@ -29,7 +30,8 @@
       "name": "ICICI Bank",
       "accountNo": "002705001234",
       "ifsc": "ICIC0000027"
-    }
+    },
+    "contact": "D. Pawar, Works Manager — +91 98500 32217, works@puneforge.co.in"
   },
   {
     "id": "V003",
@@ -45,7 +47,8 @@
       "name": "State Bank of India",
       "accountNo": "30912345678",
       "ifsc": "SBIN0004321"
-    }
+    },
+    "contact": "K. Srinivasan, Key Accounts — +91 99450 71230, defence@bharatavionics.com"
   },
   {
     "id": "V004",
@@ -61,7 +64,8 @@
       "name": "Bank of Maharashtra",
       "accountNo": "60123456789",
       "ifsc": "MAHB0000456"
-    }
+    },
+    "contact": "Mrs. S. Deore, Proprietor — +91 94220 58864, info@nifasteners.in"
   },
   {
     "id": "V005",
@@ -77,7 +81,8 @@
       "name": "Axis Bank",
       "accountNo": "911020001234567",
       "ifsc": "UTIB0000234"
-    }
+    },
+    "contact": "A. Trivedi, Regional Sales — +91 98200 15522, metals.west@hindalco.com"
   },
   {
     "id": "V006",
@@ -93,6 +98,7 @@
       "name": "Kotak Mahindra Bank",
       "accountNo": "7411223344",
       "ifsc": "KKBK0000789"
-    }
+    },
+    "contact": "R. Jagtap, Partner — +91 97640 20981, deccantools@gmail.com"
   }
 ]

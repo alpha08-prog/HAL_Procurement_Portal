@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useRole } from '../../context/RoleContext.jsx';
 import {
   fetchChecklist, fetchMeta, planChain, previewInjections, startChain, submitChecklist
 } from '../../lib/approvalsApi.js';
@@ -13,6 +14,8 @@ import {
 // ladder — the form builds it.
 export default function Intake() {
   const nav = useNavigate();
+  const { role } = useRole();
+  const canAct = ['indentor', 'purchase_maker', 'purchase_officer', 'hod_imm', 'admin'].includes(role);
   const [meta, setMeta] = useState(null);
   const [form, setForm] = useState(null);
   const [answers, setAnswers] = useState({});
@@ -261,12 +264,20 @@ export default function Intake() {
           </div>
 
           <div className="form-actions">
-            <button className="btn btn-secondary" onClick={doPlan} disabled={busy || !dept}>
-              Resolve the chain
-            </button>
-            <button className="btn" onClick={doStart} disabled={busy || !dept || committeeNote}>
-              Start the file
-            </button>
+            {canAct ? (
+              <>
+                <button className="btn btn-secondary" onClick={doPlan} disabled={busy || !dept}>
+                  Resolve the chain
+                </button>
+                <button className="btn" onClick={doStart} disabled={busy || !dept || committeeNote}>
+                  Start the file
+                </button>
+              </>
+            ) : (
+              <p className="field-hint" style={{ color: 'var(--color-warning, #b45309)', fontWeight: 600 }}>
+                Your role ({role}) can view the checklist but cannot start approval files.
+              </p>
+            )}
           </div>
           {!dept && <p className="field-hint">Pick a requisitioning department first.</p>}
 

@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import DataGrid from '../../components/DataGrid.jsx';
 import { CHAIN_COLUMNS } from '../../config/approvalColumns.jsx';
+import { canAccessPath } from '../../config/roles.js';
+import { useRole } from '../../context/RoleContext.jsx';
 import { fetchChains } from '../../lib/approvalsApi.js';
 
 // Every file currently moving through an approval chain, and whether the gate has let it go.
 export default function Chains() {
+  const { role } = useRole();
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
 
@@ -42,9 +45,11 @@ export default function Chains() {
         </div>
       </div>
 
-      <div className="form-actions">
-        <Link className="btn" to="/approvals/intake">+ New indent intake</Link>
-      </div>
+      {canAccessPath(role, '/approvals/intake') && (
+        <div className="form-actions">
+          <Link className="btn" to="/approvals/intake">+ New indent intake</Link>
+        </div>
+      )}
 
       <DataGrid
         columns={CHAIN_COLUMNS}

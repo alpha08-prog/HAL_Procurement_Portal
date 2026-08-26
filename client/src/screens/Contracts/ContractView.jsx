@@ -23,7 +23,7 @@ const ALLOWED_PROFORMA_IDS = new Set([
 // isolated in .note-print-area so window.print() yields the HAL contract alone.
 export default function ContractView() {
   const { id } = useParams();
-  const { accountRole } = useRole();
+  const { role, accountRole } = useRole();
   const [doc, setDoc] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -45,7 +45,7 @@ export default function ContractView() {
   }, [id]);
 
   const c = doc?.contract;
-  const canUseContractWorkflow = CONTRACT_WORKFLOW_ROLES.has(accountRole);
+  const canUseContractWorkflow = CONTRACT_WORKFLOW_ROLES.has(role || accountRole);
 
   const openEdit = async () => {
     try {

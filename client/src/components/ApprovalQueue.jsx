@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useRole } from '../context/RoleContext.jsx';
 import { apiFetch } from '../lib/api.js';
 import CaptureModal from './CaptureModal.jsx';
 import DataGrid from './DataGrid.jsx';
@@ -21,11 +22,13 @@ import DataGrid from './DataGrid.jsx';
 //     transition?,                   // state-machine action to fire
 //     requiredInputs?: [inputKey],   // gate on inline rowInputs (Screen 3)
 //     fields?: [...CaptureModal],    // if present, collect these in a modal first
-//     modalTitle?, submitLabel?
+//     modalTitle?, submitLabel?,
+//     allowedRoles?: [role],         // if set, action is only shown for these roles + admin
 //   }]
 // }
 export default function ApprovalQueue({ config }) {
   const navigate = useNavigate();
+  const { role } = useRole();
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
   const [inputs, setInputs] = useState({});
@@ -113,7 +116,11 @@ export default function ApprovalQueue({ config }) {
     label: 'Actions',
     render: (row) => {
       const busy = busyPa === row.paNo;
-      const visibleActions = (config.actions ?? []).filter((a) => !a.when || a.when(row));
+      const visibleActions = (config.actions ?? []).filter((a) => {
+        if (a.when && !a.when(row)) return false;
+        if (a.allowedRoles && !a.allowedRoles.includes(role) && role !== 'admin') return false;
+        return true;
+      });
       return (
         <div className="queue-actions">
           {(config.rowInputs ?? []).map((input) => (

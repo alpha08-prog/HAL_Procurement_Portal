@@ -4,6 +4,7 @@ import { COMMITTEE_COLUMNS } from '../../config/approvalColumns.jsx';
 import {
   createCommittee, fetchCommittee, fetchCommittees, fetchMeta, signCommitteeMember
 } from '../../lib/approvalsApi.js';
+import { useRole } from '../../context/RoleContext.jsx';
 
 // Some stages are decided by a panel, not a queue.
 //
@@ -15,6 +16,8 @@ import {
 // The PNC composition is real: the sample note F5 names it. The TEC's is not in any
 // source document, so the server refuses to generate one and asks for it by hand.
 export default function Committees() {
+  const { role } = useRole();
+  const canAct = ['indentor', 'purchase_maker', 'purchase_officer', 'hod_imm', 'admin'].includes(role);
   const [meta, setMeta] = useState(null);
   const [rows, setRows] = useState(null);
   const [active, setActive] = useState(null);
@@ -84,45 +87,51 @@ export default function Committees() {
 
       {error && <div className="banner banner-error">{error}</div>}
 
-      <div className="form-section">
-        <h2 className="form-section-title">Constitute a committee</h2>
-        <div className="form-grid">
-          <label className="field-label">
-            Note
-            <select className="field-input" value={noteId} onChange={(e) => setNoteId(e.target.value)}>
-              {committeeNotes.map((n) => <option key={n.id} value={n.id}>{n.label}</option>)}
-            </select>
-          </label>
-          <label className="field-label">
-            Unit
-            <select className="field-input" value={division} onChange={(e) => setDivision(e.target.value)}>
-              {(meta?.divisions ?? []).map((d) => <option key={d} value={d}>{d}</option>)}
-            </select>
-          </label>
-          <label className="field-label">
-            Requisition
-            <input className="field-input" value={caseRef} onChange={(e) => setCaseRef(e.target.value)} />
-          </label>
-          <label className="field-label field-wide">
-            Members, one per line (leave blank to use the composition named in the sample note)
-            <textarea
-              className="field-input"
-              rows={4}
-              value={manual}
-              placeholder={'AGM(QA) - Chairman\nDGM(Plant Maint.) - Member\nCM(IMM) - Member Secretary'}
-              onChange={(e) => setManual(e.target.value)}
-            />
-          </label>
+      {canAct ? (
+        <div className="form-section">
+          <h2 className="form-section-title">Constitute a committee</h2>
+          <div className="form-grid">
+            <label className="field-label">
+              Note
+              <select className="field-input" value={noteId} onChange={(e) => setNoteId(e.target.value)}>
+                {committeeNotes.map((n) => <option key={n.id} value={n.id}>{n.label}</option>)}
+              </select>
+            </label>
+            <label className="field-label">
+              Unit
+              <select className="field-input" value={division} onChange={(e) => setDivision(e.target.value)}>
+                {(meta?.divisions ?? []).map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </label>
+            <label className="field-label">
+              Requisition
+              <input className="field-input" value={caseRef} onChange={(e) => setCaseRef(e.target.value)} />
+            </label>
+            <label className="field-label field-wide">
+              Members, one per line (leave blank to use the composition named in the sample note)
+              <textarea
+                className="field-input"
+                rows={4}
+                value={manual}
+                placeholder={'AGM(QA) - Chairman\nDGM(Plant Maint.) - Member\nCM(IMM) - Member Secretary'}
+                onChange={(e) => setManual(e.target.value)}
+              />
+            </label>
+          </div>
+          <p className="field-hint">
+            {noteId === 'tec_report'
+              ? 'No document in sampleData states who sits on a TEC, so this one must be named by hand.'
+              : 'The PNC composition comes from the sample note F5 — leave the box blank to use it.'}
+          </p>
+          <div className="form-actions">
+            <button className="btn" onClick={create} disabled={busy}>Constitute</button>
+          </div>
         </div>
-        <p className="field-hint">
-          {noteId === 'tec_report'
-            ? 'No document in sampleData states who sits on a TEC, so this one must be named by hand.'
-            : 'The PNC composition comes from the sample note F5 — leave the box blank to use it.'}
-        </p>
-        <div className="form-actions">
-          <button className="btn" onClick={create} disabled={busy}>Constitute</button>
+      ) : (
+        <div className="banner banner-info">
+          <strong>Read-only view:</strong> Your role ({role}) can view committee status but cannot constitute committees or sign declarations.
         </div>
-      </div>
+      )}
 
       {active && (
         <>
@@ -169,12 +178,18 @@ export default function Committees() {
                       </span>
                     </td>
                     <td>
-                      <button className="btn btn-inline" disabled={busy} onClick={() => sign(m.id, true)}>
-                        Sign &amp; declare
-                      </button>
-                      <button className="btn btn-inline btn-secondary" disabled={busy} onClick={() => sign(m.id, false)}>
-                        Sign without declaring
-                      </button>
+                      {canAct ? (
+                        <>
+                          <button className="btn btn-inline" disabled={busy} onClick={() => sign(m.id, true)}>
+                            Sign &amp; declare
+                          </button>
+                          <button className="btn btn-inline btn-secondary" disabled={busy} onClick={() => sign(m.id, false)}>
+                            Sign without declaring
+                          </button>
+                        </>
+                      ) : (
+                        <span className="field-hint">Read-only</span>
+                      )}
                     </td>
                   </tr>
                 ))}

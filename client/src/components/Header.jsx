@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { roleLabel } from '../config/roles.js';
+import { canAccessPath, roleLabel, screensForRole } from '../config/roles.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useRole } from '../context/RoleContext.jsx';
 import RoleSwitcher from './RoleSwitcher.jsx';
@@ -159,162 +159,106 @@ export default function Header() {
                 Portal Overview
               </NavLink>
             </span>
-            <span className="app-nav-item">
-              <Link to="/noting/inbox" className="app-nav-link">E-File Noting</Link>
-            </span>
-            <span className="app-nav-item">
-              <Link to="/rv-inbox" className="app-nav-link">Payment Desk</Link>
-            </span>
-            <span className="app-nav-item">
-              <Link to="/approvals/chains" className="app-nav-link">Approvals</Link>
-            </span>
-            <span className="app-nav-item">
-              <Link to="/contracts/register" className="app-nav-link">Contracts</Link>
-            </span>
+            {canAccessPath(role, '/noting') && (
+              <span className="app-nav-item">
+                <Link to="/noting/inbox" className="app-nav-link">E-File Noting</Link>
+              </span>
+            )}
+            {canAccessPath(role, '/rv-inbox') && (
+              <span className="app-nav-item">
+                <Link to="/rv-inbox" className="app-nav-link">Payment Desk</Link>
+              </span>
+            )}
+            {canAccessPath(role, '/approvals/chains') && (
+              <span className="app-nav-item">
+                <Link to="/approvals/chains" className="app-nav-link">Approvals</Link>
+              </span>
+            )}
+            {canAccessPath(role, '/contracts/register') && (
+              <span className="app-nav-item">
+                <Link to="/contracts/register" className="app-nav-link">Contracts</Link>
+              </span>
+            )}
           </>
         )}
 
         {/* 2. E-File Noting Navigation */}
         {activeModuleId === 'noting' && (
           <>
-            <span className="app-nav-item">
-              <NavLink to="/noting/inbox" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                Inbox
-              </NavLink>
-            </span>
-            <span className="app-nav-item">
-              <NavLink to="/noting/sentbox" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                SentBox
-              </NavLink>
-            </span>
-            <span className="app-nav-item">
-              <NavLink to="/noting/cabinet" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                Cabinet
-              </NavLink>
-            </span>
-            <span className="app-nav-item">
-              <NavLink to="/noting/initiate" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                + Create E-File
-              </NavLink>
-            </span>
-            <span className="app-nav-item">
-              <NavLink to="/noting/files" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                Drafts &amp; Files
-              </NavLink>
-            </span>
-            <span className="app-nav-item">
-              <NavLink to="/noting/upcoming" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                Upcoming
-              </NavLink>
-            </span>
-            <span className="app-nav-item">
-              <NavLink to="/noting/reports" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                Reports
-              </NavLink>
-            </span>
-            <span className="app-nav-item">
-              <NavLink to="/noting/org" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                Organisation
-              </NavLink>
-            </span>
-            <span className="app-nav-item">
-              <NavLink to="/noting/ai-documents" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                AI Documents
-              </NavLink>
-            </span>
+            {[
+              { path: '/noting/inbox', label: 'Inbox' },
+              { path: '/noting/sentbox', label: 'SentBox' },
+              { path: '/noting/cabinet', label: 'Cabinet' },
+              { path: '/noting/initiate', label: '+ Create E-File' },
+              { path: '/noting/files', label: 'Drafts & Files' },
+              { path: '/noting/upcoming', label: 'Upcoming' },
+              { path: '/noting/reports', label: 'Reports' },
+              { path: '/noting/org', label: 'Organisation' },
+              { path: '/noting/ai-documents', label: 'AI Documents' }
+            ].filter((item) => canAccessPath(role, item.path)).map((item) => (
+              <span className="app-nav-item" key={item.path}>
+                <NavLink to={item.path} className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
+                  {item.label}
+                </NavLink>
+              </span>
+            ))}
           </>
         )}
 
         {/* 3. Payment Desk Navigation */}
         {activeModuleId === 'payments' && (
           <>
-            <span className="app-nav-item">
-              <NavLink to="/rv-inbox" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                RV Inbox
-              </NavLink>
-            </span>
-            <span className="app-nav-item">
-              <NavLink to="/payment-advice" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                Payment Advice
-              </NavLink>
-            </span>
-            <span className="app-nav-item">
-              <NavLink to="/forward-advice" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                Forward Advice
-              </NavLink>
-            </span>
-            <span className="app-nav-item">
-              <NavLink to="/process-payment" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                Process Payment
-              </NavLink>
-            </span>
-            <span className="app-nav-item">
-              <NavLink to="/hod-approval" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                HOD Approval
-              </NavLink>
-            </span>
-            <span className="app-nav-item">
-              <NavLink to="/payment-register" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                Payment Register
-              </NavLink>
-            </span>
-            <span className="app-nav-item">
-              <NavLink to="/payment-kpis" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                Payment KPIs
-              </NavLink>
-            </span>
+            {[
+              { path: '/rv-inbox', label: 'RV Inbox' },
+              { path: '/payment-advice', label: 'Payment Advice' },
+              { path: '/forward-advice', label: 'Forward Advice' },
+              { path: '/process-payment', label: 'Process Payment' },
+              { path: '/hod-approval', label: 'HOD Approval' },
+              { path: '/payment-register', label: 'Payment Register' },
+              { path: '/payment-kpis', label: 'Payment KPIs' }
+            ].filter((item) => canAccessPath(role, item.path)).map((item) => (
+              <span className="app-nav-item" key={item.path}>
+                <NavLink to={item.path} className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
+                  {item.label}
+                </NavLink>
+              </span>
+            ))}
           </>
         )}
 
         {/* 4. Approvals Navigation */}
         {activeModuleId === 'approvals' && (
           <>
-            <span className="app-nav-item">
-              <NavLink to="/approvals/chains" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                Approval Chains
-              </NavLink>
-            </span>
-            <span className="app-nav-item">
-              <NavLink to="/approvals/bids" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                Bid Evaluation
-              </NavLink>
-            </span>
-            <span className="app-nav-item">
-              <NavLink to="/approvals/committees" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                Committees
-              </NavLink>
-            </span>
-            <span className="app-nav-item">
-              <NavLink to="/approvals/intake" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                Indent Intake
-              </NavLink>
-            </span>
-            <span className="app-nav-item">
-              <NavLink to="/approvals/directory" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                Directory
-              </NavLink>
-            </span>
+            {[
+              { path: '/approvals/chains', label: 'Approval Chains' },
+              { path: '/approvals/bids', label: 'Bid Evaluation' },
+              { path: '/approvals/committees', label: 'Committees' },
+              { path: '/approvals/intake', label: 'Indent Intake' },
+              { path: '/approvals/directory', label: 'Directory' }
+            ].filter((item) => canAccessPath(role, item.path)).map((item) => (
+              <span className="app-nav-item" key={item.path}>
+                <NavLink to={item.path} className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
+                  {item.label}
+                </NavLink>
+              </span>
+            ))}
           </>
         )}
 
         {/* 5. Contracts Navigation */}
         {activeModuleId === 'contracts' && (
           <>
-            <span className="app-nav-item">
-              <NavLink to="/contracts/register" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                Contract Register
-              </NavLink>
-            </span>
-            <span className="app-nav-item">
-              <NavLink to="/contracts/generate" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                Generate Contract
-              </NavLink>
-            </span>
-            <span className="app-nav-item">
-              <NavLink to="/contracts/library" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                72 STC Clause Library
-              </NavLink>
-            </span>
+            {[
+              { path: '/contracts/register', label: 'Contract Register' },
+              { path: '/contracts/generate', label: 'Generate Contract' },
+              { path: '/contracts/library', label: '72 STC Clause Library' }
+            ].filter((item) => canAccessPath(role, item.path)).map((item) => (
+              <span className="app-nav-item" key={item.path}>
+                <NavLink to={item.path} className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
+                  {item.label}
+                </NavLink>
+              </span>
+            ))}
           </>
         )}
       </nav>

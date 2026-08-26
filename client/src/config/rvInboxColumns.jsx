@@ -69,6 +69,9 @@ const BASE_COLUMNS = [
 ];
 
 export function rvInboxColumns(role, handlers = {}) {
+  // Only purchase_maker and admin may create PAs, manage credit notes, or edit drafts.
+  const canAct = role === 'purchase_maker' || role === 'admin';
+
   return [
     ...BASE_COLUMNS,
     {
@@ -90,69 +93,96 @@ export function rvInboxColumns(role, handlers = {}) {
             {hasDiscrepancy && (
               <>
                 {needsCreditNoteDecision ? (
-                  <button
-                    className="btn btn-secondary"
-                    disabled={busy}
-                    onClick={() => (handlers.onReceiptComparison || handlers.onCreditNote)?.(row)}
-                    title={`Discrepancy of ${formatINR(diffAmount)} between Invoice and RV. Review receipts to decide or upload credit note.`}
-                    style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}
-                  >
-                    ⚖️ Review Receipts / CN
-                  </button>
+                  canAct ? (
+                    <button
+                      className="btn btn-secondary"
+                      disabled={busy}
+                      onClick={() => (handlers.onReceiptComparison || handlers.onCreditNote)?.(row)}
+                      title={`Discrepancy of ${formatINR(diffAmount)} between Invoice and RV. Review receipts to decide or upload credit note.`}
+                      style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}
+                    >
+                      ⚖️ Review Receipts / CN
+                    </button>
+                  ) : (
+                    <span className="action-note" style={{ color: '#b45309', fontWeight: 600, fontSize: '0.8125rem' }}>
+                      ⚖️ CN Decision Pending
+                    </span>
+                  )
                 ) : creditNoteWaived ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     <span className="action-note" style={{ color: '#15803d', fontWeight: 600 }}>
                       CN Waived ({formatINR(diffAmount)}) ✓
                     </span>
-                    <button
-                      className="btn btn-secondary"
-                      disabled={busy}
-                      onClick={() => (handlers.onReceiptComparison || handlers.onCreditNote)?.(row)}
-                      style={{ fontSize: '0.75rem', padding: '2px 6px' }}
-                      title="View receipt comparison & waiver details"
-                    >
-                      ⚖️ View Decision
-                    </button>
+                    {canAct && (
+                      <button
+                        className="btn btn-secondary"
+                        disabled={busy}
+                        onClick={() => (handlers.onReceiptComparison || handlers.onCreditNote)?.(row)}
+                        style={{ fontSize: '0.75rem', padding: '2px 6px' }}
+                        title="View receipt comparison &amp; waiver details"
+                      >
+                        ⚖️ View Decision
+                      </button>
+                    )}
                   </div>
                 ) : creditNoteUploaded ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     <span className="action-note">Credit note {row.creditNoteNo ?? 'uploaded'} ✓</span>
-                    <button
-                      className="btn btn-secondary"
-                      disabled={busy}
-                      onClick={() => (handlers.onReceiptComparison || handlers.onCreditNote)?.(row)}
-                      style={{ fontSize: '0.75rem', padding: '2px 6px' }}
-                      title="View credit note & receipt details"
-                    >
-                      ⚖️ View CN
-                    </button>
+                    {canAct && (
+                      <button
+                        className="btn btn-secondary"
+                        disabled={busy}
+                        onClick={() => (handlers.onReceiptComparison || handlers.onCreditNote)?.(row)}
+                        style={{ fontSize: '0.75rem', padding: '2px 6px' }}
+                        title="View credit note &amp; receipt details"
+                      >
+                        ⚖️ View CN
+                      </button>
+                    )}
                   </div>
                 ) : null}
               </>
             )}
 
             {row.paStatus === 'rv_pending' ? (
-              <button
-                className="btn"
-                disabled={busy || needsCreditNoteDecision}
-                title={
-                  needsCreditNoteDecision
-                    ? `Discrepancy of ${formatINR(diffAmount)} found. Review receipts & decide on credit note to proceed.`
-                    : undefined
-                }
-                onClick={() => handlers.onGenerate?.(row)}
-              >
-                Generate payment advice
-              </button>
+              canAct ? (
+                <button
+                  className="btn"
+                  disabled={busy || needsCreditNoteDecision}
+                  title={
+                    needsCreditNoteDecision
+                      ? `Discrepancy of ${formatINR(diffAmount)} found. Review receipts & decide on credit note to proceed.`
+                      : undefined
+                  }
+                  onClick={() => handlers.onGenerate?.(row)}
+                >
+                  Generate payment advice
+                </button>
+              ) : (
+                <span className="action-note" style={{ color: '#64748b', fontSize: '0.8125rem' }}>
+                  Awaiting PA creation
+                </span>
+              )
             ) : row.paStatus === 'pa_created' ? (
-              <button
-                className="btn"
-                disabled={busy}
-                onClick={() => handlers.onViewDraft?.(row)}
-                title="Open draft payment advice to edit & submit"
-              >
-                ✏️ View / Edit Draft PA
-              </button>
+              canAct ? (
+                <button
+                  className="btn"
+                  disabled={busy}
+                  onClick={() => handlers.onViewDraft?.(row)}
+                  title="Open draft payment advice to edit &amp; submit"
+                >
+                  ✏️ View / Edit Draft PA
+                </button>
+              ) : (
+                <button
+                  className="btn btn-secondary"
+                  disabled={busy}
+                  onClick={() => handlers.onViewPa?.(row)}
+                  title="View draft payment advice (read-only)"
+                >
+                  🔍 View Draft PA
+                </button>
+              )
             ) : (
               <button
                 className="btn btn-secondary"

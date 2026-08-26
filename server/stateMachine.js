@@ -84,13 +84,27 @@ const fail = (status, message) => {
   throw Object.assign(new Error(message), { status });
 };
 
+// The roles allowed to trigger a transition. Admin is always allowed.
+function isAllowedRole(transitionBy, userRole) {
+  if (userRole === 'admin') return true;
+  if (Array.isArray(transitionBy)) return transitionBy.includes(userRole);
+  return transitionBy === userRole;
+}
+
 // Validates and applies a named transition: sets pa.status, stores any captured
 // meta (e.g. PPR no/date) on the PA, appends a history entry, syncs rv.paStatus.
+// `payload.user` carries the authenticated user from req.user for role enforcement.
 export function applyTransition(pa, action, payload = {}) {
   const t = TRANSITIONS[action];
   if (!t) fail(400, `Unknown action '${action}'`);
   if (pa.status !== t.from) {
     fail(409, `${pa.paNo} is ${pa.status} — '${action}' requires ${t.from}`);
+  }
+
+  // Enforce the role declared on the transition — the role switcher is not trusted.
+  const user = payload.user ?? null;
+  if (t.by && user?.role && !isAllowedRole(t.by, user.role)) {
+    fail(403, `'${action}' can only be performed by ${Array.isArray(t.by) ? t.by.join(' / ') : t.by}. Your role is ${user.role}.`);
   }
 
   const remark = String(payload.remark ?? '').trim();
@@ -114,6 +128,8 @@ export function applyTransition(pa, action, payload = {}) {
     from: t.from,
     to: t.to,
     by: t.by,
+    byName: user?.name ?? null,
+    byPb: user?.id ?? null,
     date: todayISO(),
     remark: remark || t.defaultRemark || '',
     ...meta

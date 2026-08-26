@@ -1,5 +1,8 @@
 import { Router } from 'express';
+import { requireRoles } from '../middleware/requireRoles.js';
 import { db, daysSince, todayISO, vendorById } from '../store.js';
+
+const makerOnly = requireRoles(['purchase_maker', 'admin'], 'Only the Purchase Maker (or admin) may perform this action.');
 
 const router = Router();
 
@@ -39,7 +42,7 @@ router.get('/', (req, res) => {
 });
 
 // Credit note decision endpoint for RVs
-router.post('/credit-note-decision', (req, res) => {
+router.post('/credit-note-decision', makerOnly, (req, res) => {
   const rv = db.rvs.find((r) => r.rvNo === req.body?.rvNo);
   if (!rv) return res.status(404).json({ error: `Unknown RV ${req.body?.rvNo}` });
 

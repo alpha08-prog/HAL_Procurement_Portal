@@ -130,6 +130,7 @@ export const deskQueueConfig = {
       label: 'Check, stamp & forward to HOD',
       transition: 'desk_forward_hod',
       primary: true,
+      allowedRoles: ['payment_desk'],
       when: (row) => row.status === 'at_payment_desk',
       modalTitle: 'Stamp & forward Payment Advice to HOD',
       submitLabel: 'Stamp & Forward',
@@ -152,6 +153,7 @@ export const deskQueueConfig = {
       key: 'sendback',
       label: 'Send back',
       transition: 'desk_send_back',
+      allowedRoles: ['payment_desk'],
       when: (row) => row.status === 'at_payment_desk',
       modalTitle: 'Send back to purchase group',
       submitLabel: 'Send back',
@@ -165,6 +167,7 @@ export const deskQueueConfig = {
       label: 'Forward to CPPC (final payment)',
       transition: 'desk_forward_cppc',
       primary: true,
+      allowedRoles: ['payment_desk'],
       when: (row) => row.status === 'stamped_by_hod',
       modalTitle: 'Forward to CPPC for final payment',
       submitLabel: 'Forward to CPPC',
@@ -180,6 +183,7 @@ export const deskQueueConfig = {
       label: 'Record payment released',
       transition: 'cppc_pay',
       primary: true,
+      allowedRoles: ['payment_desk'],
       when: (row) => row.status === 'sent_to_cppc'
     }
   ]

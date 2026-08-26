@@ -278,8 +278,11 @@ export default function PaForm({ paNo }) {
     );
   }
 
-  const editable = pa.status === 'pa_created' && !recordView;
-  const isOfficerStage = (backPath === '/forward-advice' || pa.status === 'forwarded_to_officer') && !recordView;
+  // Only the purchase_maker (or admin) may edit a draft PA.
+  const isMaker = role === 'purchase_maker' || role === 'admin';
+  const isOfficer = role === 'purchase_officer' || role === 'admin';
+  const editable = pa.status === 'pa_created' && !recordView && isMaker;
+  const isOfficerStage = (backPath === '/forward-advice' || pa.status === 'forwarded_to_officer') && !recordView && isOfficer;
   const isFormStage = editable || isOfficerStage;
   const activeTab = viewTab ?? (isOfficerStage ? 'doc' : 'form');
   const isLdApplicable = pa.ldAmount > 0 || pa.ldApplicable === 'Yes' || (pa.ldWeeks || 0) > 0;
@@ -664,7 +667,7 @@ export default function PaForm({ paNo }) {
               </div>
             )
             // Payment desk (at_payment_desk): Stamp & forward to HOD, or Return to maker
-            : backPath === '/process-payment' && pa.status === 'at_payment_desk' ? (
+            : backPath === '/process-payment' && pa.status === 'at_payment_desk' && (role === 'payment_desk' || role === 'admin') ? (
               <div className="form-actions">
                 <button
                   className="btn"
@@ -686,7 +689,7 @@ export default function PaForm({ paNo }) {
               </div>
             )
             // HOD: Stamp & forward to desk, or Return
-            : backPath === '/hod-approval' && pa.status === 'sent_to_hod' ? (
+            : backPath === '/hod-approval' && pa.status === 'sent_to_hod' && (role === 'hod_imm' || role === 'admin') ? (
               <div className="form-actions">
                 <button
                   className="btn"
@@ -709,7 +712,7 @@ export default function PaForm({ paNo }) {
               </div>
             )
             // Desk (stamped_by_hod): Forward Recommendation Report to CPPC
-            : backPath === '/process-payment' && pa.status === 'stamped_by_hod' ? (
+            : backPath === '/process-payment' && pa.status === 'stamped_by_hod' && (role === 'payment_desk' || role === 'admin') ? (
               <div className="form-actions">
                 <button
                   className="btn"

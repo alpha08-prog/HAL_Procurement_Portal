@@ -1,7 +1,12 @@
 import { Router } from 'express';
 import { computeLd } from '../ld.js';
+import { requireRoles } from '../middleware/requireRoles.js';
 import { applyTransition } from '../stateMachine.js';
 import { daysBetween, daysSince, db, paByNo, rvByNo, todayISO, vendorById } from '../store.js';
+
+// PA creation and draft editing are purchase_maker actions; transition enforcement
+// is handled per-action inside the state machine. Admin always passes.
+const makerOnly = requireRoles(['purchase_maker', 'admin'], 'Only the Purchase Maker (or admin) may perform this action.');
 
 function nextPaNo() {
   const max = db.paymentAdvices
@@ -310,7 +315,7 @@ router.get('/', (req, res) => {
 });
 
 // Generate a payment advice from a pending RV (Screen 1 action).
-router.post('/', (req, res) => {
+router.post('/', makerOnly, (req, res) => {
   const rv = rvByNo(req.body?.rvNo);
   if (!rv) return res.status(404).json({ error: `Unknown RV ${req.body?.rvNo}` });
   if (rv.paStatus !== 'rv_pending') {
@@ -368,7 +373,7 @@ router.post('/', (req, res) => {
 });
 
 // Credit note waiver decision (when purchase maker decides credit note is not required)
-router.post('/credit-note-waiver', (req, res) => {
+router.post('/credit-note-waiver', makerOnly, (req, res) => {
   let rv = rvByNo(req.body?.rvNo);
   let pa = paByNo(req.body?.paNo);
   if (!rv && pa) {
@@ -408,7 +413,7 @@ router.post('/credit-note-waiver', (req, res) => {
 // Credit note generation/upload gate for an RV whose accepted value is below its
 // invoice value. Document storage is represented by the retained document number
 // and timestamp in this prototype; the PA route enforces that it exists.
-router.post('/credit-note', (req, res) => {
+router.post('/credit-note', makerOnly, (req, res) => {
   let rv = rvByNo(req.body?.rvNo);
   let pa = paByNo(req.body?.paNo);
   if (!rv && pa) {
@@ -449,7 +454,7 @@ router.post('/credit-note', (req, res) => {
 });
 
 // Save maker-entered fields (Screen 2 "Save draft").
-router.post('/update', (req, res) => {
+router.post('/update', makerOnly, (req, res) => {
   const pa = paByNo(req.body?.paNo);
   if (!pa) return res.status(404).json({ error: `Unknown PA ${req.body?.paNo}` });
   if (pa.status !== 'pa_created') {
@@ -503,7 +508,8 @@ router.post('/transition', (req, res) => {
   const pa = paByNo(req.body?.paNo);
   if (!pa) return res.status(404).json({ error: `Unknown PA ${req.body?.paNo}` });
   try {
-    applyTransition(pa, req.body?.action, req.body);
+    // Pass req.user so the state machine can enforce the per-transition `by` role.
+    applyTransition(pa, req.body?.action, { ...req.body, user: req.user });
     res.json(joinPa(pa));
   } catch (err) {
     res.status(err.status ?? 500).json({ error: err.message });

@@ -82,6 +82,7 @@ export const hodQueueConfig = {
       label: 'Stamp & forward',
       transition: 'hod_stamp',
       primary: true,
+      allowedRoles: ['hod_imm'],
       modalTitle: 'Stamp & forward to payment desk',
       submitLabel: 'Stamp & forward',
       fields: [
@@ -94,6 +95,7 @@ export const hodQueueConfig = {
       key: 'return',
       label: 'Return',
       transition: 'hod_return',
+      allowedRoles: ['hod_imm'],
       modalTitle: 'Return to purchase group',
       submitLabel: 'Return',
       fields: [

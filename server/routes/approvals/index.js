@@ -13,10 +13,18 @@ import * as chain from '../../approvals/chain.js';
 import * as checklist from '../../approvals/checklist.js';
 import * as org from '../../approvals/org.js';
 import * as store from '../../approvals/store.js';
+import { requireRoles } from '../../middleware/requireRoles.js';
 
 const router = Router();
 
 const fail = (res, code, error) => res.status(code).json({ error });
+
+// Roles that can create/act on approval chains, checklist submissions, and committees.
+// stores_inspection and payment_desk are read-only on these screens.
+const approvalActors = requireRoles(
+  ['indentor', 'purchase_maker', 'purchase_officer', 'hod_imm', 'admin'],
+  'Your role does not have permission to create or act on approval files.'
+);
 
 // -- reference data ----------------------------------------------------------
 
@@ -112,7 +120,7 @@ router.post('/checklist/preview', (req, res) => {
   });
 });
 
-router.post('/checklist/submissions', (req, res) => {
+router.post('/checklist/submissions', approvalActors, (req, res) => {
   const { caseRef, title, division, dept, answers } = req.body ?? {};
   if (!division) return fail(res, 422, 'division is required');
   if (!answers || typeof answers !== 'object') return fail(res, 422, 'answers object is required');
@@ -147,7 +155,7 @@ router.post('/plan', (req, res) => {
 // -- live chains -------------------------------------------------------------
 router.get('/chains', (_req, res) => res.json({ chains: store.listChains() }));
 
-router.post('/chains', (req, res) => {
+router.post('/chains', approvalActors, (req, res) => {
   const { noteId = 'provisioning', division, dept, caseRef, answers, originatorPb,
     submissionId, fileId } = req.body ?? {};
   if (!division) return fail(res, 422, 'division is required');
@@ -172,7 +180,7 @@ router.get('/chains/:id', (req, res) => {
 // Act on a chain. `slotIndex` acts as the planned position; `pb` lets somebody outside
 // the plan act (a junior examining, or the originator answering a query — both happen on
 // the real note). Refusals come back 422 with the reason.
-router.post('/chains/:id/hops', (req, res) => {
+router.post('/chains/:id/hops', approvalActors, (req, res) => {
   const { action, slotIndex, pb, comment, rider, twoFactor, when } = req.body ?? {};
   if (!action) return fail(res, 422, 'action is required');
   if (action === 'concur_with_rider' && !String(rider ?? '').trim()) {
@@ -194,7 +202,7 @@ router.post('/chains/:id/hops', (req, res) => {
 // -- committees --------------------------------------------------------------
 router.get('/committees', (_req, res) => res.json({ committees: store.listCommittees() }));
 
-router.post('/committees', (req, res) => {
+router.post('/committees', approvalActors, (req, res) => {
   const { noteId, division, caseRef, specs } = req.body ?? {};
   if (!noteId || !division) return fail(res, 422, 'noteId and division are required');
   const shape = chain.chainShape(noteId);
@@ -214,7 +222,7 @@ router.get('/committees/:id', (req, res) => {
   return c ? res.json({ committee: c }) : fail(res, 404, 'No such committee');
 });
 
-router.post('/committees/:id/members/:memberId/sign', (req, res) => {
+router.post('/committees/:id/members/:memberId/sign', approvalActors, (req, res) => {
   const { coiDeclared, remark } = req.body ?? {};
   const out = store.signMember(Number(req.params.id), Number(req.params.memberId), {
     coiDeclared: Boolean(coiDeclared), remark

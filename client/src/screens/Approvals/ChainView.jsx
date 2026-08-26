@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { actOnChain, fetchChain, fetchMeta } from '../../lib/approvalsApi.js';
+import { useRole } from '../../context/RoleContext.jsx';
 
 // Walking one file through its approval chain.
 //
@@ -34,6 +35,8 @@ const ACTION_PILL = {
 
 export default function ChainView() {
   const { id } = useParams();
+  const { role } = useRole();
+  const canAct = ['indentor', 'purchase_maker', 'purchase_officer', 'hod_imm', 'admin'].includes(role);
   const [chain, setChain] = useState(null);
   const [meta, setMeta] = useState(null);
   const [action, setAction] = useState('concur');
@@ -122,72 +125,78 @@ export default function ChainView() {
 
       {/* ---- the action row ---- */}
       {!chain.closed && chain.next && (
-        <div className="form-section">
-          <h2 className="form-section-title">
-            With {chain.next.person?.name} — {chain.next.title}
-          </h2>
-          <p className="field-hint">
-            {chain.next.person
-              ? `${chain.next.person.grade} · ${chain.next.person.dept} · PB ${chain.next.person.pb}`
-              : 'no one resolved for this position'}
-            {chain.atCfa && ' · this is the CFA, the only desk that may approve or reject'}
-          </p>
-          {chain.next.caveats?.map((c) => (
-            <div className="banner banner-info" key={c}>⚠ {c}</div>
-          ))}
+        canAct ? (
+          <div className="form-section">
+            <h2 className="form-section-title">
+              With {chain.next.person?.name} — {chain.next.title}
+            </h2>
+            <p className="field-hint">
+              {chain.next.person
+                ? `${chain.next.person.grade} · ${chain.next.person.dept} · PB ${chain.next.person.pb}`
+                : 'no one resolved for this position'}
+              {chain.atCfa && ' · this is the CFA, the only desk that may approve or reject'}
+            </p>
+            {chain.next.caveats?.map((c) => (
+              <div className="banner banner-info" key={c}>⚠ {c}</div>
+            ))}
 
-          <div className="form-grid">
-            <label className="field-label">
-              What does this desk do?
-              <select className="field-input" value={action} onChange={(e) => setAction(e.target.value)}>
-                {chain.allowed.map((a) => (
-                  <option key={a} value={a}>{hopHelp[a]?.label ?? a}</option>
-                ))}
-              </select>
-            </label>
-            <label className="field-label field-wide">
-              Remark
-              <input
-                className="field-input"
-                value={comment}
-                placeholder={action.startsWith('concur') ? meta?.concurDefault ?? '' : 'free text'}
-                onChange={(e) => setComment(e.target.value)}
-              />
-            </label>
-            {action === 'concur_with_rider' && (
-              <label className="field-label field-wide">
-                The condition this binds a later stage to
-                <input
-                  className="field-input"
-                  value={rider}
-                  placeholder="e.g. remove any brand/make from the tech spec before releasing the RFQ"
-                  onChange={(e) => setRider(e.target.value)}
-                />
-              </label>
-            )}
-            {(action === 'examine' || action === 'query') && (
+            <div className="form-grid">
               <label className="field-label">
-                Acting PB (leave blank to act as the planned desk)
+                What does this desk do?
+                <select className="field-input" value={action} onChange={(e) => setAction(e.target.value)}>
+                  {chain.allowed.map((a) => (
+                    <option key={a} value={a}>{hopHelp[a]?.label ?? a}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-label field-wide">
+                Remark
                 <input
                   className="field-input"
-                  value={actorPb}
-                  placeholder={action === 'query' ? plan.originator?.pb ?? '' : 'a junior in this unit'}
-                  onChange={(e) => setActorPb(e.target.value)}
+                  value={comment}
+                  placeholder={action.startsWith('concur') ? meta?.concurDefault ?? '' : 'free text'}
+                  onChange={(e) => setComment(e.target.value)}
                 />
               </label>
-            )}
-            <label className="field-label">
-              <input type="checkbox" checked={twoFactor} onChange={(e) => setTwoFactor(e.target.checked)} />
-              {' '}Two-factor authenticated
-            </label>
+              {action === 'concur_with_rider' && (
+                <label className="field-label field-wide">
+                  The condition this binds a later stage to
+                  <input
+                    className="field-input"
+                    value={rider}
+                    placeholder="e.g. remove any brand/make from the tech spec before releasing the RFQ"
+                    onChange={(e) => setRider(e.target.value)}
+                  />
+                </label>
+              )}
+              {(action === 'examine' || action === 'query') && (
+                <label className="field-label">
+                  Acting PB (leave blank to act as the planned desk)
+                  <input
+                    className="field-input"
+                    value={actorPb}
+                    placeholder={action === 'query' ? plan.originator?.pb ?? '' : 'a junior in this unit'}
+                    onChange={(e) => setActorPb(e.target.value)}
+                  />
+                </label>
+              )}
+              <label className="field-label">
+                <input type="checkbox" checked={twoFactor} onChange={(e) => setTwoFactor(e.target.checked)} />
+                {' '}Two-factor authenticated
+              </label>
+            </div>
+            <p className="field-hint">{hopHelp[action]?.help}</p>
+            <div className="form-actions">
+              <button className="btn" onClick={submit} disabled={busy}>
+                {hopHelp[action]?.label ?? action}
+              </button>
+            </div>
           </div>
-          <p className="field-hint">{hopHelp[action]?.help}</p>
-          <div className="form-actions">
-            <button className="btn" onClick={submit} disabled={busy}>
-              {hopHelp[action]?.label ?? action}
-            </button>
+        ) : (
+          <div className="banner banner-info" style={{ marginTop: '1rem' }}>
+            <strong>Read-only view:</strong> File is currently with {chain.next.person?.name || chain.next.title}. Your role ({role}) cannot act on approval chains.
           </div>
-        </div>
+        )
       )}
 
       {chain.closed && (

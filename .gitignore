@@ -4,6 +4,7 @@ node_modules/
 dist/
 .env
 tokens.md
+node_modules
 *__pycache__*
 ai/outputs/
 server/data/

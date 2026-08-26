@@ -1,9 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom';
 import ModuleIcon from '../../components/ModuleIcon.jsx';
+import { canAccessPath } from '../../config/roles.js';
+import { useRole } from '../../context/RoleContext.jsx';
 
 export default function PortalHub() {
   const navigate = useNavigate();
-
+  const { role } = useRole();
   const modules = [
     {
       id: 'noting',
@@ -70,12 +72,19 @@ export default function PortalHub() {
       ]
     }
   ];
+  // Filter quick links and whole module cards by role visibility.
+  const filteredModules = modules
+    .map((m) => ({
+      ...m,
+      quickLinks: m.quickLinks.filter((link) => canAccessPath(role, link.path))
+    }))
+    .filter((m) => m.quickLinks.length > 0);
 
   return (
     <section className="screen portal-hub-screen">
       {/* 2x2 Clean, Large Proportional Grid — Fills Viewport Beautifully */}
       <div className="portal-modules-grid">
-        {modules.map((m) => (
+        {filteredModules.map((m) => (
           <div className="portal-module-card" key={m.id}>
             {/* Top Bar: Professional SVG Icon + Title + Badge */}
             <div className="portal-card-header">

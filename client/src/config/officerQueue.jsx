@@ -76,6 +76,7 @@ export const officerQueueConfig = {
       label: 'Stamp & forward',
       transition: 'officer_forward',
       primary: true,
+      allowedRoles: ['purchase_officer'],
       when: (row) => !(row.bankMismatch === true || row.bankMismatch === 'Yes'),
       modalTitle: 'Stamp & forward to payment desk (Neerja Sharma)',
       submitLabel: 'Stamp & forward',
@@ -91,6 +92,17 @@ export const officerQueueConfig = {
             'Forwarded with the applicable LD deduction.'
           ]
         }
+      ]
+    },
+    {
+      key: 'sendback',
+      label: 'Return to maker',
+      transition: 'officer_send_back',
+      allowedRoles: ['purchase_officer'],
+      modalTitle: 'Return to purchase maker',
+      submitLabel: 'Return',
+      fields: [
+        { key: 'remark', label: 'Remark', type: 'textarea', required: true, placeholder: 'Reason for returning to the maker…', quickOptions: ['Please verify the supporting documents.', 'Please correct the payment computation.'] }
       ]
     }
   ]

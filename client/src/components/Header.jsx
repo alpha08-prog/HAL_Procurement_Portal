@@ -13,11 +13,13 @@ function initialsOf(name = '') {
 }
 
 const MODULES_CONFIG = [
-  { id: 'hub', label: 'Portal Hub', path: '/portal', desc: 'Main Launchpad' },
-  { id: 'noting', label: 'E-File Noting & AI', path: '/noting/inbox', desc: 'FLITE & AI Cascade' },
-  { id: 'payments', label: 'Payment Desk', path: '/rv-inbox', desc: 'RV & Bill Clearance' },
-  { id: 'approvals', label: 'Bid Approvals', path: '/approvals/chains', desc: 'DOP-2025 & Committees' },
-  { id: 'contracts', label: 'Contracts Suite', path: '/contracts/register', desc: 'Agreements & 72 STC' }
+  { id: 'hub', label: 'Portal Hub', path: '/portal', desc: 'Welcome Launchpad (6 Tabs)' },
+  { id: 'provisioning', label: 'Provisioning', path: '/provisioning', desc: 'MPR/CAR, Estimations & Certs' },
+  { id: 'noting', label: 'Procurement & Noting', path: '/noting/inbox', desc: 'Tendering & 26 Formats' },
+  { id: 'contracts', label: 'Contract Management', path: '/contracts/register', desc: 'PO Release & 72 STC' },
+  { id: 'payments', label: 'Payment Desk', path: '/rv-inbox', desc: 'RV Status, LD & CPPC' },
+  { id: 'claims', label: 'Claim Management', path: '/claims', desc: 'Rejections & Discrepancies' },
+  { id: 'kpis', label: 'KPI & MIS Reports', path: '/kpis', desc: '16 Statutory Metrics & SLAs' }
 ];
 
 export default function Header() {
@@ -46,7 +48,9 @@ export default function Header() {
   // Determine current active module from path
   const path = location.pathname;
   let activeModuleId = 'hub';
-  if (path.startsWith('/noting') || path.startsWith('/ai-cases') || path === '/ai-documents' || path.startsWith('/ai-documents')) {
+  if (path.startsWith('/provisioning')) {
+    activeModuleId = 'provisioning';
+  } else if (path.startsWith('/noting') || path.startsWith('/ai-cases') || path === '/ai-documents' || path.startsWith('/ai-documents')) {
     activeModuleId = 'noting';
   } else if (
     path === '/rv-inbox' ||
@@ -59,9 +63,13 @@ export default function Header() {
   ) {
     activeModuleId = 'payments';
   } else if (path.startsWith('/approvals')) {
-    activeModuleId = 'approvals';
+    activeModuleId = 'noting';
   } else if (path.startsWith('/contracts')) {
     activeModuleId = 'contracts';
+  } else if (path.startsWith('/claims')) {
+    activeModuleId = 'claims';
+  } else if (path.startsWith('/kpis')) {
+    activeModuleId = 'kpis';
   }
 
   const currentMod = MODULES_CONFIG.find((m) => m.id === activeModuleId) || MODULES_CONFIG[0];
@@ -156,12 +164,20 @@ export default function Header() {
           <>
             <span className="app-nav-item">
               <NavLink to="/portal" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                Portal Overview
+                Portal Overview (6 Tabs)
               </NavLink>
+            </span>
+            <span className="app-nav-item">
+              <Link to="/provisioning" className="app-nav-link">Provisioning</Link>
             </span>
             {canAccessPath(role, '/noting') && (
               <span className="app-nav-item">
-                <Link to="/noting/inbox" className="app-nav-link">E-File Noting</Link>
+                <Link to="/noting/inbox" className="app-nav-link">Procurement</Link>
+              </span>
+            )}
+            {canAccessPath(role, '/contracts/register') && (
+              <span className="app-nav-item">
+                <Link to="/contracts/register" className="app-nav-link">Contract Mgmt</Link>
               </span>
             )}
             {canAccessPath(role, '/rv-inbox') && (
@@ -169,20 +185,34 @@ export default function Header() {
                 <Link to="/rv-inbox" className="app-nav-link">Payment Desk</Link>
               </span>
             )}
-            {canAccessPath(role, '/approvals/chains') && (
-              <span className="app-nav-item">
-                <Link to="/approvals/chains" className="app-nav-link">Approvals</Link>
-              </span>
-            )}
-            {canAccessPath(role, '/contracts/register') && (
-              <span className="app-nav-item">
-                <Link to="/contracts/register" className="app-nav-link">Contracts</Link>
-              </span>
-            )}
+            <span className="app-nav-item">
+              <Link to="/claims" className="app-nav-link">Claim Mgmt</Link>
+            </span>
+            <span className="app-nav-item">
+              <Link to="/kpis" className="app-nav-link">KPI &amp; MIS</Link>
+            </span>
           </>
         )}
 
-        {/* 2. E-File Noting Navigation */}
+        {/* 2. Provisioning Navigation */}
+        {activeModuleId === 'provisioning' && (
+          <>
+            {[
+              { path: '/provisioning', label: 'Provisioning Workspace' },
+              { path: '/approvals/intake', label: 'Indentor Checklist' },
+              { path: '/noting/initiate', label: '+ Initiate Provisioning Note' },
+              { path: '/contracts/library', label: 'Standard Terms & Conditions' }
+            ].map((item) => (
+              <span className="app-nav-item" key={item.path + item.label}>
+                <NavLink to={item.path} className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
+                  {item.label}
+                </NavLink>
+              </span>
+            ))}
+          </>
+        )}
+
+        {/* 3. E-File Noting & Procurement Navigation */}
         {activeModuleId === 'noting' && (
           <>
             {[
@@ -205,7 +235,7 @@ export default function Header() {
           </>
         )}
 
-        {/* 3. Payment Desk Navigation */}
+        {/* 4. Payment Desk Navigation */}
         {activeModuleId === 'payments' && (
           <>
             {[
@@ -216,25 +246,6 @@ export default function Header() {
               { path: '/hod-approval', label: 'HOD Approval' },
               { path: '/payment-register', label: 'Payment Register' },
               { path: '/payment-kpis', label: 'Payment KPIs' }
-            ].filter((item) => canAccessPath(role, item.path)).map((item) => (
-              <span className="app-nav-item" key={item.path}>
-                <NavLink to={item.path} className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                  {item.label}
-                </NavLink>
-              </span>
-            ))}
-          </>
-        )}
-
-        {/* 4. Approvals Navigation */}
-        {activeModuleId === 'approvals' && (
-          <>
-            {[
-              { path: '/approvals/chains', label: 'Approval Chains' },
-              { path: '/approvals/bids', label: 'Bid Evaluation' },
-              { path: '/approvals/committees', label: 'Committees' },
-              { path: '/approvals/intake', label: 'Indent Intake' },
-              { path: '/approvals/directory', label: 'Directory' }
             ].filter((item) => canAccessPath(role, item.path)).map((item) => (
               <span className="app-nav-item" key={item.path}>
                 <NavLink to={item.path} className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
@@ -259,6 +270,28 @@ export default function Header() {
                 </NavLink>
               </span>
             ))}
+          </>
+        )}
+
+        {/* 6. Claim Management Navigation */}
+        {activeModuleId === 'claims' && (
+          <>
+            <span className="app-nav-item">
+              <NavLink to="/claims" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
+                Claim Status &amp; Register
+              </NavLink>
+            </span>
+          </>
+        )}
+
+        {/* 7. KPI & MIS Reports Navigation */}
+        {activeModuleId === 'kpis' && (
+          <>
+            <span className="app-nav-item">
+              <NavLink to="/kpis" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
+                16 Statutory KPIs &amp; MIS
+              </NavLink>
+            </span>
           </>
         )}
       </nav>

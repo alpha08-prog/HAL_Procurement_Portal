@@ -35,6 +35,9 @@ import PaymentRegister from './screens/PaymentRegister/index.jsx';
 import ProcessPayment from './screens/ProcessPayment/index.jsx';
 import RvInbox from './screens/RvInbox/index.jsx';
 import PaymentKpis from './screens/PaymentKpis/index.jsx';
+import ProvisioningWorkspace from './screens/Provisioning/index.jsx';
+import ClaimManagementWorkspace from './screens/ClaimManagement/index.jsx';
+import KpiSuiteWorkspace from './screens/KpiSuite/index.jsx';
 
 // Lands an authenticated user on the first screen their role can see.
 function HomeRedirect() {
@@ -50,6 +53,9 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route element={<RequireAuth />}>
               <Route path="/portal" element={<PortalHub />} />
+              <Route path="/provisioning" element={<ProvisioningWorkspace />} />
+              <Route path="/claims" element={<ClaimManagementWorkspace />} />
+              <Route path="/kpis" element={<KpiSuiteWorkspace />} />
               <Route path="/rv-inbox" element={<RvInbox />} />
               <Route path="/payment-advice" element={<PaymentAdvice />} />
               <Route path="/forward-advice" element={<ForwardAdvice />} />

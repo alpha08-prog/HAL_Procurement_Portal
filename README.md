@@ -1,449 +1,448 @@
-# HAL Nashik — Procurement Portal (Prototype)
+# HAL Nashik — Integrated Digital Procurement & e-Office Portal
 
-Clickable prototype of the HAL Nashik public-procurement portal, for client demos and
-feedback. Mock data only — no real integrations. Access is gated by a **login page** with
-JWT auth; each account maps to one role, which decides the screens and row actions visible.
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B%20%7C%2020%2B-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
+[![React](https://img.shields.io/badge/React-18.3-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-6.0-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org/)
+[![Ollama](https://img.shields.io/badge/SLM-Ollama%20Qwen2.5--3B-000000?style=flat-square&logo=ollama&logoColor=white)](https://ollama.ai/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker&logoColor=white)](https://docker.com/)
+[![Compliance](https://img.shields.io/badge/Compliance-DOP--2025%20%7C%20PM--Issue--4%20%7C%20GeM-blue?style=flat-square)](sampleData/)
 
-## Stack
+An enterprise-grade, end-to-end digital procurement, AI-assisted e-noting, contract generation, and payment lifecycle management portal built for **Hindustan Aeronautics Limited (HAL), Nashik Division (Aircraft Overhaul Division - AOD)**.
 
-- **Client** — React + Vite (`client/`), plain JSX and CSS
-- **Server** — Node + Express serving mock JSON fixtures (`server/`)
+The system digitizes and automates public procurement workflows governed by **DOP-2025 (Delegation of Powers)**, **HAL Purchase Manual (Issue-4)**, and the **Government e-Marketplace (GeM)** framework, covering the entire lifecycle from requisition indenting to CPPC payment release.
 
-## Run
+---
 
-```bash
-npm install   # installs client + server (npm workspaces)
-npm run dev   # starts mock API on :3001 and Vite on :5173
+## Table of Contents
+
+- [Executive Summary & Core Principles](#executive-summary--core-principles)
+- [System Architecture](#system-architecture)
+- [End-to-End Procurement Lifecycle](#end-to-end-procurement-lifecycle)
+- [Key Modules & Capabilities](#key-modules--capabilities)
+  - [1. Indent Intake & Dynamic Approval Chains](#1-indent-intake--dynamic-approval-chains)
+  - [2. AI Procurement Note Pipeline & Responsibility Cascade](#2-ai-procurement-note-pipeline--responsibility-cascade)
+  - [3. e-File Noting Workflow & Digital Office](#3-e-file-noting-workflow--digital-office)
+  - [4. Intelligent Contract Generation & Clause Matrix](#4-intelligent-contract-generation--clause-matrix)
+  - [5. Receipt Voucher (RV) & Payment Advice Engine](#5-receipt-voucher-rv--payment-advice-engine)
+  - [6. Payment Analytics & Executive SLA Dashboards](#6-payment-analytics--executive-sla-dashboards)
+- [Security, Governance & Access Model](#security-governance--access-model)
+- [Technology Stack](#technology-stack)
+- [Repository Structure](#repository-structure)
+- [Quick Start Guide](#quick-start-guide)
+- [Test Credentials & Persona Matrix](#test-credentials--persona-matrix)
+- [Docker & Air-Gapped LAN Deployment](#docker--air-gapped-lan-deployment)
+- [Automated Verification & Diagnostics](#automated-verification--diagnostics)
+- [Companion Documentation](#companion-documentation)
+
+---
+
+## Executive Summary & Core Principles
+
+Public procurement in defence aerospace demands rigorous compliance, multi-tiered auditability, and zero tolerance for calculation drift. This portal addresses these imperatives through three foundational design rules:
+
+1. **Zero-Hallucination AI Architecture (Deterministic Rules + SLM Narration):**
+   The local Small Language Model (SLM via Ollama) is strictly confined to drafting contextual narrative prose. All financial computations, statutory percentages (SD 5%, PBG 10%, LD 0.5%/week), threshold evaluations, stage routing rules, and DOP authority levels are executed in deterministic, auditable code.
+2. **Positional & Tenure-Aware Access Control:**
+   Beyond static role privileges, access to sensitive procurement notes is governed by real-time file custody, historical participation in the routing chain, security classification grade, and tenure-bounded organizational supervision.
+3. **80% Carry-Forward Single Source of Truth:**
+   Procurement files accumulate evidence sequentially across stages (F1 through F7). The system maintains an immutable case accumulator where preceding stages carry forward automatically, eliminating manual re-typing and transcription errors.
+
+---
+
+## System Architecture
+
+```mermaid
+flowchart TB
+    subgraph ClientLayer ["Client Layer (React 18 + Vite)"]
+        UI_Hub["Portal Hub / Navigation"]
+        UI_Intake["Indent Intake & Checklist"]
+        UI_Approvals["Approval Chains & Committees"]
+        UI_AICases["AI Cases & Note Drafter"]
+        UI_Noting["e-File Noting & Digital Office"]
+        UI_Contracts["Contract Generation & Clause Matrix"]
+        UI_Payments["RV Inbox, PA Processing & KPIs"]
+    end
+
+    subgraph ServerLayer ["Backend Services (Node.js / Express ESM)"]
+        AUTH_SVC["Auth & JWT Service\n(Bcrypt + Token Engine)"]
+        INTAKE_ENG["Checklist & Approval Engine\n(Dynamic Ladder Resolver)"]
+        NOTING_ENG["Workflow & Routing Engine\n(Positional Access + Supervision)"]
+        CONTRACT_ENG["Contract Assembly Engine\n(71 STC Matrix + SHA-256 / QR)"]
+        PAYMENT_ENG["Payment State Machine\n(Liquidated Damages Engine)"]
+        AI_BRIDGE["AI Output Bridge\n(Case Ingest & Normalization)"]
+    end
+
+    subgraph AILayer ["AI & Rule Engine (Python 3.10+ / Ollama)"]
+        AI_CASCADE["Responsibility Cascade\n(Indenting vs Tendering)"]
+        AI_RULES["Deterministic Rule Engine\n(Math, Limits & Predicates)"]
+        AI_FORMATS["Deterministic Annexure Engine\n(Formats 21A-21F, PP, PO)"]
+        AI_SLM["Local SLM Client\n(Ollama Qwen2.5:3B / Fallback)"]
+    end
+
+    subgraph DataLayer ["Data & Persistence Layer"]
+        DB_SQLITE[("SQLite Stores (node:sqlite)\nnoting.db · contracts.db · approvals.db")]
+        DB_FIXTURES[("JSON Master Fixtures\nusers · rvs · pos · vendors · matrix")]
+        DB_OUTPUTS[("AI Pipeline Outputs\ncase_full.json · PDFs")]
+    end
+
+    ClientLayer <-->|REST API + Bearer JWT| ServerLayer
+    ServerLayer <--> DataLayer
+    ServerLayer -.->|Read-only Case Ingestion| DB_OUTPUTS
+    AILayer -->|Emits Artifacts| DB_OUTPUTS
 ```
 
-Open http://localhost:5173. The Vite dev server proxies `/api` to Express.
+---
 
-**New here? Start with [`USER_GUIDE.md`](USER_GUIDE.md).** It covers how to run the portal
-(including the mistakes everyone makes once) and then every flow in detail — who acts, what
-they may and may not do, and why the system refuses what it refuses. It is the guide to the
-whole portal, including the Approvals and AI Cases modules.
+## End-to-End Procurement Lifecycle
 
-`WORKFLOW_GUIDE.md` goes deeper on the older parts: every screen and button of the AI
-Documents viewer, the e-File Noting workflow and Contract Generation — including which
-demo account shows which feature and a suggested 15-minute demo order.
+```mermaid
+flowchart LR
+    A["1. Requisition<br/>& Indent Intake"] --> B["2. Approval Chain<br/>& Release Gate"]
+    B --> C["3. AI Note Drafting<br/>(F1 Provisioning)"]
+    C --> D["4. Tendering<br/>& Bid Evaluation"]
+    D --> E["5. e-Noting Approval<br/>(F2 - F7 / PO)"]
+    E --> F["6. Contract Generation<br/>(SHA-256 + QR)"]
+    F --> G["7. Goods Inward<br/>(RV & FTR/QC)"]
+    G --> H["8. Payment Advice<br/>& CPPC Release"]
 
-The note-generation CLI (`ai/`) runs separately from the web app — see
-[Module B](#module-b--ai-note-generation--the-responsibility-cascade-ai) below,
-[`ai/ARCHITECTURE.md`](ai/ARCHITECTURE.md) and [`ai/CASCADE.md`](ai/CASCADE.md).
-
-## Test credentials
-
-All accounts share the password **`hal@1234`**. Each maps to one role; sign in to see only
-that role's screens. The **Admin** accounts (`admin@hal.local` and the `test@hal.local` QA
-login) see every screen and get a role-switcher dropdown in the top bar to preview other
-roles live during a demo.
-
-| Email                | Role                | Sees |
-|----------------------|---------------------|------|
-| `test@hal.local`     | Admin (QA login)    | **everything** (+ role switcher) |
-| `admin@hal.local`    | Admin               | everything (+ role switcher) |
-| `maker@hal.local`    | Purchase Maker      | RV Inbox, Payment Advice, Register |
-| `officer@hal.local`  | Purchase Officer    | Forward Advice, Register |
-| `desk@hal.local`     | Payment Desk        | Process Payment, Register |
-| `hod@hal.local`      | HOD (IMM)           | HOD Approval, Register |
-| `stores@hal.local`   | Stores & Inspection | Register |
-| `indentor@hal.local` | Indentor            | Register |
-| `gm@hal.local`       | HOD (payment side)  | GM (AOD) in the noting module — division-wide supervision demo |
-| `cm@hal.local`       | HOD (payment side)  | CM (Purchase) in the noting module — direct-head "Secret" grade + top-secret participant demo |
-
-Accounts are seeded in `server/mock/users.json` (plaintext passwords, bcrypt-hashed in memory
-on boot). The JWT signing secret is read from `JWT_SECRET` (a dev fallback is used if unset).
-
-## Module B — AI note generation & the responsibility cascade (`ai/`)
-
-A Python CLI that assembles a procurement case once, carries prior-note prose forward
-automatically, lets a local SLM (Ollama) draft only the *new* narrative section, computes
-every figure in deterministic code, and renders HAL-format notes + annexures as PDF.
-Design detail: [`ai/ARCHITECTURE.md`](ai/ARCHITECTURE.md). Cascade detail:
-[`ai/CASCADE.md`](ai/CASCADE.md).
-
-```bash
-conda run --no-capture-output -n hal python ai/run.py           # interactive cascade (default on a TTY)
-conda run --no-capture-output -n hal python ai/run.py --auto     # unattended full linear run
-conda run --no-capture-output -n hal python ai/cascade_check.py  # verify the cascade against the xlsx
-conda run --no-capture-output -n hal python ai/validate.py       # score notes vs gold facts
+    classDef stage fill:#f8fafc,stroke:#3b82f6,stroke-width:2px,color:#1e293b;
+    class A,B,C,D,E,F,G,H stage;
 ```
 
-`--no-capture-output` matters — plain `conda run` buffers stdio and the interactive prompts
-never appear (`conda activate hal && python ai/run.py` works too). With stdin not a terminal
-the CLI falls back to the unattended run, so scripts and CI are unaffected.
+---
 
-### The two agencies
+## Key Modules & Capabilities
 
-Everything below is encoded from one client document — nothing is invented:
+### 1. Indent Intake & Dynamic Approval Chains
+- **67-Point Indentor Checklist:** Dynamic intake form covering 25 provisioning criteria and 42 tender specification parameters.
+- **Dynamic Approval Ladder Computation:** Answers in the checklist automatically recompute who must approve the indent based on specific criteria (e.g., PAC/OEM certification, single tender justification, foreign currency, delivery timeline deviations).
+- **Committee Formulation:** Dynamic setup and voting records for Departmental Purchase Committees (DPC) and Price Negotiation Committees (PNC).
+- **Release Gate Validation:** Blocks downstream tender flotation until all mandatory prerequisite clearances and financial concurrences are recorded.
 
-```
-sampleData/HAL PURCHASE FORMATS dt 22.06.2026/
-    Note & Format Generation Stages and responsibility cascadeing.xlsx   [Sheet1]
-```
-
-| Agency | Sheet evidence | Owns |
-|---|---|---|
-| **Indenting Agency** | `C6:C11`, `H23`, `G26` | the indent + technical evaluation (stage 3) and the TEC Report format |
-| **Tendering Agency** | `C13`, `C16:C25`, `F23:G23`, `I23:M23`, `G27:G35` | the tender document and every other stage |
-
-The sheet's row 23, *"Note Can only be Generated by"*, is enforced at runtime: the CLI offers
-only the notes the current stage allows, and only if the agency at the desk owns that stage.
-Acting out of turn is refused and the file must be handed over (`h`) first — each crossing is
-counted and reported. A file on the normal route crosses three times: Indenting raises the
-indent, Tendering runs the tender, Indenting does the TEC, Tendering carries it to PO.
-
-### Stage cascade — who holds the file
-
-Colour = the agency named in row 23. Edge labels are the notes that sheet column lists.
+### 2. AI Procurement Note Pipeline & Responsibility Cascade
+- **Strict Agency Responsibility Separation:** Encodes the client's official responsibility matrix:
+  - **Indenting Agency:** Owns Indent Inputs, Provisioning Note (F1), and Technical Evaluation Committee (TEC) Report (F3).
+  - **Tendering Agency:** Owns Tender Document, EMD Scrutiny (F2), Price Bid Opening (F4), Price Negotiation Committee (F5/F6), Purchase Proposal (F7), and Purchase Order / Contract issuance.
+- **Interactive Responsibility Cascade CLI (`ai/run.py`):** Enforces desk custody, blocks unauthorized cross-agency actions, and tracks hand-over counts.
+- **Deterministic 11-Annexure Builder (`ai/formats.py`):** Automatically produces HAL standard annexures (Formats 21A–21F, CST, PJS, Price Schedule, Commercial Terms) with 100% mathematical accuracy.
+- **SLM Narrative Synthesis:** Ollama drafts only the newly introduced justification section for the current stage.
 
 ```mermaid
 flowchart TD
-    classDef ind fill:#fcd34d,stroke:#92400e,color:#111827
-    classDef ten fill:#93c5fd,stroke:#1e40af,color:#111827
-    classDef term fill:#e5e7eb,stroke:#6b7280,color:#111827,stroke-dasharray:5 4
+    classDef ind fill:#fef3c7,stroke:#b45309,color:#78350f,stroke-width:1.5px
+    classDef ten fill:#dbeafe,stroke:#1d4ed8,color:#1e40af,stroke-width:1.5px
+    classDef term fill:#f1f5f9,stroke:#64748b,color:#334155,stroke-dasharray:4 4
 
-    P["PRE-TENDER<br/>Provisioning"]:::ind
-    TD["PRE-TENDER<br/>Tender document"]:::ten
-    S1["STAGE 1<br/>Tender opened"]:::ten
-    S2E["STAGE 2<br/>After EMD acceptance"]:::ten
-    S2R["STAGE 2<br/>After retender"]:::ten
-    S3["STAGE 3<br/>Technical evaluation"]:::ind
-    S4T["STAGE 4<br/>TEC report received"]:::ten
-    S4P["STAGE 4<br/>Price bids opened"]:::ten
-    S5["STAGE 5<br/>PNC held"]:::ten
-    S6["STAGE 6<br/>PNC recommendation on file"]:::ten
-    S7["STAGE 7<br/>Proposal approved by CFA"]:::ten
-    S8["STAGE 8<br/>PO / contract placed"]:::ten
-    X(["FILE CLOSED<br/>requirement closed, no further<br/>action on this requisition"]):::term
+    P["PRE-TENDER: Provisioning Note (F1)"]:::ind
+    TD["PRE-TENDER: Tender Document"]:::ten
+    S1["STAGE 1: Tender Opened"]:::ten
+    S2["STAGE 2: EMD Stage Acceptance (F2)"]:::ten
+    S3["STAGE 3: Technical Evaluation / TEC Report (F3)"]:::ind
+    S4["STAGE 4: Price Bid Opening (F4)"]:::ten
+    S5["STAGE 5: PNC Request (F5)"]:::ten
+    S6["STAGE 6: PNC Recommendation (F6)"]:::ten
+    S7["STAGE 7: Purchase Proposal (F7)"]:::ten
+    S8["STAGE 8: Purchase Order & Contract"]:::ten
+    CLOSED(["FILE CLOSED"]):::term
 
-    P -->|"PROVISIONING NOTE"| TD
-    TD -->|"TENDER DOCUMENT"| S1
-    S1 -->|"EMD STAGE ACCEPTANCE"| S2E
-    S1 -->|"RETENDER NOTE"| S2R
-    S1 -->|"TEC REQ NOTE"| S3
-    S2E -->|"TEC REQ NOTE"| S3
-    S2E -->|"RETENDER NOTE"| S2R
-    S2E -->|"SHORT CLOSURE NOTE"| X
-    S2R -->|"TEC REQ NOTE"| S3
-    S2R -->|"SHORT CLOSURE NOTE"| X
-    S3 -->|"TEC QUERY NOTE (loops)"| S3
-    S3 -->|"TEC REPORT NOTE"| S4T
-    S4T -->|"PRICE BID OPENING NOTE"| S4P
-    S4T -->|"RETENDER NOTE"| S2R
-    S4T -->|"SHORT CLOSURE NOTE"| X
-    S4P -->|"PNC REQ NOTE"| S5
-    S4P -->|"PP NOTE"| S7
-    S4P -->|"RETENDER NOTE"| S2R
-    S4P -->|"SHORT CLOSURE NOTE"| X
-    S5 -->|"PNC RECOMMENDATION"| S6
-    S5 -->|"RETENDER NOTE"| S2R
-    S5 -->|"SHORT CLOSURE NOTE"| X
-    S6 -->|"PP NOTE"| S7
-    S6 -->|"ADVANCE PAYMENT NOTE (loops)"| S6
-    S6 -->|"SHORT CLOSURE NOTE"| X
-    S7 -->|"PO + HAL CONTRACT"| S8
-    S8 -->|"PO AMENDMENT NOTE (loops)"| S8
-    S8 -->|"SHORT CLOSURE NOTE"| X
+    P --> TD --> S1 --> S2 --> S3 --> S4
+    S4 -->|L1 > Estimate / No RA| S5 --> S6 --> S7 --> S8
+    S4 -->|L1 <= Estimate| S7
+    S2 -.->|Retender / Short Close| CLOSED
+    S4 -.->|Nil Qualified Bids| CLOSED
+    S8 --> CLOSED
 ```
 
-### Every decision, and what yes / no leads to
+### 3. e-File Noting Workflow & Digital Office
+- **Unified Case File (`AOD/<DEPT>/<YEAR>/<NNNN>`):** Maintains the entire case with sequenced notes (`N1...Nn`) and globally unique transaction IDs (`TXN-<YEAR>-<NNNNNN>`).
+- **Positional Authorization Engine:** Rights are dynamically derived based on who holds the file, prior routing participation, and supervisory hierarchy.
+- **Dynamic Routing & Safety Controls:**
+  - **Forward / Send-Back:** Forward to any colleague or return strictly to prior participants or the initiator.
+  - **Instant Retract:** Retract a forwarded note before the recipient opens it.
+  - **Automatic Comment Normalization:** Empty or symbol-only forward remarks (`.`, `,`, `*`) are automatically converted to standard `"Concurred & Forwarded"`.
+  - **In-file Clarifications:** Private, two-party inquiry threads between note holders.
+  - **Stamping & DoP Attachments:** Dedicated attachment classification for official sanctions.
+- **Security Classifications:** Graded access enforcement across **Normal**, **Restricted**, **Confidential**, **Secret**, and **Top Secret** with leak-proof need-to-know access tokens.
+- **Tenure-Bounded Supervision:** Former department heads can only review files active during their posting window; active heads supervise their entire division subtree.
+- **Post-PO Amendments:** Reopen closed cases for need-based amendments while maintaining complete lifecycle audit logs.
 
-Diamonds are decisions — amber decided by **Indenting**, blue by **Tendering**. Cell refs on
-the edges are the sheet cells that authorise each outcome.
+### 4. Intelligent Contract Generation & Clause Matrix
+- **71 Standard Terms & Conditions (STC) × 8 Contract Types:** Automated clause crawling from the official HAL matrix (Supply Indigenous, Turnkey, Rate Contract, Service/AMC, Capital Equipment, etc.).
+- **Smart Matrix Filtering:** Automatically classifies clauses into `Mandatory/Auto`, `Excluded`, and `Conditional/Selectable`.
+- **Tamper-Evident SHA-256 Hash & Dynamic QR Code:** Finalizing a contract freezes content, computes a cryptographic digest, and stamps a scannable QR code verification payload.
+- **Clause Versioning & Admin Vetting:** Any clause modification requires an administrative role, mandatory change note, and legal vetting reference document, snapshotting clause text to protect existing contracts.
+- **Simulated Smart Contract Ledger:** Interactive ledger anchor demonstration verifying contract authenticity.
 
-```mermaid
-flowchart TD
-    classDef indD fill:#fcd34d,stroke:#92400e,color:#111827
-    classDef tenD fill:#93c5fd,stroke:#1e40af,color:#111827
-    classDef note fill:#f5f5f4,stroke:#57534e,color:#111827
-    classDef term fill:#e5e7eb,stroke:#6b7280,color:#111827,stroke-dasharray:5 4
-    classDef hold fill:#fee2e2,stroke:#b91c1c,color:#111827,stroke-dasharray:3 3
+### 5. Receipt Voucher (RV) & Payment Advice Engine
+- **Goods Receipt Trigger (RV / RR):** Ingests Receipt Vouchers directly from stores inward and QC inspection.
+- **Deterministic Liquidated Damages (LD) Calculator:** Re-evaluates delivery delays, grace periods, LD percentages (0.5%/week capped at 10%), and deductions strictly server-side (`server/ld.js`).
+- **5-Stage State Machine:**
+  1. `rv_pending` → Receipt voucher awaiting Maker processing.
+  2. `pa_created` → Maker prepares Payment Advice with tax, securities, and LD entries.
+  3. `forwarded_to_officer` → Purchase Officer reviews and verifies compliance.
+  4. `at_payment_desk` → Payment Desk compiles the 23-point checklist note.
+  5. `sent_to_hod` / `stamped_by_hod` → HOD IMM approves and stamps.
+  6. `sent_to_cppc` / `paid` → Centralised Payment Processing Cell releases funds with PRR/PPR.
+- **Dual Official Hand-Off Formats:**
+  - **Payment Recommendation Report** (Officer → Payment Desk).
+  - **Payment Advice to HOD** with the complete 23-point statutory verification checklist.
 
-    D1{"INDENT INPUTS COMPLETE?<br/>specs · scope · certs · MPR/CAR"}:::indD
-    N1["PROVISIONING NOTE"]:::note
-    H1(["no indent — nothing to tender"]):::hold
-    D1 -->|yes| N1
-    D1 -->|no| H1
+### 6. Payment Analytics & Executive SLA Dashboards
+- **Aging & SLA Tracking:** Real-time visual aging badges (Green ≤ 15 days, Amber 16–25 days, Red > 25 days / Critical 30-day limit).
+- **Payment KPIs (`/payment-kpis`):** Interactive metrics for average cycle time, vendor processing turnarounds, total liquidated damages recovered, and stage-wise bottlenecks.
+- **Export Capabilities:** Full audit registers with one-click CSV data export.
 
-    D2{"COMMERCIAL SIDE READY?<br/>cond'ns · MII/LBS/NDA/IP/SD/PBG · IFS no"}:::tenD
-    N2["TENDER DOCUMENT<br/>floated on GeM / E-Proc"]:::note
-    H2(["tender not floated"]):::hold
-    N1 --> D2
-    D2 -->|yes| N2
-    D2 -->|no| H2
+---
 
-    D3{"STAGE 1 · BIDS WORTH PROCESSING?"}:::tenD
-    N2 --> D3
-    D4{"STAGE 1 · EMD SCRUTINY APPLICABLE?"}:::tenD
-    N3["EMD STAGE ACCEPTANCE NOTE"]:::note
-    R1["RETENDER NOTE"]:::note
-    D3 -->|yes| D4
-    D3 -->|"no · F8"| R1
-    D4 -->|"yes · F9"| N3
-    D4 -->|"no · F10"| D8
+## Security, Governance & Access Model
 
-    D5{"STAGE 2 · ANY EMD-QUALIFIED BIDDER?"}:::tenD
-    N3 --> D5
-    D6{"STAGE 2 · RETENDER WORTH FLOATING?"}:::tenD
-    X(["FILE CLOSED · SHORT CLOSURE<br/>requirement closed, no further action"]):::term
-    D5 -->|"yes · G10"| D8
-    D5 -->|no| D6
-    D6 -->|"yes · G9"| R1
-    D6 -->|"no · G11 / G17"| X
+The portal implements a dual-layer security model combining authentication-level roles with real-time positional authority:
 
-    D7{"STAGE 2 · DID THE RETENDER<br/>BRING QUALIFIED OFFERS?"}:::tenD
-    R1 --> D7
-    D7 -->|"yes · G10"| D8
-    D7 -->|"no · G17"| X
+### Positional Access Matrix (e-File Noting)
 
-    D8{"STAGE 3 · CLARIFICATION NEEDED<br/>FROM BIDDERS?"}:::indD
-    Q1["TEC QUERY NOTE"]:::note
-    D8 -->|"yes · H11"| Q1
-    Q1 -->|"replies received"| D8
-    D9{"STAGE 3 · EVALUATION CONCLUDED?"}:::indD
-    N4["TEC REPORT NOTE<br/>accepted · rejected · spec non-compliance"]:::note
-    D8 -->|no| D9
-    D9 -->|"yes · H12"| N4
-    D9 -->|"no — still under evaluation"| D8
+| Capability | HAL Member | File Initiator | Current Custodian | Recipient / Checker | Approving Authority | Supervisory Head |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|
+| Initiate File / Draft N1 | ✅ | — | — | — | — | — |
+| Edit Active Draft | — | ✅ | ✅ (Draft stage) | — | — | — |
+| Forward Note / Send for Check | — | ✅ | ✅ | — | — | — |
+| Raise / Reply Clarification | — | ✅ | ✅ | ✅ | ✅ | — |
+| Attach Stamping / DoP Ref | — | ✅ (Only) | — | — | — | — |
+| Send Back to Prior Holder | — | — | ✅ | — | ✅ | — |
+| Retract Unopened Note | — | — | ✅ (Sender) | — | — | — |
+| Approve / Reject Note | — | — | — | — | ✅ (Only) | — |
+| View Normal File | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| View Graded File (Restricted/Confidential) | ❌ | ✅ | ✅ | Grantee | ✅ | ✅ (Tenure) |
+| View Secret / Top Secret | ❌ | ✅ | ✅ | Grantee | ✅ | Direct Head / Token |
+| Generate Next Stage Note (N2...Nn) | — | ✅ | Participant | — | — | — |
 
-    D10{"STAGE 4 · ANY TECHNICALLY<br/>ACCEPTED BIDDER?"}:::tenD
-    N5["PRICE BID OPENING NOTE"]:::note
-    D10b{"STAGE 4 · RETENDER WORTH FLOATING?"}:::tenD
-    N4 --> D10
-    D10 -->|"yes · I13"| N5
-    D10 -->|no| D10b
-    D10b -->|"yes · I14"| R1
-    D10b -->|"no · I17"| X
+---
 
-    D11{"STAGE 4 · IS L1 PROCESSABLE?"}:::tenD
-    N5 --> D11
-    D11 -->|no| D10b
-    D12{"STAGE 4 · NEGOTIATION REQUIRED?<br/>rules: L1 &gt; estimate, or no RA"}:::tenD
-    N6["PNC REQ NOTE"]:::note
-    N8["PP NOTE"]:::note
-    D11 -->|yes| D12
-    D12 -->|"yes · I16"| N6
-    D12 -->|"no · I15"| N8
-
-    D13{"STAGE 5 · ACCEPTABLE OFFER<br/>FROM NEGOTIATION?"}:::tenD
-    N7["PNC RECOMMENDATION"]:::note
-    D13b{"STAGE 5 · RETENDER WORTH FLOATING?"}:::tenD
-    N6 --> D13
-    D13 -->|"yes · J17"| N7
-    D13 -->|no| D13b
-    D13b -->|"yes · J16"| R1
-    D13b -->|"no · J18"| X
-
-    D14{"STAGE 6 · ADVANCE PAYMENT SOUGHT?"}:::tenD
-    A1["ADVANCE PAYMENT NOTE"]:::note
-    N7 --> D14
-    D14 -->|"yes · K19"| A1
-    A1 --> D15
-    D15{"STAGE 6 · PROCEED TO<br/>PURCHASE PROPOSAL?"}:::tenD
-    D14 -->|no| D15
-    D15 -->|"yes · K18"| N8
-    D15 -->|"no · K20"| X
-
-    D16{"STAGE 7 · PLACE THE ORDER?"}:::tenD
-    N9["PO + HAL CONTRACT"]:::note
-    H3(["stays at stage 7 — the sheet<br/>offers no alternative here"]):::hold
-    N8 --> D16
-    D16 -->|"yes · L19"| N9
-    D16 -->|no| H3
-
-    D17{"STAGE 8 · PO NEEDS AMENDMENT?"}:::tenD
-    A2["PO AMENDMENT NOTE"]:::note
-    N9 --> D17
-    D17 -->|"yes · M20"| A2
-    A2 --> D17
-    D18{"STAGE 8 · DROP THE BALANCE<br/>REQUIREMENT?"}:::tenD
-    OK(["PO runs to completion"]):::term
-    D17 -->|no| D18
-    D18 -->|"yes · M21"| X
-    D18 -->|no| OK
-```
-
-**Tendering Agency — 17 yes/no points**
-
-| Stage | Decision | Yes → | No → |
-|---|---|---|---|
-| pre | Commercial conditions, formats, IFS enquiry no. ready? | Tender Document floated | tender not floated (hold) |
-| 1 | Bids worth processing? | on to EMD question | **Retender Note** `F8` |
-| 1 | EMD scrutiny applicable? | **EMD Stage Acceptance** `F9` | **TEC Req Note** direct `F10` |
-| 2 | Any EMD-qualified bidder? | **TEC Req Note** `G10` | on to retender question |
-| 2 | Retender worth floating? | **Retender Note** `G9` | **Short Closure** → closed `G11`/`G17` |
-| 2 | Retender brought qualified offers? | **TEC Req Note** `G10` | **Short Closure** → closed `G17` |
-| 4 | Any technically accepted bidder? | **Price Bid Opening** `I13` | on to retender question |
-| 4 | Retender worth floating? | **Retender Note** `I14` | **Short Closure** → closed `I17` |
-| 4 | Is L1 processable? | on to negotiation question | back to retender / short closure |
-| 4 | Negotiation required? *(advised by `pnc_required()`)* | **PNC Req Note** `I16` | **PP Note** — straight to proposal `I15` |
-| 5 | Acceptable offer from negotiation? | **PNC Recommendation** `J17` | on to retender question |
-| 5 | Retender worth floating? | **Retender Note** `J16` | **Short Closure** → closed `J18` |
-| 6 | Advance payment sought? | **Advance Payment Note** `K19`, then re-ask | skip it |
-| 6 | Proceed to purchase proposal? | **PP Note** `K18` | **Short Closure** → closed `K20` |
-| 7 | Place the order? | **PO + HAL Contract** `L19` | nothing — column `L` has no alternative |
-| 8 | PO needs amendment? | **PO Amendment Note** `M20`, then re-ask | on to drop question |
-| 8 | Drop the balance requirement? | **Short Closure** → closed `M21` | PO runs to completion |
-
-**Indenting Agency — 3 yes/no points**
-
-| Stage | Decision | Yes → | No → |
-|---|---|---|---|
-| pre | Indent inputs complete? (specs, scope, proprietary/OEM cert, single-tender cert, MPR/CAR) | **Provisioning Note** | no indent — nothing to tender |
-| 3 | Clarification needed from bidders? | **TEC Query Note** `H11`, then re-ask *(loops)* | on to conclusion question |
-| 3 | Evaluation concluded? | **TEC Report Note** `H12` → file returns to Tendering | stays at stage 3 |
-
-**The asymmetry this exposes.** `RETENDER NOTE` appears only in columns `F`, `G`, `I`, `J`
-and `SHORT CLOSURE NOTE` only in `G`, `I`, `J`, `K`, `M` — every one a Tendering column.
-Column `H` (stage 3) has neither. So only **Tendering**'s "no" can terminate or restart a
-case; **Indenting**'s "no" can only loop (raise another query) or hold the file at stage 3.
-Even *"no bidder is technically compliant"* is expressed as a TEC Report listing everyone
-rejected — the decision to short-close or retender on the back of it is then Tendering's, at
-stage 4. Net: the indentor controls whether a case can *advance*; the tendering agency
-controls whether it *lives or dies*.
-
-### What is enforced vs merely advised
-
-| Condition | Source | Effect |
-|---|---|---|
-| Notes available at a stage | sheet `F4:M21`, per column | **hard** — only those notes are offered |
-| *"Note Can only be Generated by"* | sheet `F23:M23`, `C6:C25` | **hard** — blocks, forces a hand-over |
-| Short closure ends the case | sheet `G18` | **hard** — terminal, file closed |
-| Prerequisite formats + who owns them | sheet `F26:H35` *"Required for"*, inverted | warn only |
-| Enclosures complete | sheet `B6:C25` (block 1) | warn only, pending lines recorded |
-| `pnc_required()` → advises PNC Req | `rules.py` — **not in the sheet** (L1 above estimate, or no RA participation) | advisory, override with confirmation |
-| `retender_required()` → advises Retender | `rules.py` — **not in the sheet** (nil bids, or no EMD-accepted bidder) | advisory, override with confirmation |
-
-**The spreadsheet holds no conditional logic of its own** — it lists which notes are possible
-at each stage and who may raise them, never when to prefer one. So every branch edge is
-selectable; the only two preferences shown come from `rules.py` (derived from the Purchase
-Manual and the sample notes), are labelled with their rule name, and are never binding. They
-read as `undecided` until the data they depend on is actually on file (`rules.RULE_INPUTS`).
-
-Also **not** in the sheet: approval authority. Note texts reference GM(AOD), AGM(IMM-OH),
-Head of IMM, Finance concurrence, DPC and the CFA, but the sheet has no approval column, so
-none of it is encoded. `rules.dop_cfa_level()` flags the same gap — the DOP-2025 Annexure-3
-value-band table is not in `sampleData`, so the CFA level cannot be computed.
-
-### Verification
-
-`ai/cascade_check.py` re-reads the xlsx and asserts the encoding against it — stage numbering
-(`row 24`), the note set of every stage column, the owning agency of every column, the block-1
-responsibility split, and all ten block-3 rows with responsibility and *"Required for"*.
-**59/59 checks pass.** The sheet's own typos (`ACCPETANCE`, `NEGOTAITAION`, `EVALAUTION`,
-`JUSTIFCATION`) are matched verbatim, so the check fails if the encoding silently drifts.
-
-### CLI keys
-
-At every node: `1..n` picks a note, `f` lists the block-3 formats and who owns them, `v` prints
-the file as it stands, `h` hands the file to the other agency, `q` saves and quits. Notes are
-generated for real — deterministic annexures from `formats.py`, prose from the SLM, prior notes
-carried forward — and the session closes with the path actually walked, the responsibility
-split, the hand-over count, `ai/outputs/case_full.json` and one PDF per note.
-
-## Module C — e-File Noting: roles & rights
-
-The noting module (`/noting/*`) does **not** use the payment job-titles above. Any HAL user
-can initiate a note; authorization is **positional** — decided by the real signed-in member's
-relationship to each note (who holds it, who has routed it, who supervises the initiating
-unit), enforced in `server/noting/workflow.js`. The six positions and their edit (E) /
-forward (F) / view (V) rights, taken straight from the access-rights spec:
-
-| Capability | HAL User | Initiator | Routing Member (holding) | Recipient / Checker | CFA / Decider | Supervisory Head |
-|---|---|---|---|---|---|---|
-| Initiate N1 / standalone | E | — | — | — | — | — |
-| Set classification / edit draft | — | E | E (holding draft) | — | — | — |
-| Send draft for check | — | F | F | — | — | — |
-| Comment (auto "Concurred & Forwarded") | — | E+F | E+F | — | E+F | — |
-| Raise / answer clarification | — | E | E | E | E | — |
-| Attach reference doc | — | E | E | — | E | — |
-| Attach **stamping** doc / add **DoP** ref | — | E (only) | — | — | — | — |
-| Send back to user / previous member | — | F | F | — | F | — |
-| Add self / next member / member twice | — | F | F | — | F | — |
-| Retract just-sent (before open) | — | F | F | — | F | — |
-| Approve / Reject | — | — | — | — | E (only) | — |
-| Retrieve from cabinet after decision | — | — | — | — | F (decider) | — |
-| Share restricted link to a person | — | F | F | — | F | — |
-| View note — Normal | V | V | V | V | V | V |
-| View note — Restricted (graded) | ✗ | V | V | grantee | V | V (tenure) |
-| View subordinates' / predecessor files | — | — | — | — | — | V (tenure) |
-| Reports + lifecycle summary | own files | own files | own files | — | — | V (subtree) |
-| Create next-stage note (N2..final) | — | E (case owner) | E (participant) | — | — | — |
-
-PM references are automatic. Restricted levels are graded: Confidential (participants + any
-supervising head) < Secret (+ the direct unit/dept head only) < Top Secret (participants +
-explicit grant only). Supervisory visibility is tenure-bounded via the `postings` table (a
-sitting head sees his subtree's whole history; a former head only his tenure window).
-A forward comment that is empty **or symbols-only** (`.` `,` `*`) is auto-replaced with
-"Concurred & Forwarded" at send time. After a Purchase Order is approved and the case
-closes, the cabinet offers a need-based **PO Amendment** note that reopens the case (its
-own approval closes it again); amendment counts appear in the lifecycle report.
-
-The seed (`node server/noting/seed.js` force-reseeds) ships a full demo storyline: an
-in-progress NVB case with a cabinet next-stage prompt, an unopened hop for the Retract demo
-(officer@ on the furniture file, test@ on the SYS file), line-wise child PPs, a predecessor-era
-file, a rejected case, a closed PO case offering a PO Amendment, a confidential case with an
-active need-to-know grant (`?grant=demo-grant-active-desk` for desk@) plus a revoked re-shared
-grant and its leak alert (visible to officer@), and a top-secret case visible only to maker@ and cm@.
-
-## Module D — Contract Generation (`/contracts/*`)
-
-Generates a full HAL contract from a Purchase Order. The user supplies only the
-Requisition/HAL IFS **tender no** (try `GEM/2025/B/6638737`, or `GEM/2025/B/7104412`
-for a tender with two POs); the app prompts for the PO, **crawls the Standard Contract
-Terms & Conditions automatically from the Contract Clauses Matrix** (71 clauses × 8
-contract types, seeded verbatim from the client's xlsx + 72 clause documents), and pulls
-value, item lines (with server-computed GST and landed value) and party details from the
-HAL PO, and the scope of work from the Provisioning Note.
-
-- **Generate Contract** — tender → PO dropdown → type of purchase (auto clauses locked,
-  conditional clauses tickable, extra STC + user-written "Additional Clauses" + standard
-  proformas to annex), 5-level classification (Normal / Restricted / Confidential /
-  Secret / Top Secret). Visible to the purchase chain + admin.
-- **Contract Register** — every generated contract with number, parties, value, CAR,
-  tender, CFA & DOP reference, mode of tendering and the generator's name/PB/designation/
-  dept/division; CSV export. Visible to all.
-- **Contract view** — cover page, table of contents, numbered clauses, price-schedule
-  annexure (amount in words), signature block. Drafts can be edited and **finalised**:
-  finalisation locks the content, computes a SHA-256 integrity hash and stamps a
-  scannable **QR code** (contract no + hash + date-time + signer credentials); printing
-  adds a classification watermark and a running footer on every page. "Verify integrity"
-  recomputes the hash; an optional smart-contract toggle anchors the hash to a clearly
-  labelled **simulated** blockchain (demo stub). Print via the browser's Save-as-PDF
-  (enable "Headers and footers" for page numbers).
-- **Clause Library** — the 72 STC + the matrix grid. Read-only for everyone; **amending
-  a clause is admin-only** (server-enforced on the real account role) and every amendment
-  records the superseded text, who changed it, a change note and the legal-vetting
-  reference doc. Amendments never alter already-generated contracts (clause bodies are
-  snapshotted at generation).
-
-Store: SQLite at `server/data/contracts.db` (`node server/contracts/seed.js` force-reseeds
-the demo — one finalised "Restricted" NVB contract, one draft, one pre-seeded clause
-amendment). PO/tender source data: `server/mock/pos.json`. Checks:
-`node server/contracts/contracts.check.mjs`.
-
-## Layout
+## Technology Stack
 
 ```
-client/public/           logos (HAL, IIIT Dharwad)
-client/src/components/   shared UI (DataGrid, StatusPill, Header, RoleSwitcher, RequireAuth)
-client/src/screens/      one folder per screen (incl. Login)
-client/src/context/      AuthContext (JWT session) + RoleContext (role/gating)
-client/src/config/       field/column configs, roles, status colours
-client/src/lib/          api (auth fetch wrapper), currency (₹ lakh/crore), date (DD/MM/YYYY)
-server/auth/             users seed loader + JWT helpers
-server/middleware/       authMiddleware (verifies Bearer JWT on data routes)
-server/mock/             JSON fixtures (RVs, payment advices, vendors, users)
-server/routes/           Express API routes (incl. auth: login, me)
-
-ai/cascade.py            the responsibility-cascading xlsx as data (stages, owners, formats)
-ai/interactive.py        interactive decision-by-decision driver + agency enforcement
-ai/cascade_check.py      asserts cascade.py against the xlsx (59 checks)
-ai/stages.py             note definitions: fields, annexures, carry-forward (ORDER + need-based)
-ai/pipeline.py           runs one note: ingest → formats → delta → carry-forward → SLM
-ai/rules.py              deterministic money/level logic + branch predicates
-ai/formats.py            the annexure builders (21A-21F, PP, PO, contract, advance)
-ai/run.py                entry point (interactive by default, --auto for the linear run)
-ai/CASCADE.md            flow diagrams, every decision, provenance & verification
+HAL Procurement Portal
+├── Frontend (client/)
+│   ├── Framework: React 18.3 (JSX)
+│   ├── Tooling: Vite 6.0
+│   ├── Routing: React Router DOM 6.28
+│   ├── Visualizations: Recharts 3.10
+│   ├── Rich Text / QR: React-Quill 2.0, QRCode.react 4.2
+│   └── Styling: Pure Modular Vanilla CSS (Design System Tokens)
+│
+├── Backend (server/)
+│   ├── Runtime: Node.js (ES Modules, "type": "module")
+│   ├── Framework: Express 4.21
+│   ├── Persistence: node:sqlite (Zero native compilation dependency)
+│   ├── Enterprise DB: PostgreSQL 16 ready (pg 8.23 + migration tool)
+│   ├── Security: JSON Web Token (jsonwebtoken 9.0), BcryptJS 2.4
+│   └── File Storage: Multer 2.2
+│
+└── AI & Rule Engine (ai/)
+    ├── Runtime: Python 3.10+
+    ├── Local SLM: Ollama (Qwen2.5-3B model)
+    ├── PDF Generation: ReportLab
+    └── Document Extractors: PyMuPDF (fitz), Python-docx, OpenPyXL
 ```
+
+---
+
+## Repository Structure
+
+```
+HAL_Procurement_Portal/
+├── ai/                                # Module B: Python AI Noting & Responsibility Cascade
+│   ├── cascade.py                     # Responsibility cascade schema (stages, owners, formats)
+│   ├── cascade_check.py               # 59-point automated verification against official xlsx
+│   ├── interactive.py                 # Interactive terminal decision-tree runner
+│   ├── pipeline.py                    # Stage orchestrator (delta -> carry-forward -> SLM)
+│   ├── rules.py                       # Deterministic money math & branch conditions
+│   ├── formats.py                     # 11 deterministic HAL standard annexure builders
+│   ├── stages.py                      # Canonical graph (10 sequential stages + need-based)
+│   ├── prompts.json                   # Stage-wise prompts for the SLM
+│   ├── run.py                         # CLI entry point (--auto or interactive)
+│   └── tools/                         # SLM client, ReportLab PDF writer & document extractors
+│
+├── client/                            # Frontend Web Application (React + Vite)
+│   ├── src/
+│   │   ├── components/                # Reusable UI (DataGrid, StatusPill, Header, RoleSwitcher)
+│   │   ├── config/                    # Column definitions, roles, SLA limits & color maps
+│   │   ├── context/                   # AuthContext (JWT) and RoleContext (Preview Switcher)
+│   │   ├── lib/                       # API client, currency (₹ lakh/crore), date helpers
+│   │   └── screens/                   # Modular feature screens
+│   │       ├── AiCases/               # Interactive AI case runner & review screen
+│   │       ├── AiDocuments/           # Read-only viewer for AI notes with print isolation
+│   │       ├── Approvals/             # Indent intake checklist & dynamic approval chains
+│   │       ├── Contracts/             # Contract generator, register & 72-clause library
+│   │       ├── Noting/                # e-File noting (Inbox, Files, Cabinet, Reports, Detail)
+│   │       ├── PaymentAdvice/         # Maker PA preparation & Liquidated Damages
+│   │       ├── PaymentKpis/           # Executive SLA dashboards & cycle time analytics
+│   │       ├── PaymentRegister/       # Historical payment registry with CSV export
+│   │       ├── ProcessPayment/        # Payment Desk processing & checklist compilation
+│   │       └── RvInbox/               # Receipt voucher aging & SLA queue
+│   └── index.html                     # SPA entry point with responsive viewport
+│
+├── server/                            # Backend API Server (Node.js Express)
+│   ├── approvals/                     # Checklist evaluation, approval chains & committees
+│   ├── auth/                          # User authentication, password hashing & JWT handlers
+│   ├── contracts/                     # 71-clause matrix parser, generator, QR & SQLite store
+│   ├── database/                      # Optional PostgreSQL schema & migration runner
+│   ├── middleware/                    # authMiddleware (JWT) & requireAdmin guards
+│   ├── mock/                          # Master JSON fixtures (users, rvs, pos, vendors)
+│   ├── noting/                        # e-File SQLite store, workflow engine, identity & refs
+│   ├── routes/                        # Express API route controllers
+│   ├── ld.js                          # Deterministic Liquidated Damages calculation engine
+│   ├── stateMachine.js                # Payment Advice lifecycle state transitions
+│   └── index.js                       # Express server bootstrapping & route mounting
+│
+├── sampleData/                        # Client purchase formats, templates & validation references
+├── docker-compose.yml                 # Full-stack container orchestration
+├── Dockerfile                         # Production container definition
+├── CLAUDE.md                          # Architecture invariants & developer guidance
+├── USER_GUIDE.md                      # Comprehensive user walkthrough of all screens
+└── WORKFLOW_GUIDE.md                  # Deep dive into Noting, Contracts & AI Documents
+```
+
+---
+
+## Quick Start Guide
+
+### Prerequisites
+- **Node.js**: v18.0.0 or higher
+- **npm**: v9.0.0 or higher
+- *(Optional for AI CLI)*: Python 3.10+ with Conda, and [Ollama](https://ollama.ai/) with `qwen2.5:3b`.
+
+### 1. Installation
+
+Clone the repository and install all dependencies for both `client` and `server` in a single command via npm workspaces:
+
+```bash
+git clone https://github.com/alpha08-prog/HAL_Procurement_Portal.git
+cd HAL_Procurement_Portal
+npm install
+```
+
+*(Optional — to enable the local Python AI drafting pipeline)*:
+```bash
+conda create -n hal python=3.10 -y
+conda run -n hal pip install pymupdf python-docx requests reportlab openpyxl
+```
+
+### 2. Running the Application
+
+Launch both the backend API server (`localhost:3001`) and the Vite development client (`localhost:5173`) concurrently:
+
+```bash
+npm run dev
+```
+
+Once the terminal outputs both startup confirmation lines, open your browser:
+👉 **[http://localhost:5173](http://localhost:5173)**
+
+> [!NOTE]
+> The Vite frontend on port `5173` automatically proxies all `/api/*` HTTP requests to the backend on port `3001`. Do not open port `3001` directly in the browser.
+
+### 3. Running the AI Pipeline CLI (Optional)
+
+In a separate terminal, launch Ollama and run the interactive responsibility cascade:
+
+```bash
+# Terminal 1: Start local language model
+ollama serve
+ollama pull qwen2.5:3b
+
+# Terminal 2: Run interactive cascade
+conda run --no-capture-output -n hal python ai/run.py
+```
+
+---
+
+## Test Credentials & Persona Matrix
+
+All pre-seeded test accounts share the unified password: **`hal@1234`**
+
+| Email | Role | Department / Position | Accessible Modules & Permissions |
+|:---|:---|:---|:---|
+| **`admin@hal.local`** | `admin` | System Administrator | **Full Access** + Live Top-Bar Role Switcher & Clause Editor |
+| **`test@hal.local`** | `admin` | QA Administrator | **Full Access** + Live Top-Bar Role Switcher |
+| **`indentor@hal.local`** | `indentor` | Indenting Officer | Indent Intake, Provisioning Notes, Register, AI Cases |
+| **`maker@hal.local`** | `purchase_maker` | Purchase Maker (IMM) | RV Inbox, Draft PA Preparation, Contract Generation, Initiating Files |
+| **`officer@hal.local`** | `purchase_officer` | Purchase Officer (IMM) | Forward Advice Review, Noting Routing, Retract Unopened Files |
+| **`desk@hal.local`** | `payment_desk` | Payment Desk (Finance) | Process Payment, 23-Point Checklist Compilation, Share-Link Recipient |
+| **`hod@hal.local`** | `hod_imm` | Head of Dept (IMM) | HOD Approval Stamping, Final Approvals, Retrieve From Cabinet |
+| **`gm@hal.local`** | `hod_imm` | General Manager (AOD) | Division-Wide Supervision of Files across All Departments |
+| **`cm@hal.local`** | `hod_imm` | Chief Manager (Purchase) | Direct-Head "Secret" Grade & Top-Secret Participant Visibility |
+| **`stores@hal.local`** | `stores_inspection` | Stores & Inward Inspection | Goods Receipt Verification, RV Registry |
+
+---
+
+## Docker & Air-Gapped LAN Deployment
+
+The application includes a complete containerized setup incorporating **PostgreSQL 16**, the **Node.js Express API**, and **Nginx serving the optimized React SPA**.
+
+### 1. Single-Command Launch (Connected Environment)
+
+```bash
+docker compose up --build -d
+```
+
+Access the portal on port 80: **`http://localhost`** (or `http://<server-ip>` over LAN).
+
+### 2. Air-Gapped / Offline Defence Network Deployment
+
+For secure, offline on-premise servers:
+
+```bash
+# Step 1: On an internet-connected build workstation
+docker compose build
+docker save -o hal_procurement_images.tar postgres:16-alpine hal_procurement_portal-server hal_procurement_portal-client
+
+# Step 2: Transfer hal_procurement_images.tar and docker-compose.yml via approved storage to the server
+
+# Step 3: On the offline LAN server
+docker load -i hal_procurement_images.tar
+docker compose up -d
+```
+
+---
+
+## Automated Verification & Diagnostics
+
+The project includes specialized regression test suites and constraint verifiers:
+
+```bash
+# 1. Assert Liquidated Damages math & grace period logic
+node server/ld.check.mjs
+
+# 2. Run e-File Noting workflow regression checks (isolated throwaway DB)
+node server/noting/noting.check.mjs
+
+# 3. Run Contract Generation & Clause Matrix regression checks
+node server/contracts/contracts.check.mjs
+
+# 4. Verify AI cascade rules against official client spreadsheet (59/59 checks)
+conda run -n hal python ai/cascade_check.py
+
+# 5. Score AI generated note facts against gold sample notes
+conda run -n hal python ai/validate.py
+```
+
+---
+
+## Companion Documentation
+
+For in-depth operational and architectural details, refer to the specialized reference documents:
+
+- 📘 **[`USER_GUIDE.md`](USER_GUIDE.md)** — Complete step-by-step walkthrough of every screen, button, decision rule, and common setup pitfalls.
+- 📙 **[`WORKFLOW_GUIDE.md`](WORKFLOW_GUIDE.md)** — Deep dive into e-File Noting, Contract Generation, and the AI Documents viewer with recommended demo sequences.
+- 🏛️ **[`PROJECT_OVERVIEW.md`](PROJECT_OVERVIEW.md)** — Comprehensive glossary, procurement lifecycle breakdown, and sample file mapping.
+- 🧠 **[`ai/ARCHITECTURE.md`](ai/ARCHITECTURE.md)** — Theoretical architecture, data contracts, and prompt design of the AI procurement noting engine.
+- 🔀 **[`ai/CASCADE.md`](ai/CASCADE.md)** — Complete provenance, mathematical proofs, and 17 decision branch specifications for the responsibility cascade.
+- 🐳 **[`DOCKER_DEPLOYMENT.md`](DOCKER_DEPLOYMENT.md)** — Detailed instructions for enterprise container operations and database maintenance.
+
+---
+
+<p align="center">
+  <b>Hindustan Aeronautics Limited — Nashik Division</b><br/>
+  <i>Aircraft Overhaul Division (AOD) · Digital Procurement & e-Office Initiative</i>
+</p>

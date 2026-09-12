@@ -23,6 +23,30 @@ const ALL_ROLES = ROLES.map((r) => r.id);
 // The six payment-module screens. `visibleTo` drives both nav and route guards.
 export const SCREENS = [
   {
+    path: '/portal',
+    title: 'Portal Hub — 6 Core Lifecycle Tabs',
+    navLabel: 'Portal Hub',
+    visibleTo: ALL_ROLES
+  },
+  {
+    path: '/provisioning',
+    title: 'Provisioning Workspace — MPR/CAR, Estimations & Certifications',
+    navLabel: 'Provisioning',
+    visibleTo: ALL_ROLES
+  },
+  {
+    path: '/claims',
+    title: 'Claim Management — Rejections, Discrepancies & Replacements',
+    navLabel: 'Claim Management',
+    visibleTo: ALL_ROLES
+  },
+  {
+    path: '/kpis',
+    title: 'Executive Procurement KPI & MIS Dashboard (16 Metrics)',
+    navLabel: 'KPI & MIS',
+    visibleTo: ALL_ROLES
+  },
+  {
     path: '/rv-inbox',
     title: 'RV — Payment Status',
     navLabel: 'RV Inbox',

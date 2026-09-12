@@ -3,6 +3,7 @@ import { SCREENS, canAccessPath, firstScreenForRole } from '../config/roles.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useRole } from '../context/RoleContext.jsx';
 import Header from './Header.jsx';
+import ModuleActionBar from './portal/ModuleActionBar.jsx';
 
 // Layout route for everything behind login. Unauthenticated visitors are bounced to
 // /login (remembering where they were headed). Authenticated visitors who hit a screen
@@ -24,6 +25,7 @@ export default function RequireAuth() {
   return (
     <>
       <Header />
+      <ModuleActionBar />
       <main className="page">
         <Outlet />
       </main>

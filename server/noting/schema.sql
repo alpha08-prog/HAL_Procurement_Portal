@@ -72,8 +72,23 @@ CREATE TABLE IF NOT EXISTS notes (
   custodian_id   INTEGER REFERENCES members(id),    -- who currently holds it
   decision       TEXT,                              -- approved|rejected
   decided_by     INTEGER REFERENCES members(id),
+  stage_no       INTEGER DEFAULT 1,                 -- 1 for Stage 1, 2 for Stage 2 etc.
+  planned_routing TEXT,                             -- JSON array of planned routing member IDs for this stage
   created_at     TEXT NOT NULL,
   closed_at      TEXT
+);
+
+-- Individual notes N1..Nx on a stage's green noting sheet.
+CREATE TABLE IF NOT EXISTS noting_entries (
+  id             INTEGER PRIMARY KEY,
+  note_id        INTEGER NOT NULL REFERENCES notes(id),
+  seq            INTEGER NOT NULL,                  -- 1=N1, 2=N2, 3=N3...
+  author_id      INTEGER NOT NULL REFERENCES members(id),
+  title          TEXT,                              -- e.g. "N1: Provisioning Proposal", "N2: Clarification Sought"
+  body           TEXT NOT NULL,                     -- HTML / rich prose content
+  entry_type     TEXT NOT NULL DEFAULT 'initial',   -- initial|query|clarification|remark|concurrence|approval
+  remark         TEXT,                              -- short remark/summary
+  created_at     TEXT NOT NULL
 );
 
 -- The dynamic routing chain (the fundamentally different, user-driven model).

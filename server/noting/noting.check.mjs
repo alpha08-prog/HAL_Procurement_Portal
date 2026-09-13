@@ -98,11 +98,22 @@ assert.throws(() => decide(n(6), m(6), 'approve'), /draft/, 'self-approval of an
 assert.throws(() => addNote(f(3), m(5), { stageId: 'bogus_stage' }), /Unknown stage/, 'unknown stage id is rejected');
 
 // --- Multi-note lifecycle + cabinet union (email 13, 16, 17, 21, 23) ---
-assert.equal(cabinetOf(1).size, 3, 'seeded cabinet rows for the open NVB case');
+assert.equal(cabinetOf(1).size, 4, 'seeded cabinet rows for the open NVB case (including Gaurav Yadav)');
+assert.ok(cabinetOf(1).has(4), 'Gaurav Yadav (Purchase Manager) has file 1 in his cabinet');
+
+const { notingEntries } = await import('./workflow.js');
+const entriesN1 = notingEntries(1);
+assert.equal(entriesN1.length, 5, 'Stage 1 Provisioning has N1..N5 notes');
+assert.equal(entriesN1[0].seq, 1, 'first entry is N1');
+assert.equal(entriesN1[4].seq, 5, 'last entry is N5 (approval)');
+
 const n3 = addNote(f(1), m(5), { stageId: 'emd', title: 'EMD Stage Acceptance' });
-assert.equal(n3.seq, 3, 'next note is N3');
+assert.equal(n3.seq, 3, 'next stage note is seq 3');
 assert.ok(n3.ref_no.endsWith('/N3'), 'connected reference continues the File ID');
 assert.equal(cabinetOf(1).size, 0, 'creating the next note clears the cabinet prompt');
+const entriesN3 = notingEntries(n3.id);
+assert.equal(entriesN3.length, 1, 'fresh stage note starts with N1');
+assert.equal(entriesN3[0].seq, 1, 'entry seq is 1');
 forward(n(n3.id), m(5), 2, '');
 decide(n(n3.id), m(2), 'approve'); // emd approved — NOT final
 assert.equal(f(1).status, 'open', 'intermediate approval keeps the file open');

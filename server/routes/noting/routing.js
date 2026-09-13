@@ -1,13 +1,14 @@
 // Phase 2 — routing spine: per-member inbox & cabinet, and the hand-off actions
 // (forward / send back / retract / approve-reject / retrieve) + routing history.
 import { Router } from 'express';
-import { all } from '../../noting/db.js';
+import { all, get, nowISO, run } from '../../noting/db.js';
 import { currentMember } from '../../noting/identity.js';
 import { nextStage, stageTitle } from '../../noting/stages.js';
 import {
-  decide, forward, history, noteByTxn, retract, retrieve, sendBack
+  addNote, decide, fileStageHistory, forward, history, noteByTxn, retract, retrieve, sendBack
 } from '../../noting/workflow.js';
 import { requireNoteAccess } from './access.js';
+import * as aiStore from '../../ai/caseStore.js';
 
 const router = Router();
 
@@ -40,21 +41,21 @@ router.get('/inbox', (req, res) => {
      LEFT JOIN members im ON im.id = n.initiator_id
      LEFT JOIN org_units u ON u.id = im.section_id
      WHERE n.custodian_id = ? AND n.status IN ('draft','in_check','routed')
-     ORDER BY n.id DESC`,
+     ORDER BY n.created_at DESC`,
     me.id, me.id, me.id
   );
   for (const r of rows) {
     r.priority = 'Medium';
   }
-  res.json({ inbox: rows });
+  res.json({ inbox: rows, meId: me.id });
 });
 
-// Closed files filed into my cabinet (as initiator, router or approver).
+// Closed files filed into my cabinet (as initiator, router, approver, or purchase manager).
 router.get('/cabinet', (req, res) => {
   const me = currentMember(req);
   if (!me) return res.status(403).json({ error: 'No noting member mapped to this account' });
   const rows = all(
-    `SELECT c.reason, c.placed_at, f.id AS file_pk, f.file_id, f.title, f.kind, f.standalone, f.status AS file_status,
+    `SELECT c.reason, c.placed_at, f.id AS file_pk, f.file_id, f.title, f.kind, f.standalone, f.status AS file_status, f.ai_case_id,
             im.name AS initiator_name,
             (SELECT n.txn_id   FROM notes n WHERE n.file_pk = f.id ORDER BY n.seq DESC LIMIT 1) AS last_txn,
             (SELECT n.txn_id   FROM notes n WHERE n.file_pk = f.id ORDER BY n.seq DESC LIMIT 1) AS txn_id,
@@ -78,15 +79,99 @@ router.get('/cabinet', (req, res) => {
       if (r.file_status === 'open') next = nextStage(r.last_stage);
       else if (['po', 'po_amendment'].includes(r.last_stage)) next = 'po_amendment';
     }
+
+    // Get stage summary
+    const stages = all(
+      `SELECT n.id, n.seq, n.txn_id, n.title, n.stage_id, n.status, n.stage_no,
+              (SELECT COUNT(*) FROM noting_entries ne WHERE ne.note_id = n.id) AS notes_count
+       FROM notes n WHERE n.file_pk = ? ORDER BY n.seq ASC`,
+      r.file_pk
+    );
+
+    // Get allowed next stage options from AI cascade
+    let allowedOptions = [];
+    if (r.ai_case_id) {
+      try {
+        const kase = aiStore.loadCase(r.ai_case_id, req.user);
+        allowedOptions = kase?.options || [];
+      } catch {}
+    }
+    if (allowedOptions.length === 0 && next) {
+      allowedOptions = [{ noteId: next, label: stageTitle(next), needBased: false }];
+    }
+
     return {
       ...r,
       status: r.last_status || 'approved',
       priority: 'Medium',
       next_stage: next,
-      next_stage_title: next ? stageTitle(next) : null
+      next_stage_title: next ? stageTitle(next) : null,
+      stages,
+      allowed_options: allowedOptions
     };
   });
   res.json({ cabinet, meId: me.id });
+});
+
+// Full stage history for a file in Cabinet
+router.get('/cabinet/:filePk/stage-history', (req, res) => {
+  const me = currentMember(req);
+  if (!me) return res.status(403).json({ error: 'No noting member mapped to this account' });
+  const file = get('SELECT * FROM files WHERE id = ?', Number(req.params.filePk));
+  if (!file) return res.status(404).json({ error: 'File not found' });
+  res.json({ file, stages: fileStageHistory(file.id) });
+});
+
+// Generate next stage note from Cabinet with configured routing trail
+router.post('/cabinet/:filePk/generate-next-stage', async (req, res) => {
+  const me = currentMember(req);
+  if (!me) return res.status(403).json({ error: 'No noting member mapped to this account' });
+  const file = get('SELECT * FROM files WHERE id = ?', Number(req.params.filePk));
+  if (!file) return res.status(404).json({ error: 'File not found' });
+
+  const { stageId, title, body = '', classification = 'normal', routingList = [], fields = {}, useAi = false } = req.body || {};
+  if (!stageId) return res.status(422).json({ error: 'stageId is required' });
+
+  let noteBody = body;
+  let formatsBuilt = [];
+
+  if (useAi && file.ai_case_id) {
+    try {
+      const out = await aiStore.raiseNote(file.ai_case_id, stageId, {
+        fields: fields || {},
+        override: true,
+        user: req.user
+      });
+      if (out.ok && out.result) {
+        noteBody = out.result.fullOutput || out.result.newSection || noteBody;
+        formatsBuilt = out.result.formatsBuilt || [];
+      }
+    } catch (err) {
+      console.warn('AI raise error in cabinet generate-next-stage:', err);
+    }
+  }
+
+  try {
+    const note = addNote(file, me, {
+      stageId,
+      title: title || stageTitle(stageId),
+      body: noteBody,
+      classification,
+      routingList
+    });
+
+    const today = nowISO();
+    for (const fmt of formatsBuilt) {
+      run(
+        `INSERT INTO attachments(note_id, kind, name, ref, uploaded_by_id, created_at) VALUES(?, 'doc', ?, ?, ?, ?)`,
+        note.id, `Annexure: ${fmt.format || fmt.id || 'Format'}`, JSON.stringify(fmt), me.id, today
+      );
+    }
+
+    res.status(201).json({ note, txnId: note.txn_id });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
 });
 
 router.post('/notes/:txnId/forward', action((note, me, b) => forward(note, me, Number(b.toMemberId), b.comment)));

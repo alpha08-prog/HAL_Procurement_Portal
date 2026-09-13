@@ -151,7 +151,8 @@ export default function Initiate() {
         priority: form.priority,
         noteTitle: form.noteTitle,
         parentFileId: form.parentFileId ? Number(form.parentFileId) : undefined,
-        lineNo: form.parentFileId ? form.lineNo || undefined : undefined
+        lineNo: form.parentFileId ? form.lineNo || undefined : undefined,
+        routingList: routingList.map((m) => m.id)
       });
       navigate(`/noting/note/${res.note.txn_id}`);
     } catch (err) {

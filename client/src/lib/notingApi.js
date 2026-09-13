@@ -96,3 +96,8 @@ export const fetchDashboard = () => getJson('/api/noting/dashboard');
 export const delegateAuthority = (payload) => postJson('/api/noting/delegation', payload);
 export const cancelDelegation = () => postJson('/api/noting/delegation/cancel', {});
 
+// Multi-stage & sequential N1..Nx noting
+export const addNotingEntry = (txnId, payload) => postJson(`/api/noting/notes/${encodeURIComponent(txnId)}/entries`, payload);
+export const fetchFileStageHistory = (filePk) => getJson(`/api/noting/cabinet/${filePk}/stage-history`);
+export const generateNextStage = (filePk, payload) => postJson(`/api/noting/cabinet/${filePk}/generate-next-stage`, payload);
+

@@ -5,7 +5,7 @@ import { Router } from 'express';
 import { all, get, nowISO, run } from '../../noting/db.js';
 import { currentMember } from '../../noting/identity.js';
 import { deptCodeFor, nextFileId, nextTxnId, noteRefNo } from '../../noting/refs.js';
-import { addNote, canView, openIfRecipient } from '../../noting/workflow.js';
+import { addNote, addNotingEntry, canView, notingEntries, openIfRecipient } from '../../noting/workflow.js';
 import { TENDERING_START_STAGE, VALID_STAGES } from '../../noting/stages.js';
 import { summarize } from '../../noting/summarize.js';
 import { requireNoteAccess } from './access.js';
@@ -41,7 +41,8 @@ router.post('/files', async (req, res) => {
     classification = 'normal',
     parentFileId = null,
     lineNo = null,
-    fields = {}
+    fields = {},
+    routingList = []
   } = req.body || {};
 
   const stageId = (req.body?.stageId || '').trim() || (source === 'ai' ? 'provisioning' : null);
@@ -104,14 +105,22 @@ router.post('/files', async (req, res) => {
 
   const refNo = noteRefNo(fileId, 1);
   const txnId = nextTxnId();
+  const plannedRoutingJson = Array.isArray(routingList) && routingList.length > 0 ? JSON.stringify(routingList) : null;
   run(
-    `INSERT INTO notes(file_pk,seq,ref_no,txn_id,title,stage_id,source,body,classification,status,initiator_id,custodian_id,created_at)
-     VALUES(?,1,?,?,?,?,?,?,?, 'draft', ?, ?, ?)`,
+    `INSERT INTO notes(file_pk,seq,ref_no,txn_id,title,stage_id,source,body,classification,status,initiator_id,custodian_id,stage_no,planned_routing,created_at)
+     VALUES(?,1,?,?,?,?,?,?,?, 'draft', ?, ?, 1, ?, ?)`,
     filePk, refNo, txnId, noteTitle, stageId || 'provisioning', source === 'ai' ? 'ai' : 'manual',
-    String(noteBody || ''), classification, me.id, me.id, today
+    String(noteBody || ''), classification, me.id, me.id, plannedRoutingJson, today
   );
 
   const noteRow = get('SELECT * FROM notes WHERE txn_id = ?', txnId);
+
+  // Initialize N1 noting entry for this stage
+  run(
+    `INSERT INTO noting_entries(note_id,seq,author_id,title,body,entry_type,remark,created_at)
+     VALUES(?, 1, ?, ?, ?, 'initial', 'Initial stage proposal', ?)`,
+    noteRow.id, me.id, `N1: ${noteTitle}`, String(noteBody || ''), today
+  );
 
   // PM (Purchase Manual) reference is attached automatically.
   run(
@@ -130,15 +139,15 @@ router.post('/files', async (req, res) => {
   res.status(201).json({ fileId, filePk, note: noteRow, aiCaseId });
 });
 
-// Add the next note (N2..final) to an existing open file.
+// Add the next note (stage) to an existing open file.
 router.post('/files/:filePk/notes', (req, res) => {
   const me = currentMember(req);
   const file = get('SELECT * FROM files WHERE id = ?', Number(req.params.filePk));
   if (!file) return res.status(404).json({ error: 'File not found' });
-  const { stageId = null, title, body = '', classification = 'normal' } = req.body || {};
+  const { stageId = null, title, body = '', classification = 'normal', routingList = null } = req.body || {};
   if (!CLASSES.includes(classification)) return res.status(422).json({ error: 'invalid classification' });
   try {
-    res.status(201).json({ note: addNote(file, me, { stageId, title, body, classification }) });
+    res.status(201).json({ note: addNote(file, me, { stageId, title, body, classification, routingList }) });
   } catch (e) {
     res.status(e.status || 500).json({ error: e.message });
   }
@@ -164,7 +173,7 @@ router.get('/files', (req, res) => {
   res.json({ files: visible });
 });
 
-// One note in full context, including all notes on this file for easy tab switching.
+// One note in full context, including all stage notes and sequential entries N1..Nx
 router.get('/notes/:txnId', (req, res) => {
   const note = get('SELECT * FROM notes WHERE txn_id = ?', req.params.txnId);
   if (!note) return res.status(404).json({ error: 'Note not found' });
@@ -177,14 +186,56 @@ router.get('/notes/:txnId', (req, res) => {
   const initiator = get('SELECT id, name, pb, designation FROM members WHERE id = ?', note.initiator_id);
   const custodian = get('SELECT id, name, pb, designation FROM members WHERE id = ?', note.custodian_id);
 
-  // All notes on this file visible to this user
+  // Ensure noting_entries has at least N1
+  let entries = notingEntries(note.id);
+  if (entries.length === 0 && note.body) {
+    run(
+      `INSERT INTO noting_entries(note_id,seq,author_id,title,body,entry_type,remark,created_at)
+       VALUES(?, 1, ?, ?, ?, 'initial', 'Initial stage note', ?)`,
+      note.id, note.initiator_id || me.id, `N1: ${note.title}`, note.body, note.created_at || nowISO()
+    );
+    entries = notingEntries(note.id);
+  }
+
+  // All stage notes on this file visible to this user
   const allNotes = all(
-    `SELECT id, seq, ref_no, txn_id, title, stage_id, source, classification, status, created_at
-     FROM notes WHERE file_pk = ? ORDER BY seq ASC`,
+    `SELECT n.id, n.seq, n.ref_no, n.txn_id, n.title, n.stage_id, n.source, n.classification, n.status, n.created_at, n.stage_no,
+            (SELECT COUNT(*) FROM noting_entries ne WHERE ne.note_id = n.id) AS entry_count
+     FROM notes n WHERE file_pk = ? ORDER BY n.seq ASC`,
     file.id
   ).filter((n) => canView(n, me));
 
-  res.json({ note, file, initiator, custodian, allNotes, aiCaseId: file.ai_case_id });
+  let plannedRouting = [];
+  try {
+    if (note.planned_routing) plannedRouting = JSON.parse(note.planned_routing);
+  } catch {}
+
+  res.json({
+    note,
+    file,
+    initiator,
+    custodian,
+    allNotes,
+    entries,
+    plannedRouting,
+    aiCaseId: file.ai_case_id
+  });
+});
+
+// Explicitly append an N-note minute/entry (N2, N3... Nx) to this stage
+router.post('/notes/:txnId/entries', (req, res) => {
+  const note = get('SELECT * FROM notes WHERE txn_id = ?', req.params.txnId);
+  if (!note) return res.status(404).json({ error: 'Note not found' });
+  const a = requireNoteAccess(req, res, note);
+  if (!a) return;
+  const me = a.me;
+  const { title, body, entryType = 'remark', remark } = req.body || {};
+  try {
+    const entry = addNotingEntry(note, me, { title, body, entryType, remark });
+    res.status(201).json({ entry });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
 });
 
 // AI Cascade status for this note & file
@@ -272,7 +323,7 @@ router.post('/notes/:txnId/ai-raise', async (req, res) => {
     run('UPDATE files SET ai_case_id = ? WHERE id = ?', caseId, file.id);
   }
 
-  const { noteId, fields = {}, override = false } = req.body || {};
+  const { noteId, fields = {}, override = false, routingList = null } = req.body || {};
   if (!noteId) return res.status(422).json({ error: 'noteId is required' });
 
   const out = await aiStore.raiseNote(caseId, noteId, {
@@ -309,7 +360,8 @@ router.post('/notes/:txnId/ai-raise', async (req, res) => {
       stageId: noteId,
       title: noteTitle,
       body: bodyHtml,
-      classification: note.classification || 'normal'
+      classification: note.classification || 'normal',
+      routingList
     });
   } catch (err) {
     return res.status(err.status || 500).json({ error: err.message });

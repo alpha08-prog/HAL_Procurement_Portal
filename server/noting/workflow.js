@@ -144,6 +144,20 @@ const latestStep = (noteId) =>
 const nextSeq = (noteId) =>
   (get('SELECT MAX(seq) AS m FROM routing_steps WHERE note_id = ?', noteId).m || 0) + 1;
 
+export const nextEntrySeq = (noteId) =>
+  (get('SELECT MAX(seq) AS m FROM noting_entries WHERE note_id = ?', noteId)?.m || 0) + 1;
+
+export function notingEntries(noteId) {
+  return all(
+    `SELECT ne.*, m.name AS author_name, m.pb AS author_pb, m.designation AS author_designation
+     FROM noting_entries ne
+     LEFT JOIN members m ON m.id = ne.author_id
+     WHERE ne.note_id = ?
+     ORDER BY ne.seq ASC`,
+    noteId
+  );
+}
+
 // Mark the inbound step that brought the note to `me` as acted-upon.
 function closeInbound(noteId, meId, action) {
   const s = get(
@@ -174,31 +188,52 @@ export function openIfRecipient(note, me) {
 
 // Forward to the next member (also covers "add self" and "add a member twice" — the
 // recipient is unrestricted). Empty or symbols-only comment auto-fills "Concurred & Forwarded".
+// Also appends N{entrySeq} to noting_entries for the stage note.
 export function forward(note, me, toId, comment) {
   requireHolder(note, me);
   if (!toId) fail(422, 'Choose a member to forward to');
   if (!get('SELECT id FROM members WHERE id = ?', toId)) fail(422, 'Unknown member');
   closeInbound(note.id, me.id, 'forward');
+  const normCom = normComment(comment, 'Concurred & Forwarded');
   run(
     `INSERT INTO routing_steps(note_id,seq,from_member_id,to_member_id,purpose,state,action,comment,sent_at)
      VALUES(?,?,?,?, 'forward', 'sent', 'forward', ?, ?)`,
-    note.id, nextSeq(note.id), me.id, toId, normComment(comment, 'Concurred & Forwarded'), nowISO()
+    note.id, nextSeq(note.id), me.id, toId, normCom, nowISO()
+  );
+  const entrySeq = nextEntrySeq(note.id);
+  const toMember = get('SELECT name, designation FROM members WHERE id = ?', toId);
+  const isQuery = normCom.includes('?') || /clarif|query|please provide|confirm|check/i.test(normCom);
+  const entryType = isQuery ? 'query' : 'remark';
+  const entryTitle = `N${entrySeq}: ${isQuery ? 'Clarification Query / Remark' : 'Observation / Concurrence'} by ${me.name || 'Officer'}`;
+  run(
+    `INSERT INTO noting_entries(note_id, seq, author_id, title, body, entry_type, remark, created_at)
+     VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
+    note.id, entrySeq, me.id, entryTitle, normCom, entryType, `Forwarded to ${toMember?.name || 'Officer'}`, nowISO()
   );
   run(`UPDATE notes SET custodian_id = ?, status = 'routed' WHERE id = ?`, toId, note.id);
   return get('SELECT * FROM notes WHERE id = ?', note.id);
 }
 
 // Send back to the initiator or any previous member. Returning to the initiator reopens
-// the draft for editing.
+// the draft for editing. Appends N{entrySeq} query/clarification note to noting_entries.
 export function sendBack(note, me, toId, comment) {
   requireHolder(note, me);
   if (!toId || toId === me.id) fail(422, 'Choose a different member to send back to');
   if (!priorHolders(note.id).has(toId)) fail(422, 'Send back only to the initiator or a previous member');
   closeInbound(note.id, me.id, 'send_back');
+  const normCom = normComment(comment, 'Returned for clarification');
   run(
     `INSERT INTO routing_steps(note_id,seq,from_member_id,to_member_id,purpose,state,action,comment,sent_at)
      VALUES(?,?,?,?, 'forward', 'sent', 'send_back', ?, ?)`,
-    note.id, nextSeq(note.id), me.id, toId, normComment(comment, 'Returned'), nowISO()
+    note.id, nextSeq(note.id), me.id, toId, normCom, nowISO()
+  );
+  const entrySeq = nextEntrySeq(note.id);
+  const toMember = get('SELECT name, designation FROM members WHERE id = ?', toId);
+  const entryTitle = `N${entrySeq}: Clarification Requested by ${me.name || 'Officer'}`;
+  run(
+    `INSERT INTO noting_entries(note_id, seq, author_id, title, body, entry_type, remark, created_at)
+     VALUES(?, ?, ?, ?, ?, 'query', ?, ?)`,
+    note.id, entrySeq, me.id, entryTitle, normCom, `Returned to ${toMember?.name || 'Previous Holder'}`, nowISO()
   );
   const status = toId === note.initiator_id ? 'draft' : 'routed';
   run(`UPDATE notes SET custodian_id = ?, status = ? WHERE id = ?`, toId, status, note.id);
@@ -225,11 +260,12 @@ function stageSkeleton(stageId) {
   return `${t}\n\n(Draft auto-created for the next stage. Provide the inputs and documents required for "${t}", then route for approval.)`;
 }
 
-// Add the next note (N2..final) to an OPEN file — the multi-note lifecycle (email 13, 21, 23).
+// Add the next note (stage) to an OPEN file — the multi-note lifecycle (email 13, 21, 23).
 // The connected Reference/Transaction ids continue the same File ID; the note opens as a
 // draft held by its author. Only a member of the case may add it. Reaching the tendering
 // stage stamps files.tendering_start. Creating the next note clears the cabinet prompt.
-export function addNote(file, me, { stageId = null, title, body = '', classification = 'normal' } = {}) {
+// Automatically generates the first note (N1) in noting_entries and saves planned_routing.
+export function addNote(file, me, { stageId = null, title, body = '', classification = 'normal', routingList = null } = {}) {
   if (!me) fail(403, 'No noting member mapped to this account');
   stageId = (stageId || '').trim() || null;
   if (stageId && !VALID_STAGES.has(stageId)) fail(422, `Unknown stage "${stageId}"`);
@@ -250,13 +286,26 @@ export function addNote(file, me, { stageId = null, title, body = '', classifica
 
   const today = nowISO();
   const seq = (get('SELECT MAX(seq) AS m FROM notes WHERE file_pk = ?', file.id).m || 0) + 1;
+  const stageNo = seq;
+  const plannedRoutingJson = Array.isArray(routingList) && routingList.length > 0 ? JSON.stringify(routingList) : null;
+  const finalTitle = (title || '').trim() || stageTitle(stageId);
+  const finalBody = (body || '').trim() || stageSkeleton(stageId);
+
   run(
-    `INSERT INTO notes(file_pk,seq,ref_no,txn_id,title,stage_id,source,body,classification,status,initiator_id,custodian_id,created_at)
-     VALUES(?,?,?,?,?,?, 'manual', ?,?, 'draft', ?, ?, ?)`,
-    file.id, seq, noteRefNo(file.file_id, seq), nextTxnId(), (title || '').trim() || stageTitle(stageId),
-    stageId, (body || '').trim() || stageSkeleton(stageId), classification, me.id, me.id, today
+    `INSERT INTO notes(file_pk,seq,ref_no,txn_id,title,stage_id,source,body,classification,status,initiator_id,custodian_id,stage_no,planned_routing,created_at)
+     VALUES(?,?,?,?,?,?, 'manual', ?,?, 'draft', ?, ?, ?, ?, ?)`,
+    file.id, seq, noteRefNo(file.file_id, seq), nextTxnId(), finalTitle,
+    stageId, finalBody, classification, me.id, me.id, stageNo, plannedRoutingJson, today
   );
   const note = get('SELECT * FROM notes WHERE file_pk = ? AND seq = ?', file.id, seq);
+
+  // Initialize N1 noting entry for this stage
+  run(
+    `INSERT INTO noting_entries(note_id,seq,author_id,title,body,entry_type,remark,created_at)
+     VALUES(?, 1, ?, ?, ?, 'initial', 'Initial stage note / proposal', ?)`,
+    note.id, me.id, `N1: ${finalTitle}`, finalBody, today
+  );
+
   run(`INSERT INTO attachments(note_id,kind,name,ref,uploaded_by_id,created_at) VALUES(?, 'pm', ?, ?, NULL, ?)`, note.id, 'Purchase Manual Issue-4', 'PM/Issue-4', today);
   if (stageId === TENDERING_START_STAGE && !file.tendering_start) run(`UPDATE files SET tendering_start = ? WHERE id = ?`, today, file.id);
   run(`DELETE FROM cabinet WHERE file_pk = ?`, file.id); // next action taken — leaves the cabinet
@@ -265,8 +314,8 @@ export function addNote(file, me, { stageId = null, title, body = '', classifica
 
 // Approve / reject a note. Approving an INTERMEDIATE stage advances the case and leaves the
 // file OPEN; approving the FINAL stage (no next stage) or any rejection CLOSES the file. The
-// closed note is filed into the cabinet of every routed member and the file initiator, tagged
-// by role (email points 16, 17, 23). Cabinet rows are refreshed per decision.
+// closed note is filed into the cabinet of every routed member, the file initiator, and
+// Gaurav Yadav (Purchase Manager), tagged by role. Cabinet rows are refreshed per decision.
 export function decide(note, me, decision, comment) {
   requireHolder(note, me);
   // An unrouted draft cannot be decided — the initiator would be approving his own note
@@ -282,21 +331,37 @@ export function decide(note, me, decision, comment) {
      VALUES(?,?,?,?, 'approve', 'actioned', ?, ?, ?, ?)`,
     note.id, nextSeq(note.id), me.id, me.id, decision, (comment || '').trim() || null, today, today
   );
+
+  // Append N{entrySeq} to noting_entries
+  const entrySeq = nextEntrySeq(note.id);
+  const decisionLabel = approved ? 'Approved' : 'Rejected';
+  const decComment = normComment(comment, approved ? 'Concurred and Approved as proposed.' : 'Rejected.');
+  run(
+    `INSERT INTO noting_entries(note_id, seq, author_id, title, body, entry_type, remark, created_at)
+     VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
+    note.id, entrySeq, me.id, `N${entrySeq}: Final Decision (${decisionLabel}) by ${me.name || 'Approver'}`,
+    decComment, approved ? 'approval' : 'rejection', `${decisionLabel} by deciding authority`, today
+  );
+
   const status = approved ? 'approved' : 'rejected';
   run(`UPDATE notes SET status = ?, decision = ?, decided_by = ?, closed_at = ? WHERE id = ?`, status, status, me.id, today, note.id);
   if (!approved || isFinal) run(`UPDATE files SET status = 'closed', closed_at = ? WHERE id = ?`, today, note.file_pk);
 
-  // Cabinet recipients = the union of EVERY note's participants (a member who routed only
-  // an earlier note keeps his cabinet copy at a later decision) + the file initiator.
+  // Cabinet recipients = the union of EVERY note's participants + file initiator + Gaurav Yadav (Purchase Manager).
   const fileInit = get('SELECT initiator_id FROM files WHERE id = ?', note.file_pk)?.initiator_id;
   const recipients = new Set();
   for (const n of all('SELECT id FROM notes WHERE file_pk = ?', note.file_pk)) {
     for (const pid of participants(n.id)) recipients.add(pid);
   }
   if (fileInit) recipients.add(fileInit);
+
+  // Gaurav sir (Chief Manager / Purchase Manager) is always placed in cabinet to oversee & generate next stage
+  const gaurav = get("SELECT id FROM members WHERE pb = 'PB-41060' OR email = 'cm@hal.local'");
+  if (gaurav) recipients.add(gaurav.id);
+
   run(`DELETE FROM cabinet WHERE file_pk = ?`, note.file_pk);
   for (const pid of recipients) {
-    const reason = pid === fileInit ? 'initiator' : pid === me.id ? 'approver' : 'router';
+    const reason = pid === gaurav?.id ? 'purchase_manager' : pid === fileInit ? 'initiator' : pid === me.id ? 'approver' : 'router';
     run(`INSERT INTO cabinet(member_id,file_pk,reason,placed_at) VALUES(?,?,?,?)`, pid, note.file_pk, reason, today);
   }
   return get('SELECT * FROM notes WHERE id = ?', note.id);
@@ -332,4 +397,44 @@ export function history(noteId) {
      WHERE rs.note_id = ? ORDER BY rs.seq ASC`,
     noteId
   );
+}
+
+// Explicitly append a noting entry (N{seq}) to the active stage note sheet
+export function addNotingEntry(note, me, { title, body, entryType = 'remark', remark } = {}) {
+  requireHolder(note, me);
+  if (!body || !body.trim()) fail(422, 'Entry body cannot be empty');
+  const seq = nextEntrySeq(note.id);
+  const entryTitle = (title || '').trim() || `N${seq}: Noting Entry by ${me.name || 'Officer'}`;
+  run(
+    `INSERT INTO noting_entries(note_id, seq, author_id, title, body, entry_type, remark, created_at)
+     VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
+    note.id, seq, me.id, entryTitle, body.trim(), entryType, remark || null, nowISO()
+  );
+  return get(
+    `SELECT ne.*, m.name AS author_name, m.pb AS author_pb, m.designation AS author_designation
+     FROM noting_entries ne
+     LEFT JOIN members m ON m.id = ne.author_id
+     WHERE ne.note_id = ? AND ne.seq = ?`,
+    note.id, seq
+  );
+}
+
+// Complete multi-stage history of a file for Cabinet & file review
+export function fileStageHistory(filePk) {
+  const notes = all(
+    `SELECT n.*, im.name AS initiator_name, cm.name AS custodian_name, dm.name AS decider_name
+     FROM notes n
+     LEFT JOIN members im ON im.id = n.initiator_id
+     LEFT JOIN members cm ON cm.id = n.custodian_id
+     LEFT JOIN members dm ON dm.id = n.decided_by
+     WHERE n.file_pk = ?
+     ORDER BY n.seq ASC`,
+    filePk
+  );
+  return notes.map((nt) => ({
+    ...nt,
+    stageTitle: stageTitle(nt.stage_id),
+    entries: notingEntries(nt.id),
+    history: history(nt.id)
+  }));
 }

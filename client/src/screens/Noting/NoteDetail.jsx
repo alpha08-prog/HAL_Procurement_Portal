@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Attachments from '../../components/Attachments.jsx';
-import Clarifications from '../../components/Clarifications.jsx';
 import RoutingTimeline from '../../components/RoutingTimeline.jsx';
 import RichTextEditor from '../../components/noting/RichTextEditor.jsx';
 import MemberPickerModal from '../../components/noting/MemberPickerModal.jsx';
@@ -13,6 +12,7 @@ import {
 } from '../../config/notingColumns.jsx';
 import {
   addNote,
+  addNotingEntry,
   decideNote,
   fetchAiCascade,
   fetchAiNoteForm,
@@ -35,8 +35,8 @@ import {
 } from '../../lib/notingApi.js';
 
 const STAGE_STEPS = [
-  { id: 'provisioning', no: 1, label: '1. Provisioning (N1)' },
-  { id: 'tender_opened', no: 2, label: '2. Tender Opened (N2)' },
+  { id: 'provisioning', no: 1, label: '1. Provisioning' },
+  { id: 'tender_opened', no: 2, label: '2. Tender / NIT' },
   { id: 'tec_stage', no: 3, label: '3. Technical (TEC)' },
   { id: 'post_pbo', no: 4, label: '4. Commercial (PBO)' },
   { id: 'pnc_stage', no: 5, label: '5. Negotiation (PNC)' },
@@ -79,7 +79,6 @@ export default function NoteDetail() {
     cascade: true,
     routing: true,
     attachments: true,
-    clarifications: false,
     grants: false
   });
   
@@ -89,6 +88,13 @@ export default function NoteDetail() {
   const [memberPickerPurpose, setMemberPickerPurpose] = useState('forward'); // 'forward' | 'sendback' | 'check' | 'share'
   const [generatedShareLink, setGeneratedShareLink] = useState(null);
   const [busy, setBusy] = useState(false);
+
+  // Noting Entries (N1, N2.. Nx) state
+  const [showAddMinuteModal, setShowAddMinuteModal] = useState(false);
+  const [minuteTitle, setMinuteTitle] = useState('');
+  const [minuteBody, setMinuteBody] = useState('');
+  const [minuteType, setMinuteType] = useState('minute');
+  const [minuteRemark, setMinuteRemark] = useState('');
 
   const loadCascade = useCallback(() => {
     fetchAiCascade(txnId)
@@ -240,6 +246,36 @@ export default function NoteDetail() {
     }
   };
 
+  const handleAddMinute = async (e) => {
+    e?.preventDefault?.();
+    if (!minuteBody.trim()) {
+      setError('Minute content is required.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const nextSeq = (data?.entries?.length || 0) + 1;
+      await addNotingEntry(txnId, {
+        title: minuteTitle.trim() || `Minute N${nextSeq}`,
+        body: minuteBody,
+        entry_type: minuteType,
+        remark: minuteRemark.trim() || undefined
+      });
+      setShowAddMinuteModal(false);
+      setMinuteTitle('');
+      setMinuteBody('');
+      setMinuteRemark('');
+      setMinuteType('minute');
+      setSuccessMsg(`✓ Noting Minute N${nextSeq} appended to Green Sheet.`);
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // AI Cascade actions
   const handleOpenAiModal = async (noteId) => {
     setError(null);
@@ -299,6 +335,9 @@ export default function NoteDetail() {
     try {
       const out = await handOverAiCase(txnId, { toAgency });
       setSuccessMsg(`✓ File custody successfully transferred to the ${out.case?.holdingAgency || toAgency} Agency.`);
+      // Immediately clear stale cascade so the Move button disappears right away,
+      // then reload fresh cascade data in the background.
+      setAiCascade(null);
       loadCascade();
     } catch (e) {
       setError(e.message);
@@ -399,43 +438,29 @@ export default function NoteDetail() {
         </div>
       </div>
 
-      {/* AI Responsibility Cascade Progression Bar */}
+      {/* AI Responsibility Cascade — compact stage chip only */}
       {kase && (
-        <div className="ai-cascade-banner" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '12px 16px', marginBottom: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <strong style={{ fontSize: 13, color: 'var(--accent)' }}>HAL AI Responsibility Cascade Engine</strong>
-              <span className={`pill ${kase.holdingAgency === 'Indenting' ? 'pill-warning' : 'pill-info'}`}>
-                Held by: {kase.holdingAgency} Agency
-              </span>
-              <span className="pill pill-neutral">Handovers: {kase.handovers || 0}</span>
-            </div>
-            {permissions?.canHandOver && (
-              <button
-                type="button"
-                className="btn"
-                style={{ padding: '4px 10px', fontSize: 11 }}
-                onClick={() => handleAiHandover(permissions.stageOwner || (kase.holdingAgency === 'Indenting' ? 'Tendering' : 'Indenting'))}
-                disabled={aiBusy}
-              >
-                Move File to {permissions.stageOwner || (kase.holdingAgency === 'Indenting' ? 'Tendering' : 'Indenting')} Agency
-              </button>
-            )}
-          </div>
-
-          {/* Stepper tracker */}
-          <div className="ef-cascade-stepper">
-            {STAGE_STEPS.map((st) => {
-              const isActive = currentStageNo === st.no;
-              const isPast = currentStageNo > st.no;
-              return (
-                <div key={st.id} className={`ef-cascade-step ${isActive ? 'active' : ''} ${isPast ? 'completed' : ''}`}>
-                  <div className="step-circle">{isPast ? '✓' : st.no}</div>
-                  <div className="step-label">{st.label}</div>
-                </div>
-              );
-            })}
-          </div>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+          <span style={{
+            background: '#0e4474', color: '#fff', fontSize: 11, fontWeight: 700,
+            padding: '4px 10px', borderRadius: 20, letterSpacing: '0.03em'
+          }}>
+            Stage {currentStageNo}: {kase.node?.title || STAGE_STEPS[currentStageNo - 1]?.label || 'In Progress'}
+          </span>
+          <span className={`pill ${kase.holdingAgency === 'Indenting' ? 'pill-warning' : 'pill-info'}`} style={{ fontSize: 10 }}>
+            {kase.holdingAgency} Agency
+          </span>
+          {permissions?.canHandOver && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ padding: '2px 8px', fontSize: 11 }}
+              onClick={() => handleAiHandover(permissions.stageOwner || (kase.holdingAgency === 'Indenting' ? 'Tendering' : 'Indenting'))}
+              disabled={aiBusy}
+            >
+              Move to {permissions.stageOwner || (kase.holdingAgency === 'Indenting' ? 'Tendering' : 'Indenting')} Agency
+            </button>
+          )}
         </div>
       )}
 
@@ -490,17 +515,27 @@ export default function NoteDetail() {
             </div>
           )}
 
-          {/* Multi-Note Tabs: All Notes on this File */}
-          <div className="ef-routing-tabs" style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          {/* Multi-Stage Tabs: Stages on this File */}
+          <div className="ef-routing-tabs" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
             {allNotes.length > 0 ? (
-              allNotes.map((n) => (
+              allNotes.map((n, idx) => (
                 <Link
                   key={n.txn_id}
                   to={`/noting/note/${n.txn_id}`}
                   className={`ef-routing-tab ${n.txn_id === txnId ? 'active' : ''}`}
-                  style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                  style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px' }}
                 >
-                  <span>N{n.seq}: {n.title}</span>
+                  <span style={{ fontWeight: 600 }}>Stage {n.stage_no || idx + 1}: {n.title}</span>
+                  <span style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    padding: '2px 6px',
+                    borderRadius: 4,
+                    background: '#dcfce7',
+                    color: '#15803d'
+                  }}>
+                    N1–N{n.entry_count || 1}
+                  </span>
                   <span style={{
                     fontSize: 9,
                     padding: '1px 5px',
@@ -513,21 +548,57 @@ export default function NoteDetail() {
                 </Link>
               ))
             ) : (
-              <div className="ef-routing-tab active">N{note.seq} ({note.title})</div>
+              <div className="ef-routing-tab active" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <span>Stage {note.stage_no || 1}: {note.title}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: '#dcfce7', color: '#15803d' }}>
+                  N1–N{data?.entries?.length || 1}
+                </span>
+              </div>
             )}
           </div>
 
-          {/* Existing Note Content Display / Draft Edit Mode */}
-          <div className={`ef-note-header${note.status === 'rejected' ? ' rejected' : ''}`}>
-            <span>N{note.seq} Note by {initiator?.name || 'Initiator'} ({initiator?.designation || 'Desk'})</span>
-            <span>Created: {new Date(note.created_at).toLocaleDateString('en-IN')}</span>
-          </div>
+          {/* Resting Notice if Stage is Approved & Filed */}
+          {closed && (
+            <div className="banner banner-success" style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, padding: 14 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#166534', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>✓</span> Stage {note.stage_no || 1} ({note.title}) Approved &amp; Resting in Cabinet
+                </div>
+                <div style={{ fontSize: 12, marginTop: 4, color: '#15803d' }}>
+                  All sequential noting minutes (N1 to N{data?.entries?.length || 1}) are archived on the Green Sheet. The file now rests in the Cabinet of <strong>Gaurav Yadav (Chief Manager / Purchase Manager, PB-41060)</strong> and participants.
+                </div>
+              </div>
+              <Link to="/noting/cabinet" className="btn" style={{ background: '#15803d', fontSize: 12, textDecoration: 'none' }}>
+                Open Cabinet to Generate Next Stage Note →
+              </Link>
+            </div>
+          )}
 
+          {/* Planned Routing Trail for this Stage */}
+          {data?.plannedRouting && data.plannedRouting.length > 0 && (
+            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 'var(--radius)', padding: '10px 14px', marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#1e40af', marginBottom: 6 }}>
+                Planned Stage Routing Trail ({data.plannedRouting.length} Officers)
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, fontSize: 12 }}>
+                {data.plannedRouting.map((m, i) => (
+                  <span key={m.id || i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    {i > 0 && <span style={{ color: '#93c5fd', fontWeight: 'bold' }}>→</span>}
+                    <span style={{ background: '#fff', border: '1px solid #dbeafe', padding: '2px 8px', borderRadius: 4 }}>
+                      <strong>{m.name}</strong> <span style={{ color: '#64748b', fontSize: 11 }}>({m.designation || m.pb})</span>
+                    </span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Green Noting Sheet: Displays All Chronological Notes N1, N2.. Nx */}
           {isEditingDraft ? (
-            <form onSubmit={handleSaveDraft} className="form-section" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '0 0 var(--radius) var(--radius)', padding: 16 }}>
+            <form onSubmit={handleSaveDraft} className="form-section" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 16 }}>
               <div className="form-grid">
                 <label className="field-wide">
-                  <span className="field-label">Note Title</span>
+                  <span className="field-label">Stage Note Title</span>
                   <input className="field-input" value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} />
                 </label>
                 <label>
@@ -540,7 +611,7 @@ export default function NoteDetail() {
                 </label>
               </div>
               <div style={{ marginTop: 12 }}>
-                <span className="field-label">Note Content</span>
+                <span className="field-label">Stage Initial Note (N1) Content</span>
                 <RichTextEditor value={newNoteBody} onChange={setNewNoteBody} />
               </div>
               <div className="form-actions" style={{ marginTop: 12 }}>
@@ -549,20 +620,89 @@ export default function NoteDetail() {
               </div>
             </form>
           ) : (
-            <div className="ef-note-body">
-              <div dangerouslySetInnerHTML={{ __html: note.body || '<p>No content in note body.</p>' }} />
-              <div className="ef-note-signature">
-                <strong>Digitally Signed By:</strong> {initiator?.name}<br />
-                <strong>Designation:</strong> {initiator?.designation}<br />
-                <strong>Date &amp; Time:</strong> {new Date(note.created_at).toLocaleString('en-IN')}
+            <div className="ef-green-sheet">
+              <div className="ef-green-sheet-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="ef-sheet-badge">HAL GREEN NOTING SHEET</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#1b4332' }}>
+                    Stage {note.stage_no || 1}: {note.title}
+                  </span>
+                </div>
+                <span style={{ fontSize: 11, color: '#2d6a4f', fontWeight: 600 }}>
+                  Sequential Minutes: N1 to N{data?.entries?.length || 1}
+                </span>
               </div>
+
+              {(data?.entries && data.entries.length > 0 ? data.entries : [
+                {
+                  id: 'fallback-1',
+                  seq: 1,
+                  title: note.title,
+                  body: note.body,
+                  entry_type: 'initial',
+                  author_name: initiator?.name,
+                  author_designation: initiator?.designation,
+                  author_pb: initiator?.pb,
+                  created_at: note.created_at
+                }
+              ]).map((entry) => (
+                <div key={entry.id || entry.seq} className={`ef-noting-item ${entry.entry_type || ''}`}>
+                  <div className="ef-noting-item-head">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span className="ef-note-tag">N{entry.seq}</span>
+                      <span className="ef-note-title">{entry.title || `Minute N${entry.seq}`}</span>
+                      <span className={`tag tag-${entry.entry_type === 'approval' ? 'note-approved' : entry.entry_type === 'query' ? 'note-in-check' : 'note-routed'}`} style={{ fontSize: 10 }}>
+                        {entry.entry_type === 'initial' ? 'Initial Stage Note' :
+                         entry.entry_type === 'query' ? 'Query / Clarification' :
+                         entry.entry_type === 'clarification' ? 'Reply / Clarification' :
+                         entry.entry_type === 'forward' ? 'Forward Minute' :
+                         entry.entry_type === 'sendback' ? 'Return / Send Back' :
+                         entry.entry_type === 'approval' ? 'Final Approval' :
+                         entry.entry_type === 'rejection' ? 'Rejection' : 'Noting Minute'}
+                      </span>
+                    </div>
+                    <span className="ef-note-time">
+                      {new Date(entry.created_at).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+
+                  {entry.remark && entry.remark.trim() !== '' && (
+                    <div style={{ background: '#f8fafc', borderLeft: '3px solid #64748b', padding: '6px 12px', margin: '8px 0 12px 0', fontSize: 12, fontStyle: 'italic', color: '#334155', borderRadius: '0 4px 4px 0' }}>
+                      <strong>Officer Remark / Concurrence:</strong> {entry.remark}
+                    </div>
+                  )}
+
+                  <div className="ef-noting-item-body">
+                    <div dangerouslySetInnerHTML={{ __html: entry.body || '<p>—</p>' }} />
+                  </div>
+
+                  <div className="ef-noting-item-signature">
+                    <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+                      Hindustan Aeronautics Limited — e-Governance Division
+                    </div>
+                    <div className="ef-sig-box">
+                      <span className="ef-sig-tick">✓</span>
+                      <div style={{ fontSize: 11, lineHeight: 1.3 }}>
+                        <div><strong>{entry.author_name || initiator?.name || 'Authorized Officer'}</strong></div>
+                        <div style={{ color: '#475569' }}>
+                          {entry.author_designation || initiator?.designation || 'HAL Officer'}
+                          {entry.author_pb ? ` (PB: ${entry.author_pb})` : initiator?.pb ? ` (PB: ${initiator.pb})` : ''}
+                        </div>
+                        <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
+                          Signed: {new Date(entry.created_at).toLocaleString('en-IN')}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
           {/* Action Toolbar for Current Holder */}
           {isHolder && routable && (
             <div className="form-section" style={{ marginTop: 24 }}>
-              <div className="form-section-title">Workflow Actions</div>
+              <div className="form-section-title">Stage Workflow &amp; Noting Actions</div>
               <div style={{ marginBottom: 12 }}>
                 <span className="field-label">Remarks / Comment</span>
                 <input
@@ -578,6 +718,21 @@ export default function NoteDetail() {
               </div>
 
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ borderColor: '#2d6a4f', color: '#2d6a4f', fontWeight: 600 }}
+                  onClick={() => {
+                    setMinuteTitle(`Minute on Stage ${note.stage_no || 1}`);
+                    setMinuteType('minute');
+                    setMinuteBody('');
+                    setMinuteRemark('');
+                    setShowAddMinuteModal(true);
+                  }}
+                >
+                  + Add Noting Minute (N{(data?.entries?.length || 0) + 1})
+                </button>
+
                 {note.status === 'draft' && (
                   <>
                     <button
@@ -585,7 +740,7 @@ export default function NoteDetail() {
                       className="btn btn-secondary"
                       onClick={() => setIsEditingDraft((v) => !v)}
                     >
-                      {isEditingDraft ? 'Close Editor' : 'Edit Draft'}
+                      {isEditingDraft ? 'Close Editor' : 'Edit Draft (N1)'}
                     </button>
 
                     <button
@@ -657,49 +812,7 @@ export default function NoteDetail() {
           )}
 
           {/* AI Cascade Next Note Actions */}
-          {kase && kase.status === 'open' && kase.options?.length > 0 && (
-            <div className="form-section" style={{ marginTop: 24, border: '1px solid var(--accent-soft)', background: '#fafcff', borderRadius: 'var(--radius)', padding: 16 }}>
-              <div className="form-section-title" style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span>AI Cascade: Allowed Notes at Current Stage ({kase.node?.title || 'Next Step'})</span>
-                <span className="pill pill-info">{kase.holdingAgency} Agency</span>
-              </div>
-              <p className="field-hint" style={{ marginBottom: 12 }}>
-                The HAL Responsibility Cascade determines valid notes at each milestone. Choose a note below to draft it with the language model and attach its deterministic annexures to this e-file.
-              </p>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
-                {kase.options.map((opt) => (
-                  <div key={opt.noteId} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 12, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--accent)', marginBottom: 4 }}>
-                        {opt.label}
-                      </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
-                        {opt.advice?.advised && <span className="pill pill-warning">advised — {opt.advice.rule}()</span>}
-                        {opt.needBased && <span className="tag">need-based</span>}
-                        {opt.terminal && <span className="pill pill-danger">closes file</span>}
-                      </div>
-                      {opt.advice?.note && <div className="field-hint" style={{ fontSize: 11, marginBottom: 6 }}>{opt.advice.note}</div>}
-                      {opt.formats?.length > 0 && (
-                        <div className="field-hint" style={{ fontSize: 11 }}>
-                          Formats: {opt.formats.join(', ')}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      className="btn"
-                      style={{ marginTop: 12, width: '100%', fontSize: 12 }}
-                      disabled={aiBusy}
-                      onClick={() => handleOpenAiModal(opt.noteId)}
-                    >
-                      Draft &amp; Raise with AI →
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* AI Cascade: Next Note Options — now in right panel as accordion, removed from main column */}
         </div>
 
         {/* Right Accordion Panel */}
@@ -731,6 +844,49 @@ export default function NoteDetail() {
                     <li key={i}>{f}</li>
                   ))}
                 </ul>
+              </div>
+            </div>
+          )}
+
+          {/* AI Cascade: Allowed Notes — compact accordion in right panel */}
+          {kase && kase.status === 'open' && kase.options?.length > 0 && (
+            <div className={`ef-accordion-item${accordionOpen.cascade ? ' open' : ''}`}>
+              <button type="button" className="ef-accordion-trigger" onClick={() => toggleAccordion('cascade')}>
+                <span style={{ color: 'var(--accent)', fontWeight: 700 }}>
+                  AI Cascade: Next Notes ({kase.options.length})
+                </span>
+                <span className="arrow">▼</span>
+              </button>
+              <div className="ef-accordion-content">
+                <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8, padding: '0 4px' }}>
+                  Stage {currentStageNo}: {kase.node?.title || 'Next Step'} · {kase.holdingAgency} Agency
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {kase.options.map((opt) => (
+                    <div key={opt.noteId} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 6, padding: 10 }}>
+                      <div style={{ fontWeight: 600, fontSize: 12, color: 'var(--accent)', marginBottom: 4 }}>
+                        {opt.label}
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginBottom: 6 }}>
+                        {opt.advice?.advised && <span className="pill pill-warning" style={{ fontSize: 9 }}>advised</span>}
+                        {opt.needBased && <span className="tag" style={{ fontSize: 9 }}>need-based</span>}
+                        {opt.terminal && <span className="pill pill-danger" style={{ fontSize: 9 }}>closes file</span>}
+                      </div>
+                      {opt.advice?.note && (
+                        <div className="field-hint" style={{ fontSize: 10, marginBottom: 6 }}>{opt.advice.note}</div>
+                      )}
+                      <button
+                        type="button"
+                        className="btn"
+                        style={{ width: '100%', fontSize: 11, padding: '4px 8px' }}
+                        disabled={aiBusy}
+                        onClick={() => handleOpenAiModal(opt.noteId)}
+                      >
+                        Draft &amp; Raise with AI →
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -777,16 +933,7 @@ export default function NoteDetail() {
             </div>
           </div>
 
-          {/* Clarifications Accordion */}
-          <div className={`ef-accordion-item${accordionOpen.clarifications ? ' open' : ''}`}>
-            <button type="button" className="ef-accordion-trigger" onClick={() => toggleAccordion('clarifications')}>
-              <span>Clarifications</span>
-              <span className="arrow">▼</span>
-            </button>
-            <div className="ef-accordion-content">
-              <Clarifications txnId={txnId} me={me} people={members} />
-            </div>
-          </div>
+
 
           {/* Active Grants Accordion (for restricted notes) */}
           {note.classification !== 'normal' && (
@@ -982,6 +1129,70 @@ export default function NoteDetail() {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Noting Minute Modal */}
+      {showAddMinuteModal && (
+        <div className="modal-backdrop">
+          <div className="modal" style={{ maxWidth: 680, maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="modal-header">
+              <h2>Add Noting Minute (N{(data?.entries?.length || 0) + 1}) — Stage {note.stage_no || 1}</h2>
+              <button type="button" className="btn-close" onClick={() => setShowAddMinuteModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleAddMinute}>
+              <div className="modal-body">
+                <div className="form-grid">
+                  <label className="field-wide">
+                    <span className="field-label">Minute Title</span>
+                    <input
+                      className="field-input"
+                      value={minuteTitle}
+                      onChange={(e) => setMinuteTitle(e.target.value)}
+                      placeholder={`e.g. Query / Clarification / Sanction Minute N${(data?.entries?.length || 0) + 1}`}
+                    />
+                  </label>
+                  <label>
+                    <span className="field-label">Minute Type</span>
+                    <select
+                      className="field-input"
+                      value={minuteType}
+                      onChange={(e) => setMinuteType(e.target.value)}
+                    >
+                      <option value="minute">General Minute (N)</option>
+                      <option value="query">Clarification Query</option>
+                      <option value="clarification">Clarification Reply</option>
+                      <option value="concurrence">Concurrence / Audit Review</option>
+                    </select>
+                  </label>
+                  <label className="field-wide">
+                    <span className="field-label">Remark / Comment (Optional)</span>
+                    <input
+                      className="field-input"
+                      value={minuteRemark}
+                      onChange={(e) => setMinuteRemark(e.target.value)}
+                      placeholder="e.g. Reviewed and concurred for technical approval"
+                    />
+                  </label>
+                </div>
+                <div style={{ marginTop: 12 }}>
+                  <span className="field-label">Noting Content / Detailed Minute</span>
+                  <RichTextEditor
+                    value={minuteBody}
+                    onChange={setMinuteBody}
+                  />
+                </div>
+              </div>
+              <div className="modal-actions">
+                <button type="submit" className="btn" disabled={busy || !minuteBody.trim()}>
+                  {busy ? 'Appending Minute…' : `Append Minute N${(data?.entries?.length || 0) + 1} to Green Sheet`}
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowAddMinuteModal(false)}>
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

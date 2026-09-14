@@ -1,9 +1,16 @@
 // Dynamic routing engine for notes — the user-driven counterpart to Module A's fixed
 // payment state machine. The actor is always the real signed-in member (never a role),
 // and the recipient is chosen at runtime. Each hand-off appends a routing_steps row.
+//
+// Shape of a case (client, 13/09/2026): a proposal (`files`, one MPR/CAR thread) is a chain of
+// separate stage files (`notes`, ref <File ID>/S<seq>) — Provisioning, EMD, TEC, PBO, …,
+// Retender, PO Amendment — each generated from the result of the one before. Every stage file
+// runs its own N1..Nx noting sheet and, once decided, closes and rests in the cabinet.
 import { all, get, nowISO, run } from './db.js';
 import { nextTxnId, noteRefNo } from './refs.js';
-import { nextStage, stageTitle, TENDERING_START_STAGE, VALID_STAGES } from './stages.js';
+import {
+  followUps, NEEDBASED, nextStage, STAGE_ORDER, stageTitle, startsTendering, VALID_STAGES
+} from './stages.js';
 
 const fail = (status, message) => {
   throw Object.assign(new Error(message), { status });
@@ -34,6 +41,11 @@ export function participants(noteId) {
 }
 
 export const isParticipant = (noteId, memberId) => participants(noteId).has(memberId);
+
+// The proposal's owners: the member who initiated it (the indentor) and the tender initiator
+// they handed the approved provisioning to. Both follow every stage file of the proposal.
+export const isProposalOwner = (file, me) =>
+  Boolean(me && file && (file.initiator_id === me.id || file.tender_initiator_id === me.id));
 
 // Members the note has already passed through — the initiator plus everyone who has sent it
 // onward. Send-back is only allowed to one of these (email: "to user or previous member").
@@ -91,22 +103,17 @@ export function isDirectHead(me, unitId) {
 }
 
 // Need-to-know restriction. Normal = any signed-in member. Any restricted class
-// (Restricted / Confidential / Secret / Top Secret) is visible only to routed members
-// here; explicit share grants are resolved in routes/noting/access.js. A bare link or
-// transaction id grants nothing.
+// (Restricted / Confidential / Secret / Top Secret) is visible only to routed members and
+// the proposal's owners here; explicit share grants are resolved in routes/noting/access.js.
+// A bare link or transaction id grants nothing.
 export function canView(note, me) {
   const cls = note.classification || 'normal';
   if (cls === 'normal') return true;
   if (!me) return false;
   if (participants(note.id).has(me.id)) return true;
-  return false;
+  return isProposalOwner(get('SELECT initiator_id, tender_initiator_id FROM files WHERE id = ?', note.file_pk), me);
 }
 
-// Files a member is entitled to see in the management reports, as a set of file ids. Unlike
-// the Files browser (normal = visible to all), reports are an oversight tool scoped to the
-// member's own cases + supervised subtree: a routed member of ANY note retains access
-// (email 18), otherwise a head may see it subject to the latest note's classification grade
-// (same grading as canView, so restricted metadata never leaks — email 24–27).
 // Does a supervising head's bypass pass this classification grade? (Same ladder as
 // canView, minus the participant branch — used to grade heads per NOTE, not per file,
 // so a single restricted note never hides or exposes the rest of the case.)
@@ -116,11 +123,11 @@ export function headGradePasses(me, file, cls) {
 }
 
 // May this member see this NOTE inside the management reports? Participant of the note,
-// or a head passing the note's own grade. (Reports are an oversight tool — "normal" here
-// does NOT mean visible to everyone, unlike the Files browser.)
+// an owner of its proposal, or a head passing the note's own grade. (Reports are an
+// oversight tool — "normal" here does NOT mean visible to everyone, unlike the Files browser.)
 export function mayViewInReports(note, file, me) {
   if (!me) return false;
-  if (participants(note.id).has(me.id)) return true;
+  if (participants(note.id).has(me.id) || isProposalOwner(file, me)) return true;
   return headGradePasses(me, file, note.classification || 'normal');
 }
 
@@ -131,7 +138,7 @@ export function mayViewInReports(note, file, me) {
 export function visibleFileIds(me) {
   if (!me) return new Set();
   const ids = new Set();
-  for (const file of all('SELECT id, initiator_unit_id, created_at, closed_at FROM files')) {
+  for (const file of all('SELECT id, initiator_id, tender_initiator_id, initiator_unit_id, created_at, closed_at FROM files')) {
     const notes = all('SELECT id, classification FROM notes WHERE file_pk = ?', file.id);
     if (notes.some((n) => mayViewInReports(n, file, me))) ids.add(file.id);
   }
@@ -260,29 +267,47 @@ function stageSkeleton(stageId) {
   return `${t}\n\n(Draft auto-created for the next stage. Provide the inputs and documents required for "${t}", then route for approval.)`;
 }
 
-// Add the next note (stage) to an OPEN file — the multi-note lifecycle (email 13, 21, 23).
-// The connected Reference/Transaction ids continue the same File ID; the note opens as a
-// draft held by its author. Only a member of the case may add it. Reaching the tendering
-// stage stamps files.tendering_start. Creating the next note clears the cabinet prompt.
-// Automatically generates the first note (N1) in noting_entries and saves planned_routing.
-export function addNote(file, me, { stageId = null, title, body = '', classification = 'normal', routingList = null } = {}) {
+// Owners, or anyone routed on any stage file of the proposal.
+function isCaseMember(file, me) {
+  return isProposalOwner(file, me) ||
+    all('SELECT id FROM notes WHERE file_pk = ?', file.id).some((n) => participants(n.id).has(me.id));
+}
+
+// Guards for generating the next stage file, shared by addNote and the AI routes (which must
+// check BEFORE advancing the AI case). A stage is generated from the result of the one
+// before, so the latest stage file must be decided first; only a PO amendment may reopen a
+// closed proposal. Returns the normalised stage id.
+export function assertCanAddNote(file, me, stageId) {
   if (!me) fail(403, 'No noting member mapped to this account');
   stageId = (stageId || '').trim() || null;
   if (stageId && !VALID_STAGES.has(stageId)) fail(422, `Unknown stage "${stageId}"`);
+  const last = get('SELECT seq, stage_id, status FROM notes WHERE file_pk = ? ORDER BY seq DESC LIMIT 1', file.id);
   if (file.status !== 'open') {
-    // PO amendment (email: "PO placement, PO amendments"): the one note that may be added
-    // to a CLOSED file — only after the PO (or a previous amendment) was approved. It
-    // reopens the case; its own approval closes it again (no next stage).
-    const last = get('SELECT stage_id, status FROM notes WHERE file_pk = ? ORDER BY seq DESC LIMIT 1', file.id);
+    // PO amendment (email: "PO placement, PO amendments"): the one stage that may be added
+    // to a CLOSED proposal — only after the PO (or a previous amendment) was approved.
     const amendable = stageId === 'po_amendment' && last?.status === 'approved' && ['po', 'po_amendment'].includes(last.stage_id);
     if (!amendable) fail(409, 'File is closed — retrieve it before adding a note');
-    run(`UPDATE files SET status = 'open', closed_at = NULL WHERE id = ?`, file.id);
   }
-  const isCaseMember =
-    file.initiator_id === me.id ||
-    all('SELECT id FROM notes WHERE file_pk = ?', file.id).some((n) => participants(n.id).has(me.id)) ||
-    Boolean(file.ai_case_id);
-  if (!isCaseMember) fail(403, 'Only a member of this case can add the next note');
+  if (!isCaseMember(file, me)) fail(403, 'Only a member of this case can add the next note');
+  if (last && active.has(last.status)) {
+    const t = last.stage_id ? ` ${stageTitle(last.stage_id)}` : '';
+    fail(409, `S${last.seq}${t} is still ${last.status} — it must be decided before the next stage is generated`);
+  }
+  // Tender stages follow the hand-over: the approved provisioning first goes to a tender initiator.
+  if (last?.stage_id === 'provisioning' && last.status === 'approved' && !file.tender_initiator_id && startsTendering(stageId)) {
+    fail(409, 'Send the approved provisioning to a tender initiator before generating tender stages');
+  }
+  return stageId;
+}
+
+// Add the next stage file to a proposal — the multi-stage lifecycle (email 13, 21, 23). The
+// connected Reference/Transaction ids continue the same File ID; the stage opens as a draft
+// held by its author with its own N1, and saves planned_routing. A PO amendment reopens a
+// closed proposal (its own approval closes it again). Reaching tendering stamps
+// files.tendering_start. Earlier closed stage files stay in their cabinets.
+export function addNote(file, me, { stageId = null, title, body = '', classification = 'normal', routingList = null } = {}) {
+  stageId = assertCanAddNote(file, me, stageId);
+  if (file.status !== 'open') run(`UPDATE files SET status = 'open', closed_at = NULL WHERE id = ?`, file.id);
 
   const today = nowISO();
   const seq = (get('SELECT MAX(seq) AS m FROM notes WHERE file_pk = ?', file.id).m || 0) + 1;
@@ -307,15 +332,15 @@ export function addNote(file, me, { stageId = null, title, body = '', classifica
   );
 
   run(`INSERT INTO attachments(note_id,kind,name,ref,uploaded_by_id,created_at) VALUES(?, 'pm', ?, ?, NULL, ?)`, note.id, 'Purchase Manual Issue-4', 'PM/Issue-4', today);
-  if (stageId === TENDERING_START_STAGE && !file.tendering_start) run(`UPDATE files SET tendering_start = ? WHERE id = ?`, today, file.id);
-  run(`DELETE FROM cabinet WHERE file_pk = ?`, file.id); // next action taken — leaves the cabinet
+  if (startsTendering(stageId) && !file.tendering_start) run(`UPDATE files SET tendering_start = ? WHERE id = ?`, today, file.id);
   return note;
 }
 
-// Approve / reject a note. Approving an INTERMEDIATE stage advances the case and leaves the
-// file OPEN; approving the FINAL stage (no next stage) or any rejection CLOSES the file. The
-// closed note is filed into the cabinet of every routed member, the file initiator, and
-// Gaurav Yadav (Purchase Manager), tagged by role. Cabinet rows are refreshed per decision.
+// Approve / reject a stage file. Either way the stage closes and rests in the cabinet of its
+// initiator, routing members, deciding authority and the proposal's owners (client: "once a
+// note is approved it becomes a closed file and sits in cabinet"). Approving an INTERMEDIATE
+// stage leaves the proposal OPEN for the next one; approving the FINAL stage (no next stage)
+// or any rejection CLOSES the proposal.
 export function decide(note, me, decision, comment) {
   requireHolder(note, me);
   // An unrouted draft cannot be decided — the initiator would be approving his own note
@@ -347,22 +372,16 @@ export function decide(note, me, decision, comment) {
   run(`UPDATE notes SET status = ?, decision = ?, decided_by = ?, closed_at = ? WHERE id = ?`, status, status, me.id, today, note.id);
   if (!approved || isFinal) run(`UPDATE files SET status = 'closed', closed_at = ? WHERE id = ?`, today, note.file_pk);
 
-  // Cabinet recipients = the union of EVERY note's participants + file initiator + Gaurav Yadav (Purchase Manager).
-  const fileInit = get('SELECT initiator_id FROM files WHERE id = ?', note.file_pk)?.initiator_id;
-  const recipients = new Set();
-  for (const n of all('SELECT id FROM notes WHERE file_pk = ?', note.file_pk)) {
-    for (const pid of participants(n.id)) recipients.add(pid);
-  }
-  if (fileInit) recipients.add(fileInit);
-
-  // Gaurav sir (Chief Manager / Purchase Manager) is always placed in cabinet to oversee & generate next stage
-  const gaurav = get("SELECT id FROM members WHERE pb = 'PB-41060' OR email = 'cm@hal.local'");
-  if (gaurav) recipients.add(gaurav.id);
-
-  run(`DELETE FROM cabinet WHERE file_pk = ?`, note.file_pk);
+  const file = get('SELECT initiator_id, tender_initiator_id FROM files WHERE id = ?', note.file_pk);
+  const recipients = participants(note.id);
+  for (const id of [file.initiator_id, file.tender_initiator_id]) if (id) recipients.add(id);
+  run(`DELETE FROM cabinet WHERE note_id = ?`, note.id);
   for (const pid of recipients) {
-    const reason = pid === gaurav?.id ? 'purchase_manager' : pid === fileInit ? 'initiator' : pid === me.id ? 'approver' : 'router';
-    run(`INSERT INTO cabinet(member_id,file_pk,reason,placed_at) VALUES(?,?,?,?)`, pid, note.file_pk, reason, today);
+    const reason = pid === file.initiator_id ? 'initiator'
+      : pid === me.id ? 'approver'
+      : pid === file.tender_initiator_id ? 'tender_initiator'
+      : pid === note.initiator_id ? 'initiator' : 'router';
+    run(`INSERT INTO cabinet(member_id,file_pk,note_id,reason,placed_at) VALUES(?,?,?,?,?)`, pid, note.file_pk, note.id, reason, today);
   }
   return get('SELECT * FROM notes WHERE id = ?', note.id);
 }
@@ -376,13 +395,104 @@ export function retrieve(note, me) {
   if (latest?.id !== note.id) fail(409, 'A later note exists on this file — only the latest note can be retrieved');
   run(`UPDATE notes SET status = 'routed', custodian_id = ?, decision = NULL, decided_by = NULL, closed_at = NULL WHERE id = ?`, me.id, note.id);
   run(`UPDATE files SET status = 'open', closed_at = NULL WHERE id = ?`, note.file_pk);
-  run(`DELETE FROM cabinet WHERE file_pk = ?`, note.file_pk);
+  run(`DELETE FROM cabinet WHERE note_id = ?`, note.id);
   run(
     `INSERT INTO routing_steps(note_id,seq,from_member_id,to_member_id,purpose,state,action,comment,sent_at,actioned_at)
      VALUES(?,?,?,?, 'forward', 'opened', 'retrieve', 'Retrieved from cabinet', ?, ?)`,
     note.id, nextSeq(note.id), me.id, me.id, nowISO(), nowISO()
   );
   return get('SELECT * FROM notes WHERE id = ?', note.id);
+}
+
+// Provisioning → tendering hand-over (client, 13/09/2026): once provisioning is approved the
+// proposal rests in the initiator's cabinet, and the initiator sends the file link to the
+// member who will run the tender. That member becomes the proposal's tender initiator: the
+// file lands in their cabinet, they may read every stage, and they generate EMD / TEC next.
+export function handOverToTender(file, me, toId) {
+  if (!me) fail(403, 'No noting member mapped to this account');
+  if (file.initiator_id !== me.id) fail(403, 'Only the proposal initiator can send it to a tender initiator');
+  if (!toId || toId === me.id) fail(422, 'Choose the member who will initiate the tender');
+  if (!get('SELECT id FROM members WHERE id = ?', toId)) fail(422, 'Unknown member');
+  if (file.status !== 'open') fail(409, 'Proposal is closed');
+  const prov = get(
+    `SELECT id FROM notes WHERE file_pk = ? AND stage_id = 'provisioning' AND status = 'approved' ORDER BY seq DESC LIMIT 1`,
+    file.id
+  );
+  if (!prov) fail(409, 'The provisioning stage must be approved before the file goes to tendering');
+  const today = nowISO();
+  run(`UPDATE files SET tender_initiator_id = ?, tender_handover_at = ? WHERE id = ?`, toId, today, file.id);
+  run(`DELETE FROM cabinet WHERE file_pk = ? AND reason = 'tender_initiator'`, file.id);
+  run(`DELETE FROM cabinet WHERE member_id = ? AND note_id = ?`, toId, prov.id);
+  run(`INSERT INTO cabinet(member_id,file_pk,note_id,reason,placed_at) VALUES(?,?,?, 'tender_initiator', ?)`, toId, file.id, prov.id, today);
+  return get('SELECT * FROM files WHERE id = ?', file.id);
+}
+
+// The proposal at a glance (client: indentor / admin / tender initiator "should know what is
+// the current status/stage of the proposal"): every stage file in order with its outcome and
+// holder, the current stage, and — once it is approved — what the cascade sheet offers next
+// (`next`) plus the stages one may skip ahead to (`other`). A stage the caller may not read
+// shows only its stage title, with no subject and no link.
+export function proposalStatus(file, me) {
+  const person = (id) => (id ? get('SELECT id, name, designation, pb FROM members WHERE id = ?', id) : null);
+  const stages = all(
+    `SELECT n.id, n.file_pk, n.seq, n.ref_no, n.txn_id, n.stage_id, n.title, n.classification, n.status,
+            n.created_at, n.closed_at, cm.name AS holder_name,
+            (SELECT COUNT(*) FROM noting_entries ne WHERE ne.note_id = n.id) AS entry_count
+     FROM notes n LEFT JOIN members cm ON cm.id = n.custodian_id
+     WHERE n.file_pk = ? ORDER BY n.seq`,
+    file.id
+  ).map((n) => {
+    const viewable = canView(n, me);
+    return {
+      seq: n.seq,
+      ref_no: n.ref_no,
+      stage_id: n.stage_id,
+      stage_title: n.stage_id ? stageTitle(n.stage_id) : 'Note',
+      title: viewable ? n.title : stageTitle(n.stage_id),
+      txn_id: viewable ? n.txn_id : null,
+      status: n.status,
+      holder_name: active.has(n.status) ? n.holder_name : null,
+      entry_count: n.entry_count,
+      created_at: n.created_at,
+      closed_at: n.closed_at,
+      viewable
+    };
+  });
+  const current = stages.at(-1) ?? null;
+  const approved = current?.status === 'approved';
+  const open = file.status === 'open';
+  const awaitingHandOver = open && approved && current.stage_id === 'provisioning' && !file.tender_initiator_id;
+
+  let next = approved ? followUps(current.stage_id) : [];
+  if (!open) next = next.filter((o) => o.stageId === 'po_amendment');
+  const offered = new Set(next.map((o) => o.stageId));
+  const at = STAGE_ORDER.indexOf(current?.stage_id);
+  const other = open && approved
+    ? [...STAGE_ORDER.slice(at + 1), ...Object.keys(NEEDBASED)]
+      .filter((id) => id !== 'provisioning' && id !== 'po_amendment' && !offered.has(id))
+      .map((id) => ({ stageId: id, title: stageTitle(id), needBased: Object.hasOwn(NEEDBASED, id) }))
+    : [];
+
+  return {
+    file: {
+      id: file.id,
+      file_id: file.file_id,
+      title: file.title,
+      car_no: file.car_no,
+      status: file.status,
+      initiator: person(file.initiator_id),
+      tender_initiator: person(file.tender_initiator_id),
+      tender_handover_at: file.tender_handover_at ?? null
+    },
+    stages,
+    current,
+    next,
+    other,
+    awaitingHandOver,
+    canGenerate: Boolean(me) && !awaitingHandOver && isCaseMember(file, me) && next.length + other.length > 0,
+    canHandOver: Boolean(me) && file.initiator_id === me.id && open &&
+      stages.some((s) => s.stage_id === 'provisioning' && s.status === 'approved')
+  };
 }
 
 // Routing history for the timeline (member names resolved).
@@ -419,8 +529,9 @@ export function addNotingEntry(note, me, { title, body, entryType = 'remark', re
   );
 }
 
-// Complete multi-stage history of a file for Cabinet & file review
-export function fileStageHistory(filePk) {
+// Complete multi-stage history of a proposal for the cabinet — only the stage files the
+// member may read (entries and routing trails carry the same content as the note itself).
+export function fileStageHistory(filePk, me) {
   const notes = all(
     `SELECT n.*, im.name AS initiator_name, cm.name AS custodian_name, dm.name AS decider_name
      FROM notes n
@@ -431,7 +542,7 @@ export function fileStageHistory(filePk) {
      ORDER BY n.seq ASC`,
     filePk
   );
-  return notes.map((nt) => ({
+  return notes.filter((nt) => canView(nt, me)).map((nt) => ({
     ...nt,
     stageTitle: stageTitle(nt.stage_id),
     entries: notingEntries(nt.id),

@@ -30,6 +30,9 @@ ensureColumn('attachments', 'mime_type', 'TEXT');
 ensureColumn('attachments', 'sha256_hash', 'TEXT');
 ensureColumn('notes', 'stage_no', 'INTEGER DEFAULT 1');
 ensureColumn('notes', 'planned_routing', 'TEXT');
+ensureColumn('files', 'tender_initiator_id', 'INTEGER');
+ensureColumn('files', 'tender_handover_at', 'TEXT');
+ensureColumn('cabinet', 'note_id', 'INTEGER');
 
 // Thin helpers. Params are positional `?` bound via spread (node:sqlite anonymous params).
 export const all = (sql, ...p) => db.prepare(sql).all(...p);

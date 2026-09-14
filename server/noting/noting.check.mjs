@@ -14,14 +14,16 @@ const { reseed } = await import('./seed.js');
 reseed();
 const { get } = await import('./db.js');
 const { deptCodeFor, nextFileId, nextTxnId } = await import('./refs.js');
+const { followUps } = await import('./stages.js');
 const {
-  addNote, canSupervise, canView, decide, forward, isDirectHead, normComment,
-  priorHolders, retrieve, sendBack, visibleFileIds
+  addNote, canSupervise, canView, decide, forward, handOverToTender, isDirectHead, normComment,
+  notingEntries, priorHolders, proposalStatus, retrieve, sendBack, visibleFileIds
 } = await import('./workflow.js');
 
 const m = (id) => get('SELECT * FROM members WHERE id = ?', id);
 const f = (id) => get('SELECT * FROM files WHERE id = ?', id);
 const n = (id) => get('SELECT * FROM notes WHERE id = ?', id);
+const ids = (options) => options.map((o) => o.stageId);
 const cabinetOf = (filePk) =>
   new Set(
     (get(`SELECT GROUP_CONCAT(member_id) AS ids FROM cabinet WHERE file_pk = ?`, filePk).ids || '')
@@ -30,8 +32,8 @@ const cabinetOf = (filePk) =>
 
 // --- Seed sanity ---
 assert.ok(get('SELECT COUNT(*) AS c FROM members').c >= 12, 'members seeded');
-assert.equal(get('SELECT COUNT(*) AS c FROM files').c, 10, 'files seeded');
-assert.equal(get('SELECT COUNT(*) AS c FROM notes').c, 12, 'notes seeded');
+assert.equal(get('SELECT COUNT(*) AS c FROM files').c, 11, 'files seeded');
+assert.equal(get('SELECT COUNT(*) AS c FROM notes').c, 13, 'notes seeded');
 assert.ok(get('SELECT COUNT(*) AS c FROM org_units').c >= 16, 'org units seeded');
 
 // --- Connected id generators (MAX-based, not COUNT) + dept resolution ---
@@ -39,7 +41,7 @@ assert.equal(deptCodeFor(9), 'IMM', 'section resolves to its department');
 assert.equal(deptCodeFor(16), 'SYS', 'a department resolves to itself');
 assert.equal(deptCodeFor(3), 'AOD', 'a division falls back to its own code (not its parent complex)');
 assert.ok(nextFileId('IMM').endsWith('/0009'), 'file id = max existing suffix + 1');
-assert.ok(nextTxnId().endsWith('-000012'), 'txn id = max existing suffix + 1');
+assert.ok(nextTxnId().endsWith('-000013'), 'txn id = max existing suffix + 1');
 
 // --- Comment normalisation (email: "." "," "*" count as no comment) ---
 assert.equal(normComment(' . ', 'Concurred & Forwarded'), 'Concurred & Forwarded', 'symbols-only comment auto-fills');
@@ -72,8 +74,8 @@ assert.equal(canView(n(8), rao), false, 'seeded top_secret file hidden even from
 assert.equal(canView(n(8), m(4)), true, 'seeded top_secret file visible to routed CM');
 
 // --- Report visibility set, graded per note (email 24–27) ---
-assert.equal(visibleFileIds(rao).size, 7, 'HOD sees normal IMM-subtree files, not restricted files unless routed');
-assert.equal(visibleFileIds(gm).size, 8, 'GM sees normal division files, not restricted files unless routed');
+assert.equal(visibleFileIds(rao).size, 8, 'HOD sees normal IMM-subtree files + the indent he approved, not restricted files unless routed');
+assert.equal(visibleFileIds(gm).size, 9, 'GM sees normal division files, not restricted files unless routed');
 assert.equal(visibleFileIds(stores).size, 0, 'uninvolved member sees nothing in reports');
 assert.equal(visibleFileIds(former).size, 1, 'former HOD sees only his tenure');
 const mine = visibleFileIds(m(5));
@@ -97,27 +99,54 @@ assert.throws(() => decide(n(6), m(6), 'approve'), /draft/, 'self-approval of an
 // --- Stage validation ---
 assert.throws(() => addNote(f(3), m(5), { stageId: 'bogus_stage' }), /Unknown stage/, 'unknown stage id is rejected');
 
-// --- Multi-note lifecycle + cabinet union (email 13, 16, 17, 21, 23) ---
-assert.equal(cabinetOf(1).size, 4, 'seeded cabinet rows for the open NVB case (including Gaurav Yadav)');
-assert.ok(cabinetOf(1).has(4), 'Gaurav Yadav (Purchase Manager) has file 1 in his cabinet');
+// --- Next stages come off the cascade sheet (client: "either ReTender or next stage N1") ---
+assert.deepEqual(ids(followUps('provisioning')), ['emd', 'tec_req', 'retender'], 'approved provisioning → EMD, TEC request or retender');
+assert.deepEqual(ids(followUps('pp')), ['po'], 'approved PP → PO only');
+assert.deepEqual(followUps('short_closure'), [], 'short closure ends the proposal');
 
-const { notingEntries } = await import('./workflow.js');
+// --- Provisioning → tender initiator hand-over (client, 13/09/2026) ---
+let status = proposalStatus(f(11), m(9));
+assert.equal(status.canHandOver, true, 'indentor may hand the approved provisioning over');
+assert.deepEqual(ids(status.next), ['emd', 'tec_req', 'retender'], 'status offers the sheet follow-ups');
+assert.equal(status.canGenerate, false, 'no tender stage is generated before hand-over');
+assert.throws(() => addNote(f(11), m(9), { stageId: 'emd' }), /tender initiator/, 'even the indentor hands over before tender stages');
+assert.throws(() => addNote(f(11), m(4), { stageId: 'emd' }), /member of this case/, 'an outsider cannot raise a tender stage before hand-over');
+assert.throws(() => handOverToTender(f(11), m(6), 4), /initiator/, 'only the proposal initiator hands over');
+assert.throws(() => handOverToTender(f(6), m(5), 4), /approved/, 'no hand-over before provisioning is approved');
+handOverToTender(f(11), m(9), 4);
+assert.equal(f(11).tender_initiator_id, 4, 'tender initiator recorded on the proposal');
+assert.ok(cabinetOf(11).has(4), 'the file lands in the tender initiator cabinet');
+assert.equal(canView({ ...n(13), classification: 'top_secret' }, m(4)), true, 'the tender initiator reads every stage of the proposal');
+assert.equal(canView({ ...n(13), classification: 'top_secret' }, gm), false, 'still no head bypass');
+const tec = addNote(f(11), m(4), { stageId: 'tec_req' });
+assert.ok(tec.ref_no.endsWith('/S2'), 'the stage file continues the File ID as S2');
+assert.ok(f(11).tendering_start, 'going straight to TEC starts tendering');
+assert.ok(cabinetOf(11).has(9) && cabinetOf(11).has(4), 'generating the next stage leaves closed stage files in the cabinet');
+assert.throws(() => addNote(f(11), m(4), { stageId: 'tec_report' }), /still draft/, 'the next stage waits for this one to be decided');
+status = proposalStatus(f(11), m(9));
+assert.equal(status.current.stage_id, 'tec_req', 'the indentor sees the current stage…');
+assert.equal(status.current.holder_name, m(4).name, '…and who holds it');
+
+// --- Multi-stage lifecycle + per-stage cabinet (email 13, 16, 17, 21, 23) ---
+assert.equal(cabinetOf(1).size, 4, 'NVB stage files rest with maker, officer, HOD and the tender initiator');
+assert.ok(!cabinetOf(9).has(4), 'no hard-coded Purchase Manager in cabinets he never touched');
+
 const entriesN1 = notingEntries(1);
-assert.equal(entriesN1.length, 5, 'Stage 1 Provisioning has N1..N5 notes');
+assert.equal(entriesN1.length, 5, 'S1 Provisioning has N1..N5 notes');
 assert.equal(entriesN1[0].seq, 1, 'first entry is N1');
 assert.equal(entriesN1[4].seq, 5, 'last entry is N5 (approval)');
 
-const n3 = addNote(f(1), m(5), { stageId: 'emd', title: 'EMD Stage Acceptance' });
-assert.equal(n3.seq, 3, 'next stage note is seq 3');
-assert.ok(n3.ref_no.endsWith('/N3'), 'connected reference continues the File ID');
-assert.equal(cabinetOf(1).size, 0, 'creating the next note clears the cabinet prompt');
+const n3 = addNote(f(1), m(4), { stageId: 'tec_req', title: 'TEC Request' });
+assert.equal(n3.seq, 3, 'next stage file is S3');
+assert.ok(n3.ref_no.endsWith('/S3'), 'connected reference continues the File ID');
+assert.equal(cabinetOf(1).size, 4, 'earlier closed stage files stay in the cabinet');
 const entriesN3 = notingEntries(n3.id);
-assert.equal(entriesN3.length, 1, 'fresh stage note starts with N1');
+assert.equal(entriesN3.length, 1, 'fresh stage file starts with N1');
 assert.equal(entriesN3[0].seq, 1, 'entry seq is 1');
-forward(n(n3.id), m(5), 2, '');
-decide(n(n3.id), m(2), 'approve'); // emd approved — NOT final
-assert.equal(f(1).status, 'open', 'intermediate approval keeps the file open');
-assert.ok(cabinetOf(1).has(6), 'cabinet keeps earlier-note routers (union across notes)');
+forward(n(n3.id), m(4), 2, '');
+decide(n(n3.id), m(2), 'approve'); // tec_req approved — NOT final
+assert.equal(f(1).status, 'open', 'intermediate approval keeps the proposal open');
+assert.equal(get('SELECT reason FROM cabinet WHERE note_id = ? AND member_id = 5', n3.id)?.reason, 'initiator', 'the proposal initiator gets every closed stage file');
 
 // --- Retrieve: only the latest note of the file ---
 assert.throws(() => retrieve(n(11), m(2)), /later note/, 'retrieving a superseded note is blocked');
@@ -129,6 +158,6 @@ assert.equal(f(10).status, 'open', 'PO amendment reopens the closed case');
 forward(n(amd.id), m(5), 2, '');
 decide(n(amd.id), m(2), 'approve'); // po_amendment has no next stage
 assert.equal(f(10).status, 'closed', 'approving the amendment closes the file again');
-assert.ok(cabinetOf(10).has(6), 'final cabinet still includes the N1/N2-only router');
+assert.ok(cabinetOf(10).has(6), 'final cabinet still includes the S1/S2-only router');
 
 console.log('noting.check: all assertions passed ✓');

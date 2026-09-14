@@ -111,46 +111,54 @@ const FILES = [
   [7, 'AOD/IMM/2026/0006', 'Special project procurement (restricted)', 'SPR', 'SPR/26/017', 0, 5, 9, null, null, 'open', '2026-07-01', null, '2026-07-01', null],
   [8, 'AOD/SYS/2026/0001', 'IT hardware refresh — administrative approval', 'standalone', null, 1, 11, 16, null, null, 'open', '2026-07-10', null, '2026-07-10', null],
   [9, 'AOD/IMM/2026/0007', 'Procurement of tool kits — budget review', 'CAR', 'CAR/26/077', 0, 5, 9, null, null, 'closed', '2026-05-20', null, '2026-05-20', '2026-06-12'],
-  [10, 'AOD/IMM/2026/0008', 'Procurement of hydraulic seals', 'CAR', 'CAR/25/301', 0, 5, 9, null, null, 'closed', '2026-03-02', '2026-03-20', '2026-03-02', '2026-07-05']
+  [10, 'AOD/IMM/2026/0008', 'Procurement of hydraulic seals', 'CAR', 'CAR/25/301', 0, 5, 9, null, null, 'closed', '2026-03-02', '2026-03-20', '2026-03-02', '2026-07-05'],
+  [11, 'AOD/USR/2026/0001', 'Procurement of hydraulic test rig spares', 'MPR', 'MPR/26/0412', 0, 9, 15, null, null, 'open', '2026-08-18', null, '2026-08-18', null]
 ];
 
+// [tender_initiator_id, tender_handover_at, file] — the NVB provisioning was approved and sent
+// to Gaurav Yadav (CM Purchase) to float the tender; the test-rig case still awaits hand-over.
+const TENDER_HANDOVERS = [[4, '2026-05-17', 1]];
+
 const NOTES = [
-  [1, 1, 1, 'AOD/IMM/2026/0001/N1', 'TXN-2026-000003', 'Provisioning Note', 'provisioning', 'ai',
+  [1, 1, 1, 'AOD/IMM/2026/0001/S1', 'TXN-2026-000003', 'Provisioning Note', 'provisioning', 'ai',
     'Provisioning note for procurement of Night Vision Binocular against CAR/25/229. Estimated value ₹15,94,065. Requirement vetted by Indent Cell; provisioning approved by HOD (IMM) — case advanced to tendering.',
     'normal', 'approved', 5, 2, 'approved', 2, 1, JSON.stringify([5, 6, 3, 2]), '2026-05-02', '2026-05-16'],
-  [2, 1, 2, 'AOD/IMM/2026/0001/N2', 'TXN-2026-000004', 'EMD Stage Acceptance Note', 'emd', 'manual',
+  [2, 1, 2, 'AOD/IMM/2026/0001/S2', 'TXN-2026-000004', 'EMD Stage Acceptance Note', 'emd', 'manual',
     'EMD stage acceptance note for the NVB case against CAR/25/229. Tender published on GeM based on provisioning checklist and 72 standard clauses. EMD ₹31,900 verified; case advanced to technical evaluation.',
-    'normal', 'approved', 5, 2, 'approved', 2, 2, JSON.stringify([5, 6, 2]), '2026-05-18', '2026-06-02'],
-  [3, 2, 1, 'AOD/IMM/2026/0002/N1', 'TXN-2026-000008', 'Administrative Approval Note', null, 'manual',
+    'normal', 'approved', 4, 2, 'approved', 2, 2, JSON.stringify([4, 6, 2]), '2026-05-18', '2026-06-02'],
+  [3, 2, 1, 'AOD/IMM/2026/0002/S1', 'TXN-2026-000008', 'Administrative Approval Note', null, 'manual',
     'Standalone administrative note seeking approval for purchase of office furniture for the IMM section. No MPR/CAR/SPR/CPR reference. Returned once by Bill Passing for the comparative statement; resubmitted to CM (Purchase).',
     'normal', 'routed', 6, 4, null, null, 1, JSON.stringify([6, 7, 4, 2]), '2026-06-10', null],
-  [4, 3, 1, 'AOD/IMM/2026/0003/N1', 'TXN-2026-000006', 'Purchase Proposal Note', 'pp', 'ai',
+  [4, 3, 1, 'AOD/IMM/2026/0003/S1', 'TXN-2026-000006', 'Purchase Proposal Note', 'pp', 'ai',
     'Purchase Proposal for the Night Vision Binocular case, line-wise L1 M/s Optic Systems. Spun off from CAR/25/229 as a child file.',
     'normal', 'routed', 5, 6, null, null, 1, JSON.stringify([5, 6, 2]), '2026-06-01', null],
-  [5, 4, 1, 'AOD/IMM/2023/0001/N1', 'TXN-2023-000001', 'Provisioning Note (historical)', 'provisioning', 'manual',
+  [5, 4, 1, 'AOD/IMM/2023/0001/S1', 'TXN-2023-000001', 'Provisioning Note (historical)', 'provisioning', 'manual',
     'Historical provisioning note initiated under the previous HOD (IMM). Retained for predecessor-tenure visibility.',
     'normal', 'approved', 12, 12, 'approved', 12, 1, JSON.stringify([12]), '2023-06-01', '2023-09-01'],
-  [6, 5, 1, 'AOD/IMM/2026/0004/N1', 'TXN-2026-000007', 'Purchase Proposal Note (Line 2)', 'pp', 'manual',
+  [6, 5, 1, 'AOD/IMM/2026/0004/S1', 'TXN-2026-000007', 'Purchase Proposal Note (Line 2)', 'pp', 'manual',
     'Second line-wise Purchase Proposal for the NVB case — Line 2, L1 M/s Bharat Optics. Spun off from CAR/25/229 as a child file.',
     'normal', 'draft', 6, 6, null, null, 1, JSON.stringify([6, 5, 2]), '2026-06-05', null],
-  [7, 6, 1, 'AOD/IMM/2026/0005/N1', 'TXN-2026-000009', 'Procurement Note — secure communication modules', 'provisioning', 'manual',
+  [7, 6, 1, 'AOD/IMM/2026/0005/S1', 'TXN-2026-000009', 'Procurement Note — secure communication modules', 'provisioning', 'manual',
     'Provisioning note for secure communication modules against CAR/26/104. CONFIDENTIAL — circulation restricted to routed members and supervising heads; need-to-know access via share grant only.',
     'confidential', 'routed', 5, 6, null, null, 1, JSON.stringify([5, 6, 2]), '2026-06-20', null],
-  [8, 7, 1, 'AOD/IMM/2026/0006/N1', 'TXN-2026-000010', 'Special Project Note', 'provisioning', 'manual',
+  [8, 7, 1, 'AOD/IMM/2026/0006/S1', 'TXN-2026-000010', 'Special Project Note', 'provisioning', 'manual',
     'TOP SECRET special-project procurement against SPR/26/017. Access strictly limited to routed members and explicit grants — no supervisory bypass.',
     'top_secret', 'routed', 5, 4, null, null, 1, JSON.stringify([5, 4]), '2026-07-01', null],
-  [9, 8, 1, 'AOD/SYS/2026/0001/N1', 'TXN-2026-000011', 'IT Hardware Refresh — Approval Note', null, 'manual',
+  [9, 8, 1, 'AOD/SYS/2026/0001/S1', 'TXN-2026-000011', 'IT Hardware Refresh — Approval Note', null, 'manual',
     'Standalone administrative note seeking approval for replacement of 12 workstations in System Administration. Pending with the System Administrator.',
     'normal', 'routed', 11, 10, null, null, 1, JSON.stringify([11, 10]), '2026-07-10', null],
-  [10, 9, 1, 'AOD/IMM/2026/0007/N1', 'TXN-2026-000005', 'Provisioning Note — tool kits', 'provisioning', 'manual',
+  [10, 9, 1, 'AOD/IMM/2026/0007/S1', 'TXN-2026-000005', 'Provisioning Note — tool kits', 'provisioning', 'manual',
     'Provisioning note for special tool kits against CAR/26/077. Rejected by HOD (IMM): budget provision not available in the current FY.',
     'normal', 'rejected', 5, 2, 'rejected', 2, 1, JSON.stringify([5, 6, 2]), '2026-05-20', '2026-06-12'],
-  [11, 10, 1, 'AOD/IMM/2026/0008/N1', 'TXN-2026-000001', 'Purchase Proposal — hydraulic seals', 'pp', 'manual',
+  [11, 10, 1, 'AOD/IMM/2026/0008/S1', 'TXN-2026-000001', 'Purchase Proposal — hydraulic seals', 'pp', 'manual',
     'Purchase Proposal for hydraulic seal kits against CAR/25/301, L1 M/s Seal Tech Industries. Approved by HOD (IMM).',
     'normal', 'approved', 5, 2, 'approved', 2, 1, JSON.stringify([5, 6, 2]), '2026-03-02', '2026-04-10'],
-  [12, 10, 2, 'AOD/IMM/2026/0008/N2', 'TXN-2026-000002', 'Purchase Order + Contract', 'po', 'manual',
+  [12, 10, 2, 'AOD/IMM/2026/0008/S2', 'TXN-2026-000002', 'Purchase Order + Contract', 'po', 'manual',
     'Purchase Order placed on M/s Seal Tech Industries against CAR/25/301.\n\nItem | Qty | Unit Rate | Value\nHydraulic seal kit MK-II | 120 | ₹4,850 | ₹5,82,000\n\nDelivery 90 days from PO date; PBG 10%; LD clause as per PM Issue-4. Case closed on PO release.',
-    'normal', 'approved', 5, 2, 'approved', 2, 2, JSON.stringify([5, 6, 2]), '2026-04-12', '2026-07-05']
+    'normal', 'approved', 5, 2, 'approved', 2, 2, JSON.stringify([5, 6, 2]), '2026-04-12', '2026-07-05'],
+  [13, 11, 1, 'AOD/USR/2026/0001/S1', 'TXN-2026-000012', 'Provisioning Note — hydraulic test rig spares', 'provisioning', 'manual',
+    'Provisioning note for hydraulic test rig spares against MPR/26/0412. Estimated value ₹8,40,000. Approved by HOD (IMM); resting in the indentor\'s cabinet for hand-over to the tender initiator.',
+    'normal', 'approved', 9, 2, 'approved', 2, 1, JSON.stringify([9, 6, 2]), '2026-08-18', '2026-08-27']
 ];
 
 const NOTING_ENTRIES = [
@@ -168,11 +176,11 @@ const NOTING_ENTRIES = [
     '<p>Financial concurrence accorded for estimated value ₹15,94,065 under DoP 2025 Schedule 3. Placed before HOD (IMM) for approval.</p>',
     'concurrence', 'Financial concurrence accorded', '2026-05-10'],
   [5, 1, 5, 2, 'N5: Final Approval by HOD (IMM)',
-    '<p>Provisioning approved as proposed. Case advanced to tendering stage. File placed in Cabinet of Gaurav Yadav (Purchase Manager) to initiate Tender / TEC note.</p>',
-    'approval', 'Approved and placed in Purchase Manager Cabinet', '2026-05-16'],
+    '<p>Provisioning approved as proposed. File closed and placed in the initiator\'s cabinet for hand-over to the tender initiator.</p>',
+    'approval', 'Approved and filed in cabinet', '2026-05-16'],
 
   // Note 2 (Stage 2: EMD Stage Acceptance NVB)
-  [6, 2, 1, 5, 'N1: EMD Acceptance Proposal',
+  [6, 2, 1, 4, 'N1: EMD Acceptance Proposal',
     '<p>EMD stage acceptance note for the NVB case against CAR/25/229. Tender published on GeM based on provisioning checklist and 72 standard clauses. EMD ₹31,900 verified.</p>',
     'initial', 'Initial EMD submission', '2026-05-18'],
   [7, 2, 2, 6, 'N2: Technical Verification by Purchase Officer',
@@ -250,7 +258,18 @@ const NOTING_ENTRIES = [
     'remark', 'Terms verified', '2026-04-18'],
   [26, 12, 3, 2, 'N3: Final PO Release Approval',
     '<p>PO approved and released to vendor.</p>',
-    'approval', 'PO release approved', '2026-07-05']
+    'approval', 'PO release approved', '2026-07-05'],
+
+  // Note 13 (Provisioning — hydraulic test rig spares, indentor initiated, awaiting hand-over)
+  [27, 13, 1, 9, 'N1: Provisioning Proposal for Hydraulic Test Rig Spares (MPR/26/0412)',
+    '<p>Provisioning note for hydraulic test rig spares against MPR/26/0412. Estimated value ₹8,40,000. Quantities, delivery period and type of tendering as per the MPR.</p>',
+    'initial', 'Initiated by Indent Cell', '2026-08-18'],
+  [28, 13, 2, 6, 'N2: Scrutiny by Purchase Officer',
+    '<p>MPR quantities and delivery period checked against IFS; open GeM bid concurred.</p>',
+    'concurrence', 'Concurred & forwarded', '2026-08-22'],
+  [29, 13, 3, 2, 'N3: Approval by HOD (IMM)',
+    '<p>Provisioning approved. Indentor to send the file to the tender initiator for floating the tender.</p>',
+    'approval', 'Approved', '2026-08-27']
 ];
 
 const STEPS = [
@@ -260,7 +279,7 @@ const STEPS = [
   [1, 3, 2, 2, 'approve', 'actioned', 'approve', 'Approved. Proceed with tendering.', '2026-05-16', null, '2026-05-16'],
 
   // note 2 (EMD Stage Acceptance NVB)
-  [2, 1, 5, 6, 'forward', 'actioned', 'forward', 'EMD stage acceptance note submitted for verification.', '2026-05-19', '2026-05-20', '2026-05-22'],
+  [2, 1, 4, 6, 'forward', 'actioned', 'forward', 'EMD stage acceptance note submitted for verification.', '2026-05-19', '2026-05-20', '2026-05-22'],
   [2, 2, 6, 2, 'forward', 'actioned', 'approve', 'EMD compliance verified against tender terms.', '2026-05-22', '2026-05-25', '2026-06-02'],
   [2, 3, 2, 2, 'approve', 'actioned', 'approve', 'EMD stage acceptance approved. Proceed with TEC evaluation.', '2026-06-02', null, '2026-06-02'],
 
@@ -296,7 +315,12 @@ const STEPS = [
   // note 12 (PO + Contract Hydraulic Seals)
   [12, 1, 5, 6, 'forward', 'actioned', 'forward', 'Draft Purchase Order prepared.', '2026-04-13', '2026-04-14', '2026-04-18'],
   [12, 2, 6, 2, 'forward', 'actioned', 'approve', 'PO terms verified against DoP.', '2026-04-18', '2026-04-20', '2026-07-05'],
-  [12, 3, 2, 2, 'approve', 'actioned', 'approve', 'PO approved and released to vendor.', '2026-07-05', null, '2026-07-05']
+  [12, 3, 2, 2, 'approve', 'actioned', 'approve', 'PO approved and released to vendor.', '2026-07-05', null, '2026-07-05'],
+
+  // note 13 (Provisioning — hydraulic test rig spares)
+  [13, 1, 9, 6, 'forward', 'actioned', 'forward', 'Provisioning note for scrutiny.', '2026-08-19', '2026-08-20', '2026-08-22'],
+  [13, 2, 6, 2, 'forward', 'actioned', 'approve', 'Concurred & Forwarded', '2026-08-22', '2026-08-24', '2026-08-27'],
+  [13, 3, 2, 2, 'approve', 'actioned', 'approve', 'Approved.', '2026-08-27', null, '2026-08-27']
 ];
 
 const ATTACHMENTS = [
@@ -322,22 +346,25 @@ const GRANTS = [
   [2, 7, 'demo-grant-leaked-indent', 6, 9, 'revoked', '2026-06-23', '2026-06-25', 'reshared']
 ];
 const ALERTS = [
-  [1, 7, 2, 6, 'PB-47210', 'Restricted note AOD/IMM/2026/0005/N1 link re-shared — access attempted by PB PB-47210. Grant revoked.', '2026-06-25']
+  [1, 7, 2, 6, 'PB-47210', 'Restricted note AOD/IMM/2026/0005/S1 link re-shared — access attempted by PB PB-47210. Grant revoked.', '2026-06-25']
 ];
 
+// [member, file, stage note, reason, placed] — each closed stage file rests in the cabinets of its
+// initiator, routing members, deciding authority and the proposal's owners.
 const CABINET = [
-  // User 5 (Purchase Maker)
-  [5, 1, 'initiator', '2026-06-02'], [5, 9, 'initiator', '2026-06-12'], [5, 10, 'initiator', '2026-07-05'],
-  // User 6 (Purchase Officer)
-  [6, 1, 'router', '2026-06-02'], [6, 9, 'router', '2026-06-12'], [6, 10, 'router', '2026-07-05'],
-  // User 2 (HOD IMM)
-  [2, 1, 'approver', '2026-06-02'], [2, 9, 'approver', '2026-06-12'], [2, 10, 'approver', '2026-07-05'],
-  // User 4 (Gaurav Yadav - CM Purchase / Purchase Manager) - resting in cabinet after stage approval
-  [4, 1, 'purchase_manager', '2026-05-16'], [4, 9, 'router', '2026-06-12'], [4, 10, 'router', '2026-07-05'],
-  // User 10 (System Admin)
-  [10, 8, 'approver', '2026-07-11'],
-  // User 11 (QA Test)
-  [11, 8, 'initiator', '2026-07-11']
+  // NVB S1 Provisioning — maker initiated, officer routed, HOD approved; handed to Gaurav Yadav
+  [5, 1, 1, 'initiator', '2026-05-16'], [6, 1, 1, 'router', '2026-05-16'], [2, 1, 1, 'approver', '2026-05-16'],
+  [4, 1, 1, 'tender_initiator', '2026-05-17'],
+  // NVB S2 EMD — raised by the tender initiator
+  [5, 1, 2, 'initiator', '2026-06-02'], [4, 1, 2, 'tender_initiator', '2026-06-02'],
+  [6, 1, 2, 'router', '2026-06-02'], [2, 1, 2, 'approver', '2026-06-02'],
+  // Tool kits S1 — rejected
+  [5, 9, 10, 'initiator', '2026-06-12'], [6, 9, 10, 'router', '2026-06-12'], [2, 9, 10, 'approver', '2026-06-12'],
+  // Hydraulic seals S1 PP and S2 PO — approved, proposal closed
+  [5, 10, 11, 'initiator', '2026-04-10'], [6, 10, 11, 'router', '2026-04-10'], [2, 10, 11, 'approver', '2026-04-10'],
+  [5, 10, 12, 'initiator', '2026-07-05'], [6, 10, 12, 'router', '2026-07-05'], [2, 10, 12, 'approver', '2026-07-05'],
+  // Test-rig spares S1 Provisioning — approved, awaiting hand-over to a tender initiator
+  [9, 11, 13, 'initiator', '2026-08-27'], [6, 11, 13, 'router', '2026-08-27'], [2, 11, 13, 'approver', '2026-08-27']
 ];
 
 const DELEGATIONS = [
@@ -356,6 +383,7 @@ function insertAll() {
     for (const r of MEMBERS) run('INSERT INTO members(id,pb,name,email,designation,grade,app_role,section_id,heads_unit_id) VALUES(?,?,?,?,?,?,?,?,?)', ...r);
     for (const r of POSTINGS) run('INSERT INTO postings(member_id,org_unit_id,role_in_unit,from_date,to_date) VALUES(?,?,?,?,?)', ...r);
     for (const r of FILES) run('INSERT INTO files(id,file_id,title,kind,car_no,standalone,initiator_id,initiator_unit_id,parent_file_id,line_no,status,provisioning_start,tendering_start,created_at,closed_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', ...r);
+    for (const r of TENDER_HANDOVERS) run('UPDATE files SET tender_initiator_id = ?, tender_handover_at = ? WHERE id = ?', ...r);
     for (const r of NOTES) run('INSERT INTO notes(id,file_pk,seq,ref_no,txn_id,title,stage_id,source,body,classification,status,initiator_id,custodian_id,decision,decided_by,stage_no,planned_routing,created_at,closed_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', ...r);
     for (const r of NOTING_ENTRIES) run('INSERT INTO noting_entries(id,note_id,seq,author_id,title,body,entry_type,remark,created_at) VALUES(?,?,?,?,?,?,?,?,?)', ...r);
     for (const r of STEPS) run('INSERT INTO routing_steps(note_id,seq,from_member_id,to_member_id,purpose,state,action,comment,sent_at,opened_at,actioned_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)', ...r);
@@ -364,7 +392,7 @@ function insertAll() {
     for (const r of CLARIFICATION_MESSAGES) run('INSERT INTO clarification_messages(clarification_id,author_id,body,created_at) VALUES(?,?,?,?)', ...r);
     for (const r of GRANTS) run('INSERT INTO access_grants(id,note_id,token,granted_by_id,granted_to_id,state,created_at,revoked_at,revoke_reason) VALUES(?,?,?,?,?,?,?,?,?)', ...r);
     for (const r of ALERTS) run('INSERT INTO access_alerts(id,note_id,grant_id,custodian_id,offender_pb,message,created_at) VALUES(?,?,?,?,?,?,?)', ...r);
-    for (const r of CABINET) run('INSERT INTO cabinet(member_id,file_pk,reason,placed_at) VALUES(?,?,?,?)', ...r);
+    for (const r of CABINET) run('INSERT INTO cabinet(member_id,file_pk,note_id,reason,placed_at) VALUES(?,?,?,?,?)', ...r);
     for (const r of DELEGATIONS) run('INSERT INTO delegations(from_id,to_id,from_date,to_date,reason,created_at) VALUES(?,?,?,?,?,?)', ...r);
     db.exec('COMMIT;');
   } catch (err) {

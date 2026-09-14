@@ -1,7 +1,8 @@
-// Connected reference numbers for a note (the email's ask: every note N1..Nn carries
-// a unique + linked Reference No, Transaction ID and File ID). Three distinct handles:
-//   File ID       AOD/<DEPT>/<YEAR>/<NNNN>     — the parent e-file / case
-//   Reference No  <File ID>/N<seq>             — the note within the file (connected)
+// Connected reference numbers for a stage file (the email's ask: every note carries a unique
+// + linked Reference No, Transaction ID and File ID). Three distinct handles:
+//   File ID       AOD/<DEPT>/<YEAR>/<NNNN>     — the proposal (MPR/CAR thread)
+//   Reference No  <File ID>/S<seq>             — the stage file within it (connected); its
+//                                                noting minutes are N1..Nx inside
 //   Transaction   TXN-<YEAR>-<NNNNNN>          — globally-unique system handle (share links)
 import { all, get } from './db.js';
 
@@ -31,7 +32,7 @@ export function nextFileId(deptCode = 'IMM', when = new Date()) {
   return prefix + pad(maxSuffix(rows, 'file_id', prefix) + 1, 4);
 }
 
-export const noteRefNo = (fileId, seq) => `${fileId}/N${seq}`;
+export const noteRefNo = (fileId, seq) => `${fileId}/S${seq}`;
 
 export function nextTxnId(when = new Date()) {
   const prefix = `TXN-${when.getFullYear()}-`;

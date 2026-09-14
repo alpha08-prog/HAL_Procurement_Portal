@@ -67,9 +67,12 @@ export const FILE_COLUMNS = [
   { key: 'kind', label: 'Type', render: (r) => (r.standalone ? 'Standalone' : r.kind) },
   { key: 'car_no', label: 'Ref.', render: (r) => r.car_no || '—' },
   { key: 'initiator', label: 'Initiator' },
+  { key: 'tender_initiator', label: 'Tender initiator', render: (r) => r.tender_initiator || '—' },
   { key: 'classification', label: 'Class.', render: (r) => <ClassificationBadge value={r.classification} /> },
+  { key: 'current_stage', label: 'Current stage' },
   { key: 'latest_status', label: 'Status', render: (r) => <StatusBadge value={r.latest_status} /> },
-  { key: 'note_count', label: 'Notes', align: 'right' }
+  { key: 'pending_with', label: 'With', render: (r) => r.pending_with || '—' },
+  { key: 'note_count', label: 'Stages', align: 'right' }
 ];
 
 const INCOMING_LABEL = { check: 'To check', forward: 'To act', approve: 'To decide' };
@@ -89,32 +92,6 @@ export const INBOX_COLUMNS = [
     key: 'incoming_purpose',
     label: 'Action',
     render: (r) => INCOMING_LABEL[r.incoming_purpose] || (r.status === 'draft' ? 'Draft' : '—')
-  }
-];
-
-// Cabinet columns take an onAdvance(row) callback so the "Next action" cell can create the
-// next-stage note in place (multi-note lifecycle) instead of just linking to Initiate.
-export const cabinetColumns = (onAdvance) => [
-  {
-    key: 'file_id',
-    label: 'File ID',
-    render: (r) => <Link to={`/noting/note/${r.last_txn}`}>{r.file_id}</Link>
-  },
-  { key: 'title', label: 'Title' },
-  { key: 'last_status', label: 'Outcome', render: (r) => <StatusBadge value={r.last_status} /> },
-  { key: 'reason', label: 'My role', render: (r) => r.reason.charAt(0).toUpperCase() + r.reason.slice(1) },
-  { key: 'placed_at', label: 'Filed' },
-  {
-    key: 'next_stage_title',
-    label: 'Next action',
-    render: (r) =>
-      r.next_stage_title ? (
-        <button type="button" className="btn btn-secondary btn-inline" onClick={() => onAdvance(r)}>
-          Generate {r.next_stage_title}
-        </button>
-      ) : (
-        '—'
-      )
   }
 ];
 
@@ -148,7 +125,9 @@ export const LIVE_STATUS_COLUMNS = [
   { key: 'file_id', label: 'File ID' },
   { key: 'title', label: 'Title' },
   { key: 'stage_title', label: 'Stage' },
+  { key: 'pending_with', label: 'With', render: (r) => r.pending_with || '—' },
   { key: 'initiator', label: 'Initiator' },
+  { key: 'tender_initiator', label: 'Tender initiator', render: (r) => r.tender_initiator || '—' },
   { key: 'provisioning_start', label: 'Provisioning', render: (r) => r.provisioning_start || '—' },
   { key: 'days_since_provisioning', label: 'Since prov. (d)', align: 'right', render: (r) => r.days_since_provisioning ?? '—' },
   { key: 'tendering_start', label: 'Tendering', render: (r) => r.tendering_start || '—' },

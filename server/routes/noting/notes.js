@@ -5,8 +5,10 @@ import { Router } from 'express';
 import { all, get, nowISO, run } from '../../noting/db.js';
 import { currentMember } from '../../noting/identity.js';
 import { deptCodeFor, nextFileId, nextTxnId, noteRefNo } from '../../noting/refs.js';
-import { addNote, addNotingEntry, canView, notingEntries, openIfRecipient } from '../../noting/workflow.js';
-import { TENDERING_START_STAGE, VALID_STAGES } from '../../noting/stages.js';
+import {
+  addNote, addNotingEntry, assertCanAddNote, canView, notingEntries, openIfRecipient, proposalStatus
+} from '../../noting/workflow.js';
+import { stageTitle, startsTendering, VALID_STAGES } from '../../noting/stages.js';
 import { summarize } from '../../noting/summarize.js';
 import { requireNoteAccess } from './access.js';
 import * as aiStore from '../../ai/caseStore.js';
@@ -62,7 +64,7 @@ router.post('/files', async (req, res) => {
   const standalone = kind === 'standalone' ? 1 : 0;
   const fileId = nextFileId(deptCodeFor(me.section_id));
   const provStart = today;
-  const tendStart = stageId === TENDERING_START_STAGE ? today : null;
+  const tendStart = startsTendering(stageId) ? today : null;
 
   let aiCaseId = null;
   let noteBody = body;
@@ -153,22 +155,31 @@ router.post('/files/:filePk/notes', (req, res) => {
   }
 });
 
-// List files with initiator, note count and latest note status.
+// List proposals with initiator, tender initiator, stage count and the current (latest
+// visible) stage — its status and who holds it.
 router.get('/files', (req, res) => {
   const me = currentMember(req);
   const files = all(
     `SELECT f.id, f.file_id, f.title, f.kind, f.car_no, f.standalone, f.ai_case_id, f.status, f.created_at, f.initiator_unit_id,
-            im.name AS initiator,
+            im.name AS initiator, tim.name AS tender_initiator,
             (SELECT COUNT(*) FROM notes n WHERE n.file_pk = f.id) AS note_count,
             (SELECT n.txn_id FROM notes n WHERE n.file_pk = f.id ORDER BY n.seq ASC LIMIT 1) AS first_txn
      FROM files f LEFT JOIN members im ON im.id = f.initiator_id
+     LEFT JOIN members tim ON tim.id = f.tender_initiator_id
      ORDER BY f.id DESC`
   );
   const visible = [];
   for (const f of files) {
     const shown = all('SELECT * FROM notes WHERE file_pk = ? ORDER BY seq DESC', f.id).find((n) => canView(n, me));
     if (!shown) continue;
-    visible.push({ ...f, classification: shown.classification, latest_status: shown.status });
+    const holding = ['draft', 'in_check', 'routed'].includes(shown.status);
+    visible.push({
+      ...f,
+      classification: shown.classification,
+      latest_status: shown.status,
+      current_stage: `S${shown.seq} · ${shown.stage_id ? stageTitle(shown.stage_id) : shown.title}`,
+      pending_with: holding ? get('SELECT name FROM members WHERE id = ?', shown.custodian_id)?.name ?? null : null
+    });
   }
   res.json({ files: visible });
 });
@@ -218,6 +229,7 @@ router.get('/notes/:txnId', (req, res) => {
     allNotes,
     entries,
     plannedRouting,
+    proposal: proposalStatus(file, me),
     aiCaseId: file.ai_case_id
   });
 });
@@ -325,6 +337,12 @@ router.post('/notes/:txnId/ai-raise', async (req, res) => {
 
   const { noteId, fields = {}, override = false, routingList = null } = req.body || {};
   if (!noteId) return res.status(422).json({ error: 'noteId is required' });
+  // Check the stage-file guards before the AI case advances, so a refused note never moves the cascade.
+  try {
+    assertCanAddNote(file, me, noteId);
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
 
   const out = await aiStore.raiseNote(caseId, noteId, {
     fields: fields || {},

@@ -8,6 +8,7 @@ import {
   CLASSIFICATIONS,
   ClassificationBadge,
   clsLabel,
+  NOTE_STATUS_LABEL,
   StatusBadge
 } from '../../config/notingColumns.jsx';
 import {
@@ -31,7 +32,8 @@ import {
   retrieveNote,
   saveDraft,
   sendBackNote,
-  sendForCheck
+  sendForCheck,
+  sendToTenderInitiator
 } from '../../lib/notingApi.js';
 
 const STAGE_STEPS = [
@@ -85,7 +87,7 @@ export default function NoteDetail() {
   const [newNoteBody, setNewNoteBody] = useState('');
   const [pick, setPick] = useState({ toMemberId: '', comment: '' });
   const [showMemberPicker, setShowMemberPicker] = useState(false);
-  const [memberPickerPurpose, setMemberPickerPurpose] = useState('forward'); // 'forward' | 'sendback' | 'check' | 'share'
+  const [memberPickerPurpose, setMemberPickerPurpose] = useState('forward'); // 'forward' | 'sendback' | 'check' | 'share' | 'tender'
   const [generatedShareLink, setGeneratedShareLink] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -126,7 +128,7 @@ export default function NoteDetail() {
   if (error && !data) return <div className="grid-empty">Could not load e-file: {error}</div>;
   if (!data) return <div className="grid-empty">Loading e-file…</div>;
 
-  const { note, file, initiator, custodian, allNotes = [] } = data;
+  const { note, file, initiator, custodian, allNotes = [], proposal } = data;
   const isHolder = me && me.id === note.custodian_id;
   const routable = ['draft', 'in_check', 'routed'].includes(note.status);
   const decidable = ['routed', 'in_check'].includes(note.status);
@@ -169,6 +171,9 @@ export default function NoteDetail() {
         const fullLink = `${window.location.origin}${res.link}`;
         setGeneratedShareLink({ name: member.name, pb: member.pb, link: fullLink });
         setSuccessMsg(`Need-to-know access link generated for ${member.name} (${member.pb}).`);
+      } else if (memberPickerPurpose === 'tender') {
+        await sendToTenderInitiator(file.id, { memberId: member.id });
+        setSuccessMsg(`Proposal sent to ${member.name} (${member.pb}) as tender initiator — it now rests in their cabinet.`);
       }
       load();
     } catch (err) {
@@ -515,7 +520,19 @@ export default function NoteDetail() {
             </div>
           )}
 
-          {/* Multi-Stage Tabs: Stages on this File */}
+          {/* Proposal status: current stage, holder and tender initiator */}
+          {proposal?.current && (
+            <div style={{ background: '#f8fafc', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '8px 12px', marginBottom: 10, fontSize: 12, display: 'flex', flexWrap: 'wrap', gap: '4px 16px' }}>
+              <span>Proposal <strong>{file.car_no || file.file_id}</strong></span>
+              <span>
+                Current stage: <strong>S{proposal.current.seq} {proposal.current.stage_title}</strong> — {NOTE_STATUS_LABEL[proposal.current.status] || proposal.current.status}
+                {proposal.current.holder_name ? `, with ${proposal.current.holder_name}` : ''}
+              </span>
+              <span>Tender initiator: <strong>{proposal.file.tender_initiator?.name || 'not assigned'}</strong></span>
+            </div>
+          )}
+
+          {/* Stage files of this proposal (S1..Sn), each with its own minutes N1..Nx */}
           <div className="ef-routing-tabs" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
             {allNotes.length > 0 ? (
               allNotes.map((n, idx) => (
@@ -525,7 +542,7 @@ export default function NoteDetail() {
                   className={`ef-routing-tab ${n.txn_id === txnId ? 'active' : ''}`}
                   style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px' }}
                 >
-                  <span style={{ fontWeight: 600 }}>Stage {n.stage_no || idx + 1}: {n.title}</span>
+                  <span style={{ fontWeight: 600 }}>S{n.seq || idx + 1}: {n.title}</span>
                   <span style={{
                     fontSize: 10,
                     fontWeight: 700,
@@ -549,7 +566,7 @@ export default function NoteDetail() {
               ))
             ) : (
               <div className="ef-routing-tab active" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <span>Stage {note.stage_no || 1}: {note.title}</span>
+                <span>S{note.seq}: {note.title}</span>
                 <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: '#dcfce7', color: '#15803d' }}>
                   N1–N{data?.entries?.length || 1}
                 </span>
@@ -557,20 +574,43 @@ export default function NoteDetail() {
             )}
           </div>
 
-          {/* Resting Notice if Stage is Approved & Filed */}
+          {/* Closed stage file: rests in the cabinet; next comes the hand-over or the next stage */}
           {closed && (
-            <div className="banner banner-success" style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, padding: 14 }}>
+            <div className={`banner ${note.status === 'approved' ? 'banner-success' : 'banner-error'}`} style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, padding: 14 }}>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#166534', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span>✓</span> Stage {note.stage_no || 1} ({note.title}) Approved &amp; Resting in Cabinet
+                <div style={{ fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>{note.status === 'approved' ? '✓' : '✕'}</span> S{note.seq} ({note.title}) {NOTE_STATUS_LABEL[note.status]} — Closed &amp; Resting in Cabinet
                 </div>
-                <div style={{ fontSize: 12, marginTop: 4, color: '#15803d' }}>
-                  All sequential noting minutes (N1 to N{data?.entries?.length || 1}) are archived on the Green Sheet. The file now rests in the Cabinet of <strong>Gaurav Yadav (Chief Manager / Purchase Manager, PB-41060)</strong> and participants.
+                <div style={{ fontSize: 12, marginTop: 4 }}>
+                  Minutes N1 to N{data?.entries?.length || 1} are archived on the Green Sheet. The file rests in the cabinets of its initiator, routing members and the proposal's owners.
+                  {proposal?.current?.seq === note.seq && (
+                    proposal.awaitingHandOver
+                      ? ' Next: the initiator sends it to a tender initiator.'
+                      : proposal.next.length > 0
+                        ? ` Next: ${proposal.next.map((o) => o.title).join(' / ')}.`
+                        : ' The proposal is closed.'
+                  )}
                 </div>
               </div>
-              <Link to="/noting/cabinet" className="btn" style={{ background: '#15803d', fontSize: 12, textDecoration: 'none' }}>
-                Open Cabinet to Generate Next Stage Note →
-              </Link>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {proposal?.canHandOver && note.stage_id === 'provisioning' && proposal.current?.seq === note.seq && (
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{ background: '#15803d', fontSize: 12 }}
+                    disabled={busy}
+                    onClick={() => {
+                      setMemberPickerPurpose('tender');
+                      setShowMemberPicker(true);
+                    }}
+                  >
+                    {proposal.file.tender_initiator ? 'Change Tender Initiator' : 'Send to Tender Initiator'}
+                  </button>
+                )}
+                <Link to="/noting/cabinet" className="btn btn-secondary" style={{ fontSize: 12, textDecoration: 'none' }}>
+                  Open Cabinet →
+                </Link>
+              </div>
             </div>
           )}
 
@@ -625,7 +665,7 @@ export default function NoteDetail() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span className="ef-sheet-badge">HAL GREEN NOTING SHEET</span>
                   <span style={{ fontSize: 12, fontWeight: 700, color: '#1b4332' }}>
-                    Stage {note.stage_no || 1}: {note.title}
+                    S{note.seq}: {note.title}
                   </span>
                 </div>
                 <span style={{ fontSize: 11, color: '#2d6a4f', fontWeight: 600 }}>
@@ -723,7 +763,7 @@ export default function NoteDetail() {
                   className="btn btn-secondary"
                   style={{ borderColor: '#2d6a4f', color: '#2d6a4f', fontWeight: 600 }}
                   onClick={() => {
-                    setMinuteTitle(`Minute on Stage ${note.stage_no || 1}`);
+                    setMinuteTitle(`Minute on S${note.seq}`);
                     setMinuteType('minute');
                     setMinuteBody('');
                     setMinuteRemark('');
@@ -1138,7 +1178,7 @@ export default function NoteDetail() {
         <div className="modal-backdrop">
           <div className="modal" style={{ maxWidth: 680, maxHeight: '90vh', overflowY: 'auto' }}>
             <div className="modal-header">
-              <h2>Add Noting Minute (N{(data?.entries?.length || 0) + 1}) — Stage {note.stage_no || 1}</h2>
+              <h2>Add Noting Minute (N{(data?.entries?.length || 0) + 1}) — S{note.seq}</h2>
               <button type="button" className="btn-close" onClick={() => setShowAddMinuteModal(false)}>✕</button>
             </div>
             <form onSubmit={handleAddMinute}>
@@ -1210,6 +1250,8 @@ export default function NoteDetail() {
             ? 'Select Prior Officer / Initiator to Send Back'
             : memberPickerPurpose === 'check'
             ? 'Select Member for Pre-Routing Draft Check'
+            : memberPickerPurpose === 'tender'
+            ? 'Select the Tender Initiator for this Proposal'
             : 'Select Member for Need-to-Know Share Grant'
         }
       />

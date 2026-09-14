@@ -3,7 +3,7 @@
 // Every report is gated: rows are filtered to the files the caller may see (participant or
 // supervising head), so restricted-file metadata never leaks (email points 24–27).
 import { Router } from 'express';
-import { all } from '../../noting/db.js';
+import { all, get } from '../../noting/db.js';
 import { currentMember } from '../../noting/identity.js';
 import { mayViewInReports, visibleFileIds } from '../../noting/workflow.js';
 import { stageTitle } from '../../noting/stages.js';
@@ -41,6 +41,7 @@ router.get('/reports/lifecycle', (req, res) => {
   if (!s) return;
   const rows = all(
     `SELECT f.id, f.file_id, f.title, f.kind, f.car_no, f.standalone, f.status, f.created_at, f.closed_at,
+            f.initiator_id, f.tender_initiator_id,
             f.initiator_unit_id, f.parent_file_id, f.line_no, im.name AS initiator,
             (SELECT COUNT(*) FROM notes n WHERE n.file_pk = f.id) AS notes,
             (SELECT COUNT(*) FROM notes n WHERE n.file_pk = f.id AND n.stage_id = 'po_amendment') AS amendments
@@ -68,6 +69,7 @@ router.get('/reports/stage-time', (req, res) => {
   if (!s) return;
   const rows = all(
     `SELECT n.id, f.id AS file_pk, f.file_id, f.initiator_unit_id, f.provisioning_start,
+            f.initiator_id AS file_initiator_id, f.tender_initiator_id,
             f.created_at AS file_created_at, f.closed_at AS file_closed_at,
             n.ref_no, n.title, n.stage_id, n.classification, n.status, n.created_at, n.closed_at,
             im.name AS initiator
@@ -76,7 +78,10 @@ router.get('/reports/stage-time', (req, res) => {
   )
     .filter((r) => s.visible.has(r.file_pk) && mayViewInReports(
       { id: r.id, classification: r.classification },
-      { id: r.file_pk, initiator_unit_id: r.initiator_unit_id, created_at: r.file_created_at, closed_at: r.file_closed_at },
+      {
+        id: r.file_pk, initiator_id: r.file_initiator_id, tender_initiator_id: r.tender_initiator_id,
+        initiator_unit_id: r.initiator_unit_id, created_at: r.file_created_at, closed_at: r.file_closed_at
+      },
       s.me
     ))
     .map((r) => ({
@@ -106,18 +111,29 @@ router.get('/reports/tree', (req, res) => {
   res.json({ tree: roots });
 });
 
-// D — live status: open files by stage, with time since provisioning / tendering start.
+// D — live status: open proposals by current stage and holder, with the tender initiator and
+// time since provisioning / tendering start.
 router.get('/reports/live-status', (req, res) => {
   const s = scope(req, res);
   if (!s) return;
   const rows = all(
     `SELECT f.id, f.file_id, f.title, f.provisioning_start, f.tendering_start, f.initiator_unit_id,
-            f.created_at, f.closed_at, im.name AS initiator
+            f.initiator_id, f.tender_initiator_id, f.created_at, f.closed_at,
+            im.name AS initiator, tim.name AS tender_initiator
      FROM files f LEFT JOIN members im ON im.id = f.initiator_id
+     LEFT JOIN members tim ON tim.id = f.tender_initiator_id
      WHERE f.status = 'open' ORDER BY f.id`
   )
     .filter((r) => s.visible.has(r.id))
-    .map((r) => ({ ...r, stage: latestVisibleNote(r, s.me)?.stage_id ?? null }))
+    .map((r) => {
+      const shown = latestVisibleNote(r, s.me);
+      const holding = shown && ['draft', 'in_check', 'routed'].includes(shown.status);
+      return {
+        ...r,
+        stage: shown?.stage_id ?? null,
+        pending_with: holding ? get('SELECT name FROM members WHERE id = ?', shown.custodian_id)?.name ?? null : null
+      };
+    })
     .map((r) => ({
       ...r,
       stage_title: stageTitle(r.stage),

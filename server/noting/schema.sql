@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS postings (
   to_date      TEXT                                -- NULL = current
 );
 
--- The parent e-file. One MPR/CAR/SPR/CPR can spawn many child files (Phase 6 tree).
+-- The proposal: one MPR/CAR/SPR/CPR thread. Each procurement stage is its own stage file
+-- (a `notes` row, S1..Sn) under it. One requisition can also spawn line-wise child files (Phase 6 tree).
 CREATE TABLE IF NOT EXISTS files (
   id                 INTEGER PRIMARY KEY,
   file_id            TEXT NOT NULL UNIQUE,          -- connected File ID e.g. AOD/IMM/2026/0001
@@ -48,6 +49,8 @@ CREATE TABLE IF NOT EXISTS files (
   parent_file_id     INTEGER REFERENCES files(id),
   line_no            TEXT,                          -- line-wise L1 label on a child PP file
   ai_case_id         INTEGER,                       -- linked ai_cases id
+  tender_initiator_id INTEGER REFERENCES members(id), -- member the initiator handed the approved provisioning to
+  tender_handover_at TEXT,
   status             TEXT NOT NULL DEFAULT 'open',  -- open|closed
   provisioning_start TEXT,
   tendering_start    TEXT,
@@ -55,11 +58,12 @@ CREATE TABLE IF NOT EXISTS files (
   closed_at          TEXT
 );
 
--- Notes N1..Nn on a file, each with a unique+connected reference/txn id.
+-- Stage files S1..Sn of a proposal, each with a unique+connected reference/txn id and its
+-- own N1..Nx noting sheet (noting_entries).
 CREATE TABLE IF NOT EXISTS notes (
   id             INTEGER PRIMARY KEY,
   file_pk        INTEGER NOT NULL REFERENCES files(id),
-  seq            INTEGER NOT NULL,                  -- 1=N1, 2=N2 ...
+  seq            INTEGER NOT NULL,                  -- 1=S1, 2=S2 ...
   ref_no         TEXT NOT NULL,                     -- connected reference
   txn_id         TEXT NOT NULL UNIQUE,              -- unique transaction id
   title          TEXT NOT NULL,
@@ -157,12 +161,13 @@ CREATE TABLE IF NOT EXISTS access_alerts (
   created_at   TEXT NOT NULL
 );
 
--- Per-member cabinet: closed files land here (Phase 2), retrievable by approver (Phase 2).
+-- Per-member cabinet: closed stage files rest here (Phase 2), retrievable by approver (Phase 2).
 CREATE TABLE IF NOT EXISTS cabinet (
   id        INTEGER PRIMARY KEY,
   member_id INTEGER NOT NULL REFERENCES members(id),
   file_pk   INTEGER NOT NULL REFERENCES files(id),
-  reason    TEXT NOT NULL,                          -- initiator|router|approver
+  note_id   INTEGER REFERENCES notes(id),           -- the closed stage file
+  reason    TEXT NOT NULL,                          -- initiator|router|approver|tender_initiator
   placed_at TEXT NOT NULL
 );
 

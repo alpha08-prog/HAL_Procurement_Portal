@@ -92,16 +92,23 @@ Noting module's Initiate screen can pull a draft in as a starting note.
 
 ## The concepts (worth explaining before any screen)
 
-- **A file is the whole case.** One procurement case = one file (e.g. `AOD/IMM/2026/0001`),
-  holding notes **N1…Nn** — one note per workflow stage. Every note carries three connected
-  IDs: the **File ID**, a **Reference No** (`<File ID>/N2`), and a globally unique
-  **Transaction ID** (`TXN-2026-000004`).
-- **The 10 stages** (mirroring the AI pipeline): Provisioning Note → Tender Document →
-  EMD Stage Acceptance → TEC Request → TEC Report → Price Bid Opening → PNC Request →
-  PNC Recommendation → Purchase Proposal → **Purchase Order + Contract**. Approving an
-  intermediate note keeps the file open; approving the **PO** closes it; rejecting any note
-  closes it. One **need-based** note exists outside the sequence: **PO Amendment**, offered
-  only on a closed PO file (it reopens the file; its own approval closes it again).
+- **A proposal is a chain of separate stage files.** One procurement case (one MPR/CAR, File
+  ID e.g. `AOD/IMM/2026/0001`) is carried by **stage files**: Provisioning, EMD Stage
+  Acceptance, TEC Request, TEC Report, Price Bid Opening, PNC Request, PNC Recommendation,
+  Purchase Proposal, **Purchase Order + Contract**, plus need-based ones (Retender, TEC Query,
+  Advance Payment, Short Closure, PO Amendment). Each stage file is generated from the result of
+  the one before, has its own routing trail, and runs its own green sheet of minutes **N1…Nx**.
+  Every stage file carries three connected IDs: the **File ID**, a **Reference No**
+  (`<File ID>/S2`), and a globally unique **Transaction ID** (`TXN-2026-000004`).
+- **What may follow a stage** comes from the client's responsibility-cascade sheet: an approved
+  Provisioning offers EMD, TEC Request or Retender; an approved TEC Report offers Price Bid
+  Opening, Retender or Short Closure; and so on. You can also **skip to another stage**.
+  Approving the **PO** closes the proposal; rejecting any stage closes it. **PO Amendment** is
+  offered only on a closed PO proposal (it reopens it; its own approval closes it again).
+- **Hand-over to tendering.** An approved Provisioning rests in its initiator's cabinet. The
+  initiator presses **Send to Tender Initiator** and picks the member who will float the tender.
+  That member gets the proposal in their cabinet, can read every stage of it, and generates EMD
+  or TEC. Tender stages can't be generated before this hand-over.
 - **Custody, not roles.** At any moment exactly one member **holds** the note (the
   custodian) — only they can act on it. Everyone who ever held or routed it is a
   **participant** and can always read it. There are no fixed approval chains: the holder
@@ -109,10 +116,12 @@ Noting module's Initiate screen can pull a draft in as a starting note.
 - **Classification is graded per note:** Normal (any signed-in member can read) →
   Confidential (participants + any supervising head) → Secret (participants + the direct
   unit/dept head only) → Top Secret (participants + explicit grant only). A bare link or
-  transaction ID reveals nothing — access is checked on every read.
-- **The cabinet** is each member's personal shelf: once a note is decided, the file lands
-  in the cabinets of everyone involved, and that's where the "generate the next stage"
-  prompt appears.
+  transaction ID reveals nothing — access is checked on every read. A proposal's initiator and
+  its tender initiator can always read every stage file of that proposal.
+- **The cabinet** is each member's personal shelf: once a stage file is decided it closes and
+  rests — for good — in the cabinets of its initiator, routing members, the deciding authority
+  and the proposal's initiator / tender initiator. Each row shows the proposal's progress
+  (S1 → S2 → …), its current stage and who holds it, and the next action.
 
 ## Where to start: Initiate (`/noting/initiate`)
 
@@ -163,14 +172,17 @@ who → whom, comment, date, and flags like *"Awaiting — not yet opened"*), an
    officer's **Inbox** tagged *"To check"* / *"To act"*.
 3. The officer opens it (this locks retraction), reads, maybe raises a **clarification**,
    attaches documents, then **forwards** to the HOD — or **sends back** for rework.
-4. The HOD **approves**. The note closes; the file goes to the **cabinet** of everyone
+4. The HOD **approves**. The stage file closes and rests in the **cabinet** of everyone
    involved.
-5. In the cabinet, the file's row now shows **"Generate EMD Stage Acceptance"** (or
-   whatever the next stage is). One click creates N2 as a connected draft and the cycle
-   repeats — through all ten stages.
-6. Approving the **Purchase Order** note closes the file for good. The cabinet then offers
-   exactly one thing: **"Generate PO Amendment"** (need-based; reopens the file until the
-   amendment is itself approved). A rejected file offers nothing.
+5. For a **Provisioning** stage, the initiator presses **Send to Tender Initiator** (in the
+   cabinet or on the closed note) and picks e.g. Gaurav Yadav (`cm@`). The proposal lands in
+   that member's cabinet.
+6. The tender initiator's cabinet row offers **Generate EMD Stage Acceptance Note**, **Generate
+   TEC Request Note** and **Generate Retender Note**, plus **Skip to another stage…**. Generating
+   one opens a fresh stage file (S2) at N1 with its own routing trail, and the cycle repeats.
+7. Approving the **Purchase Order** stage closes the proposal. The cabinet then offers only
+   **Generate PO Amendment** (reopens the proposal until the amendment is itself approved). A
+   rejected stage closes the proposal and offers nothing.
 
 ### Clarifications — the private side-channel
 
@@ -193,15 +205,17 @@ the Files list and all reports, which show each person only what they may see.
 - **Inbox** (`/noting/inbox`) — notes currently waiting **with you**, each tagged with why:
   *To check*, *To act*, or *To decide*. Click the reference to open and act.
 - **Files** (`/noting/files`) — the file browser (+ an **"+ Initiate Note"** shortcut). You
-  only see files with at least one note you're allowed to read; status/classification shown
-  are of the latest note *visible to you*.
-- **Cabinet** (`/noting/cabinet`) — your decided/closed files with your role in each
-  (Initiator / Router / Approver) and the **"Generate …"** next-action button described above.
+  only see files with at least one note you're allowed to read; the current stage, status,
+  holder and classification shown are of the latest stage *visible to you*, alongside the
+  tender initiator.
+- **Cabinet** (`/noting/cabinet`) — your closed stage files with your role in each
+  (Initiator / Router / Approver / Tender initiator), the proposal's progress, and the
+  **Send to Tender Initiator** / **Generate …** next actions described above.
 - **Reports** (`/noting/reports`) — four tabs, each scoped to what you may see (own files,
   plus your subtree if you head a unit): **Lifecycle summary** (stage, status, note and
   PO-amendment counts, elapsed days), **Stage & time** (per-note durations), **Parent–child
-  tree** (case → line-wise child PPs), **Live status** (days since provisioning/tendering
-  started). Heads' visibility is **tenure-aware**: a sitting head sees their whole subtree's
+  tree** (case → line-wise child PPs), **Live status** (current stage, who holds it, tender
+  initiator, days since provisioning/tendering started). Heads' visibility is **tenure-aware**: a sitting head sees their whole subtree's
   history; a former head only files from their own tenure window.
 - **Organisation** (`/noting/org`) — the seeded HAL tree (Corporate › Complex › Division ›
   Department › Section) and the member directory. Useful to explain *positional* access.
@@ -210,7 +224,8 @@ the Files list and all reports, which show each person only what they may see.
 
 | Demo | How |
 |---|---|
-| Multi-note lifecycle prompt | `maker@` → Cabinet → NVB file shows **"Generate EMD Stage Acceptance"** |
+| Hand-over to tendering | `indentor@` → Cabinet → "Procurement of hydraulic test rig spares" → **Send to Tender Initiator** → pick Gaurav Yadav; then `cm@` → Cabinet → **Generate EMD / TEC Request / Retender** |
+| Next stage from the cascade | `cm@` or `maker@` → Cabinet → NVB **S2 EMD** row shows **Generate TEC Request Note / Retender Note / Short Closure Note** |
 | PO Amendment on a closed file | `maker@` → Cabinet → "Procurement of hydraulic seals" shows **"Generate PO Amendment"** |
 | Retract an unopened hop | `officer@` → open the office-furniture note → **Retract** |
 | Retrieve after decision | `hod@` → open the rejected tool-kits note → **Retrieve from cabinet** |
@@ -354,7 +369,8 @@ real signed-in account, so even the admin role-switcher preview can't bypass it.
 1. **Login as `maker@`** → AI Documents: show a generated note, Full vs New section. (2 min)
 2. **Noting**: Initiate an AI-drafted N1 → Forward to `officer@` → switch login → Inbox →
    open (mention retraction just got locked) → Forward to `hod@` → switch → **Approve &
-   file** → back as `maker@` → Cabinet → **Generate** the next stage. (5 min)
+   file** → back as `maker@` → Cabinet → **Send to Tender Initiator** (Gaurav Yadav) → switch
+   to `cm@` → Cabinet → **Generate** EMD or TEC Request. (5 min)
 3. **Classification**: as `desk@`, open the confidential note via its grant link; as
    `officer@`, show the leak alert. (2 min)
 4. **Contracts**: as `maker@`, Generate with `GEM/2025/B/7104412` → pick a PO → walk the

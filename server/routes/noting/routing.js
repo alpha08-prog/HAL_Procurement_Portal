@@ -1,11 +1,13 @@
-// Phase 2 — routing spine: per-member inbox & cabinet, and the hand-off actions
-// (forward / send back / retract / approve-reject / retrieve) + routing history.
+// Phase 2 — routing spine: per-member inbox & cabinet, the hand-off actions
+// (forward / send back / retract / approve-reject / retrieve) + routing history, and the
+// proposal flow around them: provisioning → tender-initiator hand-over and next stage files.
 import { Router } from 'express';
 import { all, get, nowISO, run } from '../../noting/db.js';
 import { currentMember } from '../../noting/identity.js';
-import { nextStage, stageTitle } from '../../noting/stages.js';
+import { stageTitle } from '../../noting/stages.js';
 import {
-  addNote, decide, fileStageHistory, forward, history, noteByTxn, retract, retrieve, sendBack
+  addNote, assertCanAddNote, decide, fileStageHistory, forward, handOverToTender, history, noteByTxn,
+  proposalStatus, retract, retrieve, sendBack
 } from '../../noting/workflow.js';
 import { requireNoteAccess } from './access.js';
 import * as aiStore from '../../ai/caseStore.js';
@@ -25,6 +27,8 @@ function action(fn) {
     }
   };
 }
+
+const fileByPk = (req) => get('SELECT * FROM files WHERE id = ?', Number(req.params.filePk));
 
 // Everything currently sitting with me and awaiting action.
 router.get('/inbox', (req, res) => {
@@ -50,87 +54,69 @@ router.get('/inbox', (req, res) => {
   res.json({ inbox: rows, meId: me.id });
 });
 
-// Closed files filed into my cabinet (as initiator, router, approver, or purchase manager).
+// Closed stage files resting in my cabinet — one row per stage file I initiated, routed,
+// decided or received as tender initiator. Each row carries its proposal's live status; the
+// next-stage prompt belongs to the row whose stage is the proposal's latest (`is_latest`).
 router.get('/cabinet', (req, res) => {
   const me = currentMember(req);
   if (!me) return res.status(403).json({ error: 'No noting member mapped to this account' });
   const rows = all(
-    `SELECT c.reason, c.placed_at, f.id AS file_pk, f.file_id, f.title, f.kind, f.standalone, f.status AS file_status, f.ai_case_id,
-            im.name AS initiator_name,
-            (SELECT n.txn_id   FROM notes n WHERE n.file_pk = f.id ORDER BY n.seq DESC LIMIT 1) AS last_txn,
-            (SELECT n.txn_id   FROM notes n WHERE n.file_pk = f.id ORDER BY n.seq DESC LIMIT 1) AS txn_id,
-            (SELECT n.status   FROM notes n WHERE n.file_pk = f.id ORDER BY n.seq DESC LIMIT 1) AS last_status,
-            (SELECT n.stage_id FROM notes n WHERE n.file_pk = f.id ORDER BY n.seq DESC LIMIT 1) AS last_stage,
-            (SELECT n.decided_by FROM notes n WHERE n.file_pk = f.id ORDER BY n.seq DESC LIMIT 1) AS decided_by
-     FROM cabinet c 
+    `SELECT c.reason, c.placed_at, f.id AS file_pk, f.file_id, f.title, f.kind, f.car_no, f.standalone,
+            f.status AS file_status, im.name AS initiator_name,
+            n.seq, n.ref_no, n.txn_id, n.stage_id, n.title AS note_title, n.status, n.classification,
+            (SELECT COUNT(*) FROM noting_entries ne WHERE ne.note_id = n.id) AS entry_count
+     FROM cabinet c
      JOIN files f ON f.id = c.file_pk
+     JOIN notes n ON n.id = COALESCE(c.note_id, (SELECT id FROM notes WHERE file_pk = f.id ORDER BY seq DESC LIMIT 1))
      LEFT JOIN members im ON im.id = f.initiator_id
-     WHERE c.member_id = ? 
-     ORDER BY c.placed_at DESC, f.id DESC`,
+     WHERE c.member_id = ?
+     ORDER BY c.placed_at DESC, n.id DESC`,
     me.id
   );
-  // Next-action prompt: when the latest note is approved and the case is still open, offer
-  // the next linear stage; when the case CLOSED at an approved PO (or amendment), offer a
-  // need-based PO Amendment (which reopens it). A rejection offers nothing. The client
-  // turns this into a one-click "create the next note" action.
+  const proposals = new Map();
   const cabinet = rows.map((r) => {
-    let next = null;
-    if (r.last_status === 'approved') {
-      if (r.file_status === 'open') next = nextStage(r.last_stage);
-      else if (['po', 'po_amendment'].includes(r.last_stage)) next = 'po_amendment';
-    }
-
-    // Get stage summary
-    const stages = all(
-      `SELECT n.id, n.seq, n.txn_id, n.title, n.stage_id, n.status, n.stage_no,
-              (SELECT COUNT(*) FROM noting_entries ne WHERE ne.note_id = n.id) AS notes_count
-       FROM notes n WHERE n.file_pk = ? ORDER BY n.seq ASC`,
-      r.file_pk
-    );
-
-    // Get allowed next stage options from AI cascade
-    let allowedOptions = [];
-    if (r.ai_case_id) {
-      try {
-        const kase = aiStore.loadCase(r.ai_case_id, req.user);
-        allowedOptions = kase?.options || [];
-      } catch {}
-    }
-    if (allowedOptions.length === 0 && next) {
-      allowedOptions = [{ noteId: next, label: stageTitle(next), needBased: false }];
-    }
-
-    return {
-      ...r,
-      status: r.last_status || 'approved',
-      priority: 'Medium',
-      next_stage: next,
-      next_stage_title: next ? stageTitle(next) : null,
-      stages,
-      allowed_options: allowedOptions
-    };
+    if (!proposals.has(r.file_pk)) proposals.set(r.file_pk, proposalStatus(get('SELECT * FROM files WHERE id = ?', r.file_pk), me));
+    const proposal = proposals.get(r.file_pk);
+    return { ...r, stage_title: stageTitle(r.stage_id), is_latest: proposal.current?.seq === r.seq, proposal };
   });
   res.json({ cabinet, meId: me.id });
 });
 
-// Full stage history for a file in Cabinet
+// Full stage history for a proposal in the cabinet (stage files the caller may read).
 router.get('/cabinet/:filePk/stage-history', (req, res) => {
   const me = currentMember(req);
   if (!me) return res.status(403).json({ error: 'No noting member mapped to this account' });
-  const file = get('SELECT * FROM files WHERE id = ?', Number(req.params.filePk));
+  const file = fileByPk(req);
   if (!file) return res.status(404).json({ error: 'File not found' });
-  res.json({ file, stages: fileStageHistory(file.id) });
+  res.json({ file, stages: fileStageHistory(file.id, me) });
 });
 
-// Generate next stage note from Cabinet with configured routing trail
+// Send the approved provisioning to the member who will initiate the tender.
+router.post('/files/:filePk/tender-initiator', (req, res) => {
+  const me = currentMember(req);
+  const file = fileByPk(req);
+  if (!file) return res.status(404).json({ error: 'File not found' });
+  try {
+    const updated = handOverToTender(file, me, Number(req.body?.memberId));
+    res.json({ file: updated, proposal: proposalStatus(updated, me) });
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+// Generate the next stage file from the cabinet with its configured routing trail.
 router.post('/cabinet/:filePk/generate-next-stage', async (req, res) => {
   const me = currentMember(req);
-  if (!me) return res.status(403).json({ error: 'No noting member mapped to this account' });
-  const file = get('SELECT * FROM files WHERE id = ?', Number(req.params.filePk));
+  const file = fileByPk(req);
   if (!file) return res.status(404).json({ error: 'File not found' });
 
   const { stageId, title, body = '', classification = 'normal', routingList = [], fields = {}, useAi = false } = req.body || {};
   if (!stageId) return res.status(422).json({ error: 'stageId is required' });
+  try {
+    assertCanAddNote(file, me, stageId);
+  } catch (e) {
+    return res.status(e.status || 500).json({ error: e.message });
+  }
 
   let noteBody = body;
   let formatsBuilt = [];

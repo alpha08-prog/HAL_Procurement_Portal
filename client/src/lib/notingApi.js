@@ -100,4 +100,5 @@ export const cancelDelegation = () => postJson('/api/noting/delegation/cancel', 
 export const addNotingEntry = (txnId, payload) => postJson(`/api/noting/notes/${encodeURIComponent(txnId)}/entries`, payload);
 export const fetchFileStageHistory = (filePk) => getJson(`/api/noting/cabinet/${filePk}/stage-history`);
 export const generateNextStage = (filePk, payload) => postJson(`/api/noting/cabinet/${filePk}/generate-next-stage`, payload);
+export const sendToTenderInitiator = (filePk, payload) => postJson(`/api/noting/files/${filePk}/tender-initiator`, payload);
 

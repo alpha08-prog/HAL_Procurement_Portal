@@ -52,9 +52,15 @@ export const officerQueueConfig = {
       label: 'Bank Account Status',
       render: (row) =>
         (row.bankMismatch === true || row.bankMismatch === 'Yes') ? (
-          <span className="pill pill-danger" title="Bank account details mismatch flagged by Yogesh M. (Maker). Cannot send to Neerja Sharma (Payment Desk).">
-            🚨 Mismatch (Blocked)
-          </span>
+          row.bankMismatchResolved ? (
+            <span className="pill pill-info" title="Bank mismatch resolved with authorization documents and selected account.">
+              ✔ Resolved ({row.selectedPaymentBank === 'invoice' ? 'Invoice A/C' : 'PO/IFS A/C'})
+            </span>
+          ) : (
+            <span className="pill pill-danger" title="Bank account details mismatch flagged by Yogesh M. (Maker). Cannot send to Neerja Sharma (Payment Desk).">
+              🚨 Mismatch (Blocked)
+            </span>
+          )
         ) : (
           <span className="pill pill-success">✓ Matched</span>
         )
@@ -76,8 +82,8 @@ export const officerQueueConfig = {
       label: 'Stamp & forward',
       transition: 'officer_forward',
       primary: true,
-      allowedRoles: ['purchase_officer'],
-      when: (row) => !(row.bankMismatch === true || row.bankMismatch === 'Yes'),
+      allowedRoles: ['purchase_officer', 'hod_imm', 'admin'],
+      when: (row) => !(row.bankMismatch === true || row.bankMismatch === 'Yes') || Boolean(row.bankMismatchResolved),
       modalTitle: 'Stamp & forward to payment desk (Neerja Sharma)',
       submitLabel: 'Stamp & forward',
       fields: [

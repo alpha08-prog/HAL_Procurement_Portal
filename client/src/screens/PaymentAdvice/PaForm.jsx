@@ -289,6 +289,9 @@ export default function PaForm({ paNo }) {
   const isBankMismatch = editable
     ? (draft?.bankMismatch === 'Yes' || draft?.bankMismatch === true)
     : (pa.bankMismatch === true || pa.bankMismatch === 'Yes');
+  const isBankMismatchUnresolved = editable
+    ? (draft?.bankMismatch === 'Yes' || draft?.bankMismatch === true) && !draft?.bankMismatchResolved
+    : (pa.bankMismatch === true || pa.bankMismatch === 'Yes') && !pa.bankMismatchResolved;
   const missingRequired = PA_REQUIRED_FIELDS.filter((key) => !draft[key]);
   const missingLabels = PA_MAKER_FIELDS.filter((f) => missingRequired.includes(f.key)).map(
     (f) => f.label
@@ -392,8 +395,27 @@ export default function PaForm({ paNo }) {
       )}
 
       {isBankMismatch && (
-        <div className="banner banner-danger no-print" style={{ margin: '12px 0 16px 0', padding: '14px 18px', background: '#fef2f2', border: '1.5px solid #ef4444', borderRadius: '6px', color: '#991b1b', fontSize: '0.95rem' }}>
-          <strong>🚨 Bank Account Details Mismatch (Flagged by Yogesh M. - Purchase Maker):</strong> Bank account details on Invoice do not match HAL master data. Payment advice <strong>CANNOT be sent to Neerja Sharma (Payment Desk)</strong> until bank account details match.
+        <div
+          className={`banner ${isBankMismatchUnresolved ? 'banner-danger' : 'banner-info'} no-print`}
+          style={{
+            margin: '12px 0 16px 0',
+            padding: '14px 18px',
+            borderRadius: '6px',
+            fontSize: '0.95rem',
+            background: isBankMismatchUnresolved ? '#fef2f2' : '#eff6ff',
+            border: `1.5px solid ${isBankMismatchUnresolved ? '#ef4444' : '#3b82f6'}`,
+            color: isBankMismatchUnresolved ? '#991b1b' : '#1e40af'
+          }}
+        >
+          {isBankMismatchUnresolved ? (
+            <>
+              <strong>🚨 Bank Account Details Mismatch (Flagged by Yogesh M. - Purchase Maker):</strong> Bank account details on Invoice do not match HAL master data. Please upload Competent Authority Approval or Vendor Request Letter and select payment account to resolve.
+            </>
+          ) : (
+            <>
+              <strong>✔ Bank Account Details Mismatch Resolved:</strong> Authorization document uploaded. Payment transfer designated for <strong>{draft?.selectedPaymentBank === 'invoice' ? 'Invoice Bank Details' : 'HAL PO / IFS Bank Details'}</strong>.
+            </>
+          )}
         </div>
       )}
 
@@ -492,8 +514,8 @@ export default function PaForm({ paNo }) {
                 <button
                   type="button"
                   className="btn"
-                  disabled={busy || isBankMismatch}
-                  title={isBankMismatch ? 'Cannot send to Neerja Sharma (Payment Desk): Bank account details on Invoice and in HAL data do not match (Flagged by Yogesh M.).' : undefined}
+                  disabled={busy || isBankMismatchUnresolved}
+                  title={isBankMismatchUnresolved ? 'Cannot send to Neerja Sharma (Payment Desk): Bank account details on Invoice and in HAL data do not match. Resolution document required.' : undefined}
                   onClick={() => runInlineTransition('officer_forward', { remark: inlineRemark })}
                 >
                   ✔ Stamp &amp; forward to payment desk
@@ -646,8 +668,8 @@ export default function PaForm({ paNo }) {
                 <button
                   type="button"
                   className="btn"
-                  disabled={busy || isBankMismatch}
-                  title={isBankMismatch ? 'Cannot send to Neerja Sharma (Payment Desk): Bank account details on Invoice and in HAL data do not match (Flagged by Yogesh M.).' : undefined}
+                  disabled={busy || isBankMismatchUnresolved}
+                  title={isBankMismatchUnresolved ? 'Cannot send to Neerja Sharma (Payment Desk): Bank account details on Invoice and in HAL data do not match. Resolution document required.' : undefined}
                   onClick={() => runInlineTransition('officer_forward', { remark: inlineRemark })}
                 >
                   ✔ Stamp &amp; forward to payment desk

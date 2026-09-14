@@ -46,6 +46,21 @@ function joinPa(pa) {
     vendorCity: vendor.city ?? '—',
     vendorAddress: vendor.address ?? '—',
     vendorBank: vendor.bank ?? null,
+    poBank: pa.poBank ?? vendor.bank ?? { name: 'State Bank of India', accountNo: '30912345678', ifsc: 'SBIN0004321', branch: 'HAL Old Airport Road, Bengaluru' },
+    ifsBank: pa.ifsBank ?? vendor.bank ?? { name: 'State Bank of India', accountNo: '30912345678', ifsc: 'SBIN0004321', branch: 'HAL Old Airport Road, Bengaluru' },
+    invoiceBank: pa.invoiceBank ?? (pa.bankMismatch ? { name: 'HDFC Bank', accountNo: '998811223344', ifsc: 'HDFC0009999', branch: 'Nariman Point, Mumbai' } : (vendor.bank ?? { name: 'State Bank of India', accountNo: '30912345678', ifsc: 'SBIN0004321', branch: 'HAL Old Airport Road, Bengaluru' })),
+    bankMismatch: pa.bankMismatch ?? false,
+    bankMismatchResolved: pa.bankMismatchResolved ?? false,
+    caApprovalUploaded: pa.caApprovalUploaded ?? false,
+    caApprovalFileName: pa.caApprovalFileName ?? null,
+    caApprovalDate: pa.caApprovalDate ?? null,
+    caApprovalAuthority: pa.caApprovalAuthority ?? null,
+    vendorRequestUploaded: pa.vendorRequestUploaded ?? false,
+    vendorRequestFileName: pa.vendorRequestFileName ?? null,
+    vendorRequestDate: pa.vendorRequestDate ?? null,
+    vendorRequestRef: pa.vendorRequestRef ?? null,
+    selectedPaymentBank: pa.selectedPaymentBank ?? (pa.bankMismatch ? null : 'po_ifs'),
+    bankFootnote: pa.bankFootnote ?? '',
     gstin: vendor.gstin ?? '—',
     mseCategory: vendor.mseCategory ?? 'Non-MSE',
     mseWomen: vendor.mseWomen ?? 'NA',
@@ -469,7 +484,21 @@ router.post('/update', makerOnly, (req, res) => {
     ldByFtr,
     ldIcAmount,
     checkingOfficerPbNo,
-    bankMismatch
+    bankMismatch,
+    bankMismatchResolved,
+    poBank,
+    ifsBank,
+    invoiceBank,
+    caApprovalUploaded,
+    caApprovalFileName,
+    caApprovalDate,
+    caApprovalAuthority,
+    vendorRequestUploaded,
+    vendorRequestFileName,
+    vendorRequestDate,
+    vendorRequestRef,
+    selectedPaymentBank,
+    bankFootnote
   } = req.body;
   if (makerRemark !== undefined) pa.makerRemark = makerRemark;
   if (securitiesRemark !== undefined) pa.securitiesRemark = securitiesRemark;
@@ -477,6 +506,22 @@ router.post('/update', makerOnly, (req, res) => {
   if (bankMismatch !== undefined) {
     pa.bankMismatch = bankMismatch === 'Yes' || bankMismatch === true;
   }
+  if (bankMismatchResolved !== undefined) {
+    pa.bankMismatchResolved = bankMismatchResolved === 'Yes' || bankMismatchResolved === true;
+  }
+  if (poBank !== undefined) pa.poBank = poBank;
+  if (ifsBank !== undefined) pa.ifsBank = ifsBank;
+  if (invoiceBank !== undefined) pa.invoiceBank = invoiceBank;
+  if (caApprovalUploaded !== undefined) pa.caApprovalUploaded = Boolean(caApprovalUploaded);
+  if (caApprovalFileName !== undefined) pa.caApprovalFileName = caApprovalFileName;
+  if (caApprovalDate !== undefined) pa.caApprovalDate = caApprovalDate;
+  if (caApprovalAuthority !== undefined) pa.caApprovalAuthority = caApprovalAuthority;
+  if (vendorRequestUploaded !== undefined) pa.vendorRequestUploaded = Boolean(vendorRequestUploaded);
+  if (vendorRequestFileName !== undefined) pa.vendorRequestFileName = vendorRequestFileName;
+  if (vendorRequestDate !== undefined) pa.vendorRequestDate = vendorRequestDate;
+  if (vendorRequestRef !== undefined) pa.vendorRequestRef = vendorRequestRef;
+  if (selectedPaymentBank !== undefined) pa.selectedPaymentBank = selectedPaymentBank;
+  if (bankFootnote !== undefined) pa.bankFootnote = bankFootnote;
   if (ldApplicable !== undefined) pa.ldApplicable = ldApplicable === 'Yes' ? 'Yes' : 'No';
   if (ldByGateEntry !== undefined) pa.ldByGateEntry = ldByGateEntry === 'Yes' ? 'Yes' : 'No';
   if (ldByFtr !== undefined) pa.ldByFtr = ldByFtr === 'Yes' ? 'Yes' : 'No';

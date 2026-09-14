@@ -24,8 +24,8 @@ export const TRANSITIONS = {
     to: 'at_payment_desk',
     by: 'purchase_officer',
     guard: (pa) =>
-      pa.bankMismatch
-        ? 'Cannot send to Neerja Sharma (Payment Desk): Bank account details on Invoice and in HAL data do not match. Flagged by Yogesh (Maker).'
+      pa.bankMismatch && !pa.bankMismatchResolved
+        ? 'Cannot send to Neerja Sharma (Payment Desk): Bank account details on Invoice and in HAL data do not match. Upload Competent Authority approval or Vendor request letter to resolve.'
         : null,
     defaultRemark: 'Stamped and forwarded to payment desk.'
   },

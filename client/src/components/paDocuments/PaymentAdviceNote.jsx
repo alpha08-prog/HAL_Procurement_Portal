@@ -108,12 +108,19 @@ export default function PaymentAdviceNote({ pa, previewOfficerRemark }) {
         </ul>
       </div>
 
-      <p className="hal-doc-para">
-        Invoice(s) received from M/S. <strong>{pa.vendorName}</strong>
-        {pa.vendorCity ? `, ${pa.vendorCity}` : ''}, A/C No: {bank.accountNo ?? '—'}, IFSC:{' '}
-        {bank.ifsc ?? '—'}. towards the supplies made against the following RV(s)/Invoice(s),
-        is/are sent herewith for arranging payment/adjustment, under intimation to this department.
-      </p>
+      {(() => {
+        const effectiveBank = (pa.selectedPaymentBank === 'invoice' && pa.invoiceBank)
+          ? pa.invoiceBank
+          : (pa.poBank ?? bank);
+        return (
+          <p className="hal-doc-para">
+            Invoice(s) received from M/S. <strong>{pa.vendorName}</strong>
+            {pa.vendorCity ? `, ${pa.vendorCity}` : ''}, A/C No: <strong>{effectiveBank.accountNo ?? '—'}</strong>, IFSC:{' '}
+            <strong>{effectiveBank.ifsc ?? '—'}</strong> ({effectiveBank.name ?? 'Bank'}). Towards the supplies made against the following RV(s)/Invoice(s),
+            is/are sent herewith for arranging payment/adjustment, under intimation to this department.
+          </p>
+        );
+      })()}
       <div className="hal-doc-inline">
         <span>Category : {isMsme(pa) ? 'MSME' : 'NON-MSME'}</span>
       </div>
@@ -124,9 +131,10 @@ export default function PaymentAdviceNote({ pa, previewOfficerRemark }) {
             <th>Sl. No.</th>
             <th>Challan No / RV NO</th>
             <th>Invoice No. &amp; Date / Plan Amount</th>
-            <th>Invoice Amount / LD to be Deducted</th>
+            <th>RV Amount</th>
+            <th>LD Amount to be Deducted</th>
             <th>Amount Recommended</th>
-            <th>Remark</th>
+            <th>Remarks</th>
           </tr>
         </thead>
         <tbody>
@@ -142,13 +150,10 @@ export default function PaymentAdviceNote({ pa, previewOfficerRemark }) {
               <br />
               <span className="num">{formatAmount(pa.poValue)}</span>
             </td>
-            <td className="num">
-              {formatAmount(pa.invoiceValue)}
-              <br />
-              {formatAmount(pa.ldAmount)}
-            </td>
+            <td className="num">{formatAmount(pa.rvValue || pa.invoiceValue)}</td>
+            <td className="num">{formatAmount(pa.ldAmount)}</td>
             <td className="num">{formatAmount(pa.finalPayment)}</td>
-            <td>{pa.makerRemark || ''}</td>
+            <td>{pa.makerRemark || 'NIL'}</td>
           </tr>
         </tbody>
       </table>
@@ -163,52 +168,82 @@ export default function PaymentAdviceNote({ pa, previewOfficerRemark }) {
         <span>Remarks : {pa.makerRemark || 'NIL'}</span>
       </div>
 
-      <div className="hal-doc-signs hal-doc-signs-split" style={{ display: 'flex', gap: '16px', marginTop: '20px', flexWrap: 'wrap' }}>
-        {/* Forwarding Officer Stamp (shown at officer stage / when verified) */}
-        {showOfficerStamp && (
-          <div className="hal-doc-stamp-box hal-doc-stamp-signed" style={{ flex: 1, minWidth: 220, padding: '14px', border: '1.5px dashed var(--accent, #0052cc)', background: 'var(--accent-soft, #f0f7ff)' }}>
-            <div className="hal-doc-stamp-title" style={{ fontWeight: 700, color: 'var(--accent, #0052cc)', marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
-              <span>🔏 Forwarding Officer Stamp</span>
-              {isOfficerStage && !officerStep && (
-                <span style={{ fontSize: 10, background: 'var(--accent)', color: '#fff', padding: '1px 6px', borderRadius: 4 }}>
-                  Preview
-                </span>
-              )}
-            </div>
-            <div className="hal-doc-stamp-label" style={{ color: '#166534', fontWeight: 700 }}>
-              ✔ Purchase Officer — Verified &amp; Stamped
-            </div>
-            <div className="hal-doc-stamp-meta" style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
-              {officerStep?.date || formatDate(new Date().toISOString())} · Officer {pa.checkingOfficerPbNo || 'PB-44821'}
-            </div>
-            <div className="hal-doc-stamp-remark" style={{ fontSize: 11, fontStyle: 'italic', marginTop: 4, color: '#334155' }}>
-              "{previewOfficerRemark || officerStep?.remark || 'Verified against PO terms. Forwarded to payment desk.'}"
-            </div>
-          </div>
-        )}
+      {pa.bankFootnote && (
+        <div
+          className="hal-doc-footnote"
+          style={{
+            margin: '14px 0',
+            padding: '10px 14px',
+            background: '#eff6ff',
+            borderLeft: '4px solid #1d4ed8',
+            borderRadius: '4px',
+            fontSize: '0.85rem',
+            color: '#1e3a8a',
+            lineHeight: 1.4
+          }}
+        >
+          <strong>Footnote / Remarks (Bank Details Verification):</strong> {pa.bankFootnote}
+        </div>
+      )}
 
-        {/* Payment Desk Signature & Stamp */}
-        {(() => {
-          const deskStep = (pa.history ?? []).find((h) => h.action === 'desk_forward_hod' || h.action === 'desk_forward_cppc');
-          return (
-            <div className={'hal-doc-stamp-box' + (deskStep ? ' hal-doc-stamp-signed' : '')} style={{ flex: 1, minWidth: 220, padding: '14px' }}>
-              <div className="hal-doc-stamp-title" style={{ fontWeight: 600, color: 'var(--color-primary, #1e3a8a)', marginBottom: '4px' }}>
-                Payment Desk Verification &amp; Stamp
-              </div>
-              {deskStep ? (
-                <>
-                  <div className="hal-doc-stamp-label">✔ Payment Desk — Checked &amp; Stamped</div>
-                  <div className="hal-doc-stamp-meta">{deskStep.date} · Neerja Sharma</div>
-                  {deskStep.remark && <div className="hal-doc-stamp-remark">"{deskStep.remark}"</div>}
-                </>
-              ) : (
-                <div className="hal-doc-stamp-label hal-doc-stamp-empty">
-                  Payment Desk (Neerja Sharma) — Stamp &amp; Signature
-                </div>
-              )}
-            </div>
-          );
-        })()}
+      {/* Only Forwarding Officer (Gaurav Sir) Signature & Stamp */}
+      <div className="hal-doc-signs" style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
+        <div
+          className="hal-doc-stamp-box hal-doc-stamp-signed"
+          style={{
+            minWidth: 320,
+            maxWidth: 440,
+            padding: '16px 20px',
+            border: '2px solid #1e3a8a',
+            background: '#f8fafc',
+            borderRadius: '6px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
+          }}
+        >
+          <div
+            className="hal-doc-stamp-title"
+            style={{
+              fontWeight: 700,
+              color: '#1e3a8a',
+              marginBottom: '6px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '1px solid #cbd5e1',
+              paddingBottom: '4px'
+            }}
+          >
+            <span>🔏 Forwarding Officer Signature &amp; Stamp</span>
+            {isOfficerStage && !officerStep && (
+              <span style={{ fontSize: 10, background: '#1e3a8a', color: '#fff', padding: '2px 8px', borderRadius: 4 }}>
+                Active / Stamping
+              </span>
+            )}
+          </div>
+          <div className="hal-doc-stamp-label" style={{ color: '#15803d', fontWeight: 700, fontSize: '0.95rem' }}>
+            ✔ Forwarding Officer — Verified &amp; Signed
+          </div>
+          <div className="hal-doc-stamp-meta" style={{ fontSize: 12, color: '#334155', marginTop: 4 }}>
+            <strong>Gaurav Yadav</strong> (Chief Manager &amp; Forwarding Officer, PB-41060)
+          </div>
+          <div className="hal-doc-stamp-meta" style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+            Date: {officerStep?.date || formatDate(new Date().toISOString())} · IMM Aircraft Overhaul Division, Nasik
+          </div>
+          <div
+            className="hal-doc-stamp-remark"
+            style={{
+              fontSize: 11,
+              fontStyle: 'italic',
+              marginTop: 6,
+              padding: '6px 8px',
+              background: '#ffffff',
+              borderLeft: '3px solid #16a34a',
+              color: '#334155'
+            }}
+          >
+            "{previewOfficerRemark || officerStep?.remark || 'Verified against PO terms, RV and Bank verification. Payment recommended.'}"
+          </div>
+        </div>
       </div>
 
       <div className="hal-doc-section-label hal-doc-checklist-title">CHECKLIST</div>

@@ -3,6 +3,7 @@
 // here, not in the screen.
 import CategoryPills from '../components/CategoryPills.jsx';
 import { AttachmentsPanel, SecuritiesPanel } from '../components/PaSubforms.jsx';
+import ThreeWayBankVerification from '../components/ThreeWayBankVerification.jsx';
 import { roleLabel } from './roles.js';
 
 export const PA_FORM_SECTIONS = [
@@ -43,47 +44,53 @@ export const PA_FORM_SECTIONS = [
     ]
   },
   {
-    title: 'Vendor & Bank Details Verification (Yogesh M. — Purchase Maker)',
+    title: 'Vendor & 3-Way Bank Details Verification (Yogesh M. — Purchase Maker)',
     fields: [
       { key: 'vendorCode', label: 'Supplier Code', source: 'ifs' },
       { key: 'vendorName', label: 'Supplier Name', source: 'ifs' },
       { key: 'vendorAddress', label: 'Supplier Address', source: 'ifs' },
       { key: 'gstin', label: 'GSTIN', source: 'ifs' },
       {
-        key: 'vendorBank',
-        label: 'HAL Master Data Bank Details',
-        source: 'ifs',
-        render: (pa) =>
-          pa.vendorBank
-            ? `${pa.vendorBank.name} · A/C ${pa.vendorBank.accountNo} · IFSC: ${pa.vendorBank.ifsc}`
-            : '—'
-      },
-      {
-        key: 'invoiceBankDetails',
-        label: 'Bank Account Details on Invoice',
-        source: 'ifs',
-        render: (pa) =>
-          (pa.bankMismatch === true || pa.bankMismatch === 'Yes')
-            ? `🚨 Differing Bank A/C: 998811223344 (IFSC: HDFC0009999) — Mismatch with HAL Data`
-            : pa.vendorBank
-            ? `${pa.vendorBank.name} · A/C ${pa.vendorBank.accountNo} · IFSC: ${pa.vendorBank.ifsc} (Matches HAL Data)`
-            : '—'
-      },
-      {
-        key: 'bankMismatch',
-        label: 'Bank Account Mismatch? (Flagged by Yogesh M.)',
-        source: 'maker',
-        type: 'select',
-        options: ['No', 'Yes'],
-        hint: 'Default is "No" (Matches HAL Data). Select "Yes" only if bank account details on invoice do not match HAL master data.'
-      },
-      {
         key: 'category',
         label: 'Category (MSE / Women / SC-ST)',
         source: 'ifs',
         render: (pa) => <CategoryPills category={pa.mseCategory} women={pa.mseWomen} scSt={pa.mseScSt} />
       }
-    ]
+    ],
+    render: (pa, editable, ctx) => (
+      <div>
+        <div className="form-grid" style={{ marginBottom: '16px' }}>
+          <div className="field">
+            <div className="field-label">Supplier Code <span className="tag">IFS</span></div>
+            <div className="field-value">{pa.vendorCode || '—'}</div>
+          </div>
+          <div className="field">
+            <div className="field-label">Supplier Name <span className="tag">IFS</span></div>
+            <div className="field-value">{pa.vendorName || '—'}</div>
+          </div>
+          <div className="field">
+            <div className="field-label">Supplier Address <span className="tag">IFS</span></div>
+            <div className="field-value">{pa.vendorAddress || '—'}</div>
+          </div>
+          <div className="field">
+            <div className="field-label">GSTIN <span className="tag">IFS</span></div>
+            <div className="field-value">{pa.gstin || '—'}</div>
+          </div>
+          <div className="field">
+            <div className="field-label">Category (MSE / Women / SC-ST) <span className="tag">IFS</span></div>
+            <div className="field-value">
+              <CategoryPills category={pa.mseCategory} women={pa.mseWomen} scSt={pa.mseScSt} />
+            </div>
+          </div>
+        </div>
+        <ThreeWayBankVerification
+          pa={pa}
+          editable={editable}
+          draft={ctx?.draft}
+          onChange={ctx?.onChange}
+        />
+      </div>
+    )
   },
   {
     title: 'Invoice',
@@ -173,6 +180,7 @@ export const PA_FORM_SECTIONS = [
         source: 'maker',
         type: 'select',
         options: [
+          'PB-41060 (Gaurav Yadav / Chief Manager & Forwarding Officer)',
           'PB-44821 (R. Deshpande / Purchase Officer)',
           'PB-43977 (A. K. Sharma / Purchase Officer)',
           'PB-45110 (S. Kulkarni / Purchase Officer)',
@@ -202,7 +210,22 @@ export const PA_FORM_SECTIONS = [
   }
 ];
 
-const VIRTUAL_MAKER_FIELDS = [{ key: 'securitiesRemark', source: 'maker', type: 'textarea' }];
+const VIRTUAL_MAKER_FIELDS = [
+  { key: 'securitiesRemark', source: 'maker', type: 'textarea' },
+  { key: 'bankMismatch', source: 'maker' },
+  { key: 'bankMismatchResolved', source: 'maker' },
+  { key: 'caApprovalUploaded', source: 'maker' },
+  { key: 'caApprovalFileName', source: 'maker' },
+  { key: 'caApprovalAuthority', source: 'maker' },
+  { key: 'vendorRequestUploaded', source: 'maker' },
+  { key: 'vendorRequestFileName', source: 'maker' },
+  { key: 'vendorRequestRef', source: 'maker' },
+  { key: 'selectedPaymentBank', source: 'maker' },
+  { key: 'bankFootnote', source: 'maker' },
+  { key: 'poBank', source: 'maker' },
+  { key: 'ifsBank', source: 'maker' },
+  { key: 'invoiceBank', source: 'maker' }
+];
 
 export const PA_MAKER_FIELDS = [
   ...PA_FORM_SECTIONS.flatMap((s) => s.fields ?? []),

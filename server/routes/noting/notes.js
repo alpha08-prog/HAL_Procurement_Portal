@@ -1,32 +1,40 @@
 // Files & notes: initiate a file with its N1 (AI-drafted or standalone/manual),
 // list files, view a note, edit the draft, and send it for a pre-routing check.
-// Integrated with Module F AI responsibility cascade pipeline.
+// Integrated with the Module F cascade: a file may link one AI case, whose notes are raised
+// through this router so the stage-file guards run BEFORE the case advances.
 import { Router } from 'express';
 import { all, get, nowISO, run } from '../../noting/db.js';
 import { currentMember } from '../../noting/identity.js';
 import { deptCodeFor, nextFileId, nextTxnId, noteRefNo } from '../../noting/refs.js';
 import {
-  addNote, addNotingEntry, assertCanAddNote, canView, notingEntries, openIfRecipient, proposalStatus
+  addNote, addNotingEntry, assertCanAddNote, canView, hooks, isCaseMember, notingEntries,
+  openIfRecipient, proposalStatus
 } from '../../noting/workflow.js';
-import { stageTitle, startsTendering, VALID_STAGES } from '../../noting/stages.js';
+import { STAGE_ORDER, stageTitle, startsTendering, VALID_STAGES } from '../../noting/stages.js';
+import { get as reqGet } from '../../requisitions/db.js';
+import { link as linkRequisition } from '../../requisitions/links.js';
 import { summarize } from '../../noting/summarize.js';
+import { proseToHtml } from '../../noting/html.js';
+import { attachAnnexures } from '../../noting/annexures.js';
+import { chainSummary, ensureChain } from '../../noting/approvalLink.js';
+import { verify as verifyOtp } from '../../auth/otp.js';
 import { requireNoteAccess } from './access.js';
 import * as aiStore from '../../ai/caseStore.js';
 import * as aiGraph from '../../ai/cascadeGraph.js';
-import * as aiPipeline from '../../ai/pipeline.js';
 import * as aiLoadInputs from '../../ai/loadInputs.js';
 
 const router = Router();
 const KINDS = ['MPR', 'CAR', 'SPR', 'CPR', 'standalone'];
 const CLASSES = ['normal', 'restricted', 'confidential', 'secret', 'top_secret'];
 
-const formatProseToHtml = (text) => {
-  if (!text) return '<p></p>';
-  return text
-    .split(/\n\n+/)
-    .map((para) => `<p>${para.replace(/\n/g, '<br/>')}</p>`)
-    .join('');
+// Rejecting an AI-drafted stage file withdraws the note from the AI case too, so the
+// cascade returns to where it stood before that note was raised.
+hooks.onReject = ({ note, file, me }) => {
+  if (note?.source !== 'ai' || !file?.ai_case_id || !note.stage_id) return;
+  aiStore.rollbackNote(file.ai_case_id, note.stage_id, { id: me?.pb, name: me?.name, role: me?.app_role });
 };
+
+const validSource = (id) => aiLoadInputs.availableCases().some((c) => c.id === id);
 
 // Initiate a new file + its first note (N1). Any HAL member can do this.
 router.post('/files', async (req, res) => {
@@ -35,29 +43,58 @@ router.post('/files', async (req, res) => {
 
   const {
     title,
-    kind = 'CAR',
-    carNo,
+    kind: kindBody = 'CAR',
+    carNo: carNoBody,
     source = 'manual',
     sourceCase = 'nvb',
     body = '',
     classification = 'normal',
+    priority = 'Medium',
     parentFileId = null,
     lineNo = null,
     fields = {},
-    routingList = []
+    override = false,
+    routingList = [],
+    approverId = null,
+    otp = null
   } = req.body || {};
 
   const stageId = (req.body?.stageId || '').trim() || (source === 'ai' ? 'provisioning' : null);
-  const noteTitle = (req.body?.noteTitle || '').trim() || (source === 'ai' ? 'Provisioning Note (N1)' : 'Note Sheet (N1)');
+  const noteTitle = (req.body?.noteTitle || '').trim() || (source === 'ai' ? 'Provisioning Note (N1)' : stageId ? `${stageTitle(stageId)} (N1)` : 'Note Sheet (N1)');
+  // A requisition from the register anchors the proposal: its kind and number become the file's.
+  const requisitionId = req.body?.requisitionId != null && req.body.requisitionId !== '' ? Number(req.body.requisitionId) : null;
+  let requisition = null;
+  if (requisitionId != null) {
+    requisition = Number.isInteger(requisitionId) ? reqGet('SELECT * FROM requisitions WHERE id = ?', requisitionId) : null;
+    if (!requisition) return res.status(422).json({ error: 'Unknown requisition' });
+    if (requisition.noting_file_pk) {
+      return res.status(409).json({ error: `${requisition.req_no} already has a proposal file — add the next stage from its cabinet`, notingFilePk: requisition.noting_file_pk });
+    }
+  }
+  const kind = requisition ? requisition.kind : kindBody;
+  const carNo = requisition ? requisition.req_no : carNoBody;
+  // Cascade stages after provisioning are generated from the approved previous stage in the
+  // proposal's cabinet (assertCanAddNote), never as a fresh file.
+  if (stageId && STAGE_ORDER.includes(stageId) && stageId !== 'provisioning') {
+    return res.status(422).json({ error: `${stageTitle(stageId)} is generated from the approved previous stage in the proposal's cabinet, not as a new file` });
+  }
   if (!title || !String(title).trim()) return res.status(422).json({ error: 'title is required' });
   if (!KINDS.includes(kind)) return res.status(422).json({ error: `kind must be one of ${KINDS.join(', ')}` });
   if (!CLASSES.includes(classification)) return res.status(422).json({ error: 'invalid classification' });
   if (stageId && !VALID_STAGES.has(stageId)) return res.status(422).json({ error: `Unknown stage "${stageId}"` });
+  if (source === 'ai' && !validSource(sourceCase)) {
+    return res.status(422).json({ error: `Unknown AI source case "${sourceCase}"`, sources: aiLoadInputs.availableCases() });
+  }
   if (parentFileId != null) {
     const parent = get('SELECT id FROM files WHERE id = ?', Number(parentFileId));
     const parentVisible = parent &&
       all('SELECT * FROM notes WHERE file_pk = ? ORDER BY seq DESC', parent.id).some((n) => canView(n, me));
     if (!parentVisible) return res.status(422).json({ error: 'Unknown parent file' });
+  }
+  let otpAt = null;
+  if (otp != null && String(otp).trim() !== '') {
+    if (!verifyOtp(me.pb, otp)) return res.status(422).json({ error: 'Invalid one-time password' });
+    otpAt = nowISO();
   }
 
   const today = nowISO();
@@ -65,54 +102,66 @@ router.post('/files', async (req, res) => {
   const fileId = nextFileId(deptCodeFor(me.section_id));
   const provStart = today;
   const tendStart = startsTendering(stageId) ? today : null;
+  const plan = Array.isArray(routingList) ? routingList.map((x) => Number(x && typeof x === 'object' ? x.id : x)).filter(Boolean) : [];
+  const prio = ['High', 'Medium', 'Low'].includes(priority) ? priority : 'Medium';
 
   let aiCaseId = null;
   let noteBody = body;
+  let bodyText = null;
   let formatsBuilt = [];
 
-  // If source is AI, open an AI case and generate N1 provisioning note via pipeline
+  // AI source: open the case and raise its provisioning note first. A refusal creates
+  // nothing — the case is removed again and the caller is told to draft manually.
   if (source === 'ai') {
+    const opened = aiStore.createCase({
+      caseRef: standalone ? fileId : (carNo || fileId),
+      title: String(title).trim(),
+      sourceCase,
+      user: req.user,
+      requisitionId: requisition?.id ?? null
+    });
+    let raiseRes;
     try {
-      const opened = aiStore.createCase({
-        caseRef: standalone ? fileId : carNo || 'CAR/25/229',
-        title: String(title).trim(),
-        sourceCase: sourceCase || 'nvb',
-        user: req.user
+      raiseRes = await aiStore.raiseNote(opened.id, 'provisioning', {
+        fields: fields || {}, override: Boolean(override), user: req.user
       });
-      aiCaseId = opened.id;
-
-      // Raise the provisioning note to advance the cascade to tender_opened
-      const raiseRes = await aiStore.raiseNote(aiCaseId, 'provisioning', {
-        fields: fields || {},
-        override: true,
-        user: req.user
-      });
-
-      if (raiseRes.ok && raiseRes.result) {
-        noteBody = formatProseToHtml(raiseRes.result.fullOutput || raiseRes.result.newSection);
-        formatsBuilt = raiseRes.result.formatsBuilt || [];
-      }
     } catch (err) {
-      console.warn('AI pipeline initialization error during initiateFile:', err);
+      raiseRes = { ok: false, code: 502, error: String(err?.message ?? err) };
     }
+    if (!raiseRes.ok || raiseRes.skipped) {
+      aiStore.deleteCase(opened.id);
+      return res.status(raiseRes.code === 428 ? 428 : (raiseRes.code || 502)).json({
+        error: raiseRes.error || 'The AI pipeline could not draft the provisioning note',
+        needsOverride: raiseRes.needsOverride,
+        advised: raiseRes.advised,
+        hint: 'Nothing was created. Switch the note source to manual, or resolve the refusal and retry.'
+      });
+    }
+    aiCaseId = opened.id;
+    bodyText = raiseRes.result.fullOutput || raiseRes.result.newSection || '';
+    noteBody = proseToHtml(bodyText);
+    formatsBuilt = raiseRes.result.formatsBuilt || [];
   }
 
   const f = run(
-    `INSERT INTO files(file_id,title,kind,car_no,standalone,initiator_id,initiator_unit_id,parent_file_id,line_no,ai_case_id,status,provisioning_start,tendering_start,created_at)
-     VALUES(?,?,?,?,?,?,?,?,?,?, 'open', ?,?, ?)`,
+    `INSERT INTO files(file_id,title,kind,car_no,standalone,initiator_id,initiator_unit_id,parent_file_id,line_no,ai_case_id,requisition_id,status,provisioning_start,tendering_start,created_at)
+     VALUES(?,?,?,?,?,?,?,?,?,?,?, 'open', ?,?, ?)`,
     fileId, String(title).trim(), kind, standalone ? null : carNo || null, standalone,
-    me.id, me.section_id, parentFileId != null ? Number(parentFileId) : null, lineNo || null, aiCaseId, provStart, tendStart, today
+    me.id, me.section_id, parentFileId != null ? Number(parentFileId) : null, lineNo || null, aiCaseId, requisition?.id ?? null, provStart, tendStart, today
   );
   const filePk = f.lastInsertRowid;
+  if (aiCaseId) aiStore.linkNoting(aiCaseId, Number(filePk));
+  if (requisition) linkRequisition(requisition.id, { noting_file_pk: Number(filePk), ai_case_id: aiCaseId }, { actor: me.name });
 
   const refNo = noteRefNo(fileId, 1);
   const txnId = nextTxnId();
-  const plannedRoutingJson = Array.isArray(routingList) && routingList.length > 0 ? JSON.stringify(routingList) : null;
   run(
-    `INSERT INTO notes(file_pk,seq,ref_no,txn_id,title,stage_id,source,body,classification,status,initiator_id,custodian_id,stage_no,planned_routing,created_at)
-     VALUES(?,1,?,?,?,?,?,?,?, 'draft', ?, ?, 1, ?, ?)`,
+    `INSERT INTO notes(file_pk,seq,ref_no,txn_id,title,stage_id,source,body,body_text,classification,status,initiator_id,custodian_id,stage_no,planned_routing,priority,approver_id,otp_verified_at,created_at)
+     VALUES(?,1,?,?,?,?,?,?,?,?, 'draft', ?, ?, 1, ?, ?, ?, ?, ?)`,
     filePk, refNo, txnId, noteTitle, stageId || 'provisioning', source === 'ai' ? 'ai' : 'manual',
-    String(noteBody || ''), classification, me.id, me.id, plannedRoutingJson, today
+    String(noteBody || ''), bodyText, classification, me.id, me.id,
+    plan.length ? JSON.stringify(plan) : null, prio,
+    approverId ? Number(approverId) : (plan.at(-1) ?? null), otpAt, today
   );
 
   const noteRow = get('SELECT * FROM notes WHERE txn_id = ?', txnId);
@@ -129,16 +178,11 @@ router.post('/files', async (req, res) => {
     `INSERT INTO attachments(note_id,kind,name,ref,uploaded_by_id,created_at) VALUES(?, 'pm', ?, ?, NULL, ?)`,
     noteRow.id, 'Purchase Manual Issue-4', 'PM/Issue-4', today
   );
+  attachAnnexures(noteRow.id, formatsBuilt, me.id);
+  // Stages the DOP requires an internal approval chain for get it planned now (Module E).
+  ensureChain(noteRow, get('SELECT * FROM files WHERE id = ?', filePk), me, req.user);
 
-  // If deterministic formats were built by the AI pipeline (e.g. MPR/CAR format), attach them
-  for (const fmt of formatsBuilt) {
-    run(
-      `INSERT INTO attachments(note_id,kind,name,ref,uploaded_by_id,created_at) VALUES(?, 'doc', ?, ?, ?, ?)`,
-      noteRow.id, `Annexure: ${fmt.format || fmt.id || 'MPR/CAR Format'}`, JSON.stringify(fmt), me.id, today
-    );
-  }
-
-  res.status(201).json({ fileId, filePk, note: noteRow, aiCaseId });
+  res.status(201).json({ fileId, filePk, note: noteRow, aiCaseId, requisitionId: requisition?.id ?? null, approvalChainId: noteRow.approval_chain_id ?? null });
 });
 
 // Add the next note (stage) to an existing open file.
@@ -146,10 +190,13 @@ router.post('/files/:filePk/notes', (req, res) => {
   const me = currentMember(req);
   const file = get('SELECT * FROM files WHERE id = ?', Number(req.params.filePk));
   if (!file) return res.status(404).json({ error: 'File not found' });
-  const { stageId = null, title, body = '', classification = 'normal', routingList = null } = req.body || {};
+  const {
+    stageId = null, title, body = '', classification = 'normal', routingList = null,
+    priority = 'Medium', approverId = null
+  } = req.body || {};
   if (!CLASSES.includes(classification)) return res.status(422).json({ error: 'invalid classification' });
   try {
-    res.status(201).json({ note: addNote(file, me, { stageId, title, body, classification, routingList }) });
+    res.status(201).json({ note: addNote(file, me, { stageId, title, body, classification, routingList, priority, approverId }) });
   } catch (e) {
     res.status(e.status || 500).json({ error: e.message });
   }
@@ -160,7 +207,7 @@ router.post('/files/:filePk/notes', (req, res) => {
 router.get('/files', (req, res) => {
   const me = currentMember(req);
   const files = all(
-    `SELECT f.id, f.file_id, f.title, f.kind, f.car_no, f.standalone, f.ai_case_id, f.status, f.created_at, f.initiator_unit_id,
+    `SELECT f.id, f.file_id, f.title, f.kind, f.car_no, f.standalone, f.ai_case_id, f.requisition_id, f.status, f.created_at, f.initiator_unit_id,
             im.name AS initiator, tim.name AS tender_initiator,
             (SELECT COUNT(*) FROM notes n WHERE n.file_pk = f.id) AS note_count,
             (SELECT n.txn_id FROM notes n WHERE n.file_pk = f.id ORDER BY n.seq ASC LIMIT 1) AS first_txn
@@ -196,6 +243,7 @@ router.get('/notes/:txnId', (req, res) => {
   const file = get('SELECT * FROM files WHERE id = ?', note.file_pk);
   const initiator = get('SELECT id, name, pb, designation FROM members WHERE id = ?', note.initiator_id);
   const custodian = get('SELECT id, name, pb, designation FROM members WHERE id = ?', note.custodian_id);
+  const approver = note.approver_id ? get('SELECT id, name, pb, designation FROM members WHERE id = ?', note.approver_id) : null;
 
   // Ensure noting_entries has at least N1
   let entries = notingEntries(note.id);
@@ -226,6 +274,8 @@ router.get('/notes/:txnId', (req, res) => {
     file,
     initiator,
     custodian,
+    approver,
+    approvalChain: chainSummary(note),
     allNotes,
     entries,
     plannedRouting,
@@ -250,7 +300,16 @@ router.post('/notes/:txnId/entries', (req, res) => {
   }
 });
 
-// AI Cascade status for this note & file
+const cascadeMeta = () => ({
+  start: aiGraph.START,
+  stages: aiGraph.STAGE_META,
+  nodes: aiGraph.CASCADE_NODES,
+  postTenderFormats: aiGraph.POST_TENDER_FORMATS,
+  checklist: aiGraph.CHECKLIST
+});
+
+// AI Cascade status for this note & file. Read-only: an unlinked file says so and lists
+// the source cases it could be linked to (POST /notes/:txnId/ai-link).
 router.get('/notes/:txnId/ai-cascade', (req, res) => {
   const note = get('SELECT * FROM notes WHERE txn_id = ?', req.params.txnId);
   if (!note) return res.status(404).json({ error: 'Note not found' });
@@ -259,32 +318,33 @@ router.get('/notes/:txnId/ai-cascade', (req, res) => {
 
   const file = get('SELECT * FROM files WHERE id = ?', note.file_pk);
   if (!file) return res.status(404).json({ error: 'File not found' });
-
-  let caseId = file.ai_case_id;
-  if (!caseId) {
-    // Lazily create and link an AI case
-    const created = aiStore.createCase({
-      caseRef: file.car_no || file.file_id,
-      title: file.title,
-      sourceCase: 'nvb',
-      user: req.user
+  if (!file.ai_case_id) {
+    return res.json({
+      ok: true, linked: false, case: null, cascadeMeta: cascadeMeta(),
+      sources: aiLoadInputs.availableCases(),
+      canLink: isCaseMember(file, a.me)
     });
-    caseId = created.id;
-    run('UPDATE files SET ai_case_id = ? WHERE id = ?', caseId, file.id);
   }
+  res.json({ ok: true, linked: true, case: aiStore.loadCase(file.ai_case_id, req.user), cascadeMeta: cascadeMeta() });
+});
 
-  const loaded = aiStore.loadCase(caseId, req.user);
-  res.json({
-    ok: true,
-    case: loaded,
-    cascadeMeta: {
-      start: aiGraph.START,
-      stages: aiGraph.STAGE_META,
-      nodes: aiGraph.CASCADE_NODES,
-      postTenderFormats: aiGraph.POST_TENDER_FORMATS,
-      checklist: aiGraph.CHECKLIST
-    }
-  });
+// Link an AI case to this file (creates it from a named source case). Owners and routed
+// members only; a file links exactly one case.
+router.post('/notes/:txnId/ai-link', (req, res) => {
+  const note = get('SELECT * FROM notes WHERE txn_id = ?', req.params.txnId);
+  if (!note) return res.status(404).json({ error: 'Note not found' });
+  const a = requireNoteAccess(req, res, note);
+  if (!a) return;
+  const file = get('SELECT * FROM files WHERE id = ?', note.file_pk);
+  if (!file) return res.status(404).json({ error: 'File not found' });
+  if (file.ai_case_id) return res.status(409).json({ error: 'This file already has an AI case linked', aiCaseId: file.ai_case_id });
+  if (!isCaseMember(file, a.me)) return res.status(403).json({ error: 'Only a member of this case can link an AI case' });
+  const sourceCase = String(req.body?.sourceCase || 'nvb');
+  if (!validSource(sourceCase)) return res.status(422).json({ error: `Unknown AI source case "${sourceCase}"`, sources: aiLoadInputs.availableCases() });
+  const created = aiStore.createCase({ caseRef: file.car_no || file.file_id, title: file.title, sourceCase, user: req.user });
+  run('UPDATE files SET ai_case_id = ? WHERE id = ?', created.id, file.id);
+  aiStore.linkNoting(created.id, file.id);
+  res.status(201).json({ ok: true, linked: true, case: aiStore.loadCase(created.id, req.user), cascadeMeta: cascadeMeta() });
 });
 
 // AI form pre-fill for a specific note in the cascade
@@ -295,20 +355,9 @@ router.get('/notes/:txnId/ai-form/:noteId', (req, res) => {
 
   const file = get('SELECT * FROM files WHERE id = ?', note.file_pk);
   if (!file) return res.status(404).json({ error: 'File not found' });
+  if (!file.ai_case_id) return res.status(409).json({ error: 'No AI case is linked to this file — link one first', linked: false });
 
-  let caseId = file.ai_case_id;
-  if (!caseId) {
-    const created = aiStore.createCase({
-      caseRef: file.car_no || file.file_id,
-      title: file.title,
-      sourceCase: 'nvb',
-      user: req.user
-    });
-    caseId = created.id;
-    run('UPDATE files SET ai_case_id = ? WHERE id = ?', caseId, file.id);
-  }
-
-  const form = aiStore.noteForm(caseId, req.params.noteId);
+  const form = aiStore.noteForm(file.ai_case_id, req.params.noteId);
   return form.ok ? res.json(form) : res.status(422).json({ error: form.error });
 });
 
@@ -322,20 +371,9 @@ router.post('/notes/:txnId/ai-raise', async (req, res) => {
 
   const file = get('SELECT * FROM files WHERE id = ?', note.file_pk);
   if (!file) return res.status(404).json({ error: 'File not found' });
+  if (!file.ai_case_id) return res.status(409).json({ error: 'No AI case is linked to this file — link one first', linked: false });
 
-  let caseId = file.ai_case_id;
-  if (!caseId) {
-    const created = aiStore.createCase({
-      caseRef: file.car_no || file.file_id,
-      title: file.title,
-      sourceCase: 'nvb',
-      user: req.user
-    });
-    caseId = created.id;
-    run('UPDATE files SET ai_case_id = ? WHERE id = ?', caseId, file.id);
-  }
-
-  const { noteId, fields = {}, override = false, routingList = null } = req.body || {};
+  const { noteId, fields = {}, override = false, routingList = null, priority = 'Medium', approverId = null } = req.body || {};
   if (!noteId) return res.status(422).json({ error: 'noteId is required' });
   // Check the stage-file guards before the AI case advances, so a refused note never moves the cascade.
   try {
@@ -344,7 +382,7 @@ router.post('/notes/:txnId/ai-raise', async (req, res) => {
     return res.status(err.status || 500).json({ error: err.message });
   }
 
-  const out = await aiStore.raiseNote(caseId, noteId, {
+  const out = await aiStore.raiseNote(file.ai_case_id, noteId, {
     fields: fields || {},
     override: Boolean(override),
     user: req.user
@@ -359,17 +397,12 @@ router.post('/notes/:txnId/ai-raise', async (req, res) => {
   }
 
   if (out.skipped) {
-    return res.json({
-      ok: true,
-      skipped: true,
-      branch: out.branch,
-      case: out.kase
-    });
+    return res.json({ ok: true, skipped: true, branch: out.branch, case: out.kase });
   }
 
   const stageMeta = aiGraph.STAGE_META[noteId] || {};
   const noteTitle = stageMeta.title || out.result?.title || noteId;
-  const bodyHtml = formatProseToHtml(out.result?.fullOutput || out.result?.newSection);
+  const bodyText = out.result?.fullOutput || out.result?.newSection || '';
 
   // Add the generated note to the file
   let newNote;
@@ -377,26 +410,21 @@ router.post('/notes/:txnId/ai-raise', async (req, res) => {
     newNote = addNote(file, me, {
       stageId: noteId,
       title: noteTitle,
-      body: bodyHtml,
+      body: proseToHtml(bodyText),
+      bodyText,
       classification: note.classification || 'normal',
-      routingList
+      routingList,
+      priority,
+      approverId,
+      source: 'ai'
     });
   } catch (err) {
+    // The stage file could not be created after all: withdraw the AI note so the two stores agree.
+    aiStore.rollbackNote(file.ai_case_id, noteId, req.user);
     return res.status(err.status || 500).json({ error: err.message });
   }
 
-  // Attach all computed annexures/formats
-  const today = nowISO();
-  for (const fmt of out.result?.formatsBuilt || []) {
-    run(
-      `INSERT INTO attachments(note_id, kind, name, ref, uploaded_by_id, created_at) VALUES(?, 'doc', ?, ?, ?, ?)`,
-      newNote.id,
-      `Annexure: ${fmt.format || fmt.id || 'Format'}`,
-      JSON.stringify(fmt),
-      me.id,
-      today
-    );
-  }
+  attachAnnexures(newNote.id, out.result?.formatsBuilt || [], me.id);
 
   res.json({
     ok: true,
@@ -476,4 +504,3 @@ router.post('/notes/:txnId/send-check', (req, res) => {
 });
 
 export default router;
-

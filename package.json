@@ -10,7 +10,7 @@
     "dev": "concurrently -n server,client -c blue,green \"npm run dev -w server\" \"npm run dev -w client\"",
     "dev:server": "npm run dev -w server",
     "dev:client": "npm run dev -w client",
-    "db:migrate": "npm run db:migrate -w server",
+    "check": "node server/ld.check.mjs && node server/server.check.mjs && node server/noting/noting.check.mjs && node server/contracts/contracts.check.mjs && node server/approvals/approvals.check.mjs && node server/ai/ai.check.mjs && node server/formats/formats.check.mjs && node server/trackers/trackers.check.mjs && node server/requisitions/requisitions.check.mjs && node server/claims/claims.check.mjs && node server/kpis/kpis.check.mjs",
     "docker:up": "docker compose up --build -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f"

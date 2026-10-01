@@ -30,7 +30,17 @@ export const NEEDBASED = {
   short_closure: { title: 'Short Closure Note', next: null },
   tec_query: { title: 'TEC Query Note', next: 'tec_report' },
   advance_payment: { title: 'Advance Payment Note', next: 'pp' },
-  po_amendment: { title: 'PO Amendment', next: null }
+  po_amendment: { title: 'PO Amendment', next: null },
+  // Off-cascade need-based notes (Portal Hub PRO-06, PRO-14/15/16/18 and the tender-time
+  // corrigenda). Mirrored in server/ai/cascadeGraph.js STAGE_META, server/ai/stages.js and
+  // ai/stages.py. None of them closes the proposal: `next` names the stage the file resumes at.
+  tec_representation: { title: 'TEC Representation Note', next: 'pbo' },
+  bank_insertion: { title: 'Bank Detail Insertion Note', next: 'po' },
+  vendor_creation: { title: 'Vendor ID Creation Note', next: 'po' },
+  vendor_registration: { title: 'Vendor Registration Note', next: 'emd' },
+  misc: { title: 'Misc / Standalone Note', next: 'misc' },
+  due_date_ext: { title: 'Tender Due Date Extension Note', next: 'emd' },
+  addendum: { title: 'Tender Addendum / Corrigendum Note', next: 'emd' }
 };
 
 export const VALID_STAGES = new Set([...STAGE_ORDER, ...Object.keys(NEEDBASED), 'tender_doc']);
@@ -39,7 +49,9 @@ export const stageTitle = (id) => STAGE_TITLE[id] || NEEDBASED[id]?.title || (id
 
 // Tendering begins with the first stage raised after provisioning — EMD, or straight to TEC
 // (client, 13/09/2026) — which stamps files.tendering_start for the live-status report.
-export const startsTendering = (id) => Boolean(id) && id !== 'provisioning' && id !== 'tender_doc';
+// Vendor/bank housekeeping notes and a misc note do not open the tendering phase.
+const PRE_TENDER = new Set(['provisioning', 'tender_doc', 'misc', 'vendor_registration', 'vendor_creation', 'bank_insertion']);
+export const startsTendering = (id) => Boolean(id) && !PRE_TENDER.has(id);
 
 export function nextStage(id) {
   if (id === 'provisioning') return 'emd';

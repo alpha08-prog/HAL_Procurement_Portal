@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Attachments from '../../components/Attachments.jsx';
+import Clarifications from '../../components/Clarifications.jsx';
+import NoteRenderer from '../../components/NoteRenderer.jsx';
 import RoutingTimeline from '../../components/RoutingTimeline.jsx';
 import RichTextEditor from '../../components/noting/RichTextEditor.jsx';
 import MemberPickerModal from '../../components/noting/MemberPickerModal.jsx';
@@ -16,6 +18,7 @@ import {
   addNotingEntry,
   decideNote,
   fetchAiCascade,
+  linkAiCase,
   fetchAiNoteForm,
   fetchAlerts,
   fetchGrants,
@@ -72,6 +75,7 @@ export default function NoteDetail() {
   const [showFormatsModal, setShowFormatsModal] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState(null);
   const [aiBusy, setAiBusy] = useState(false);
+  const [aiLinkSource, setAiLinkSource] = useState('nvb');
   
   const [showCoverPage, setShowCoverPage] = useState(true);
   const [isEditingDraft, setIsEditingDraft] = useState(false);
@@ -81,6 +85,7 @@ export default function NoteDetail() {
     cascade: true,
     routing: true,
     attachments: true,
+    clarifications: false,
     grants: false
   });
   
@@ -128,7 +133,7 @@ export default function NoteDetail() {
   if (error && !data) return <div className="grid-empty">Could not load e-file: {error}</div>;
   if (!data) return <div className="grid-empty">Loading e-file…</div>;
 
-  const { note, file, initiator, custodian, allNotes = [], proposal } = data;
+  const { note, file, initiator, custodian, allNotes = [], proposal, approvalChain } = data;
   const isHolder = me && me.id === note.custodian_id;
   const routable = ['draft', 'in_check', 'routed'].includes(note.status);
   const decidable = ['routed', 'in_check'].includes(note.status);
@@ -167,7 +172,7 @@ export default function NoteDetail() {
         await sendForCheck(txnId, { toMemberId: member.id, comment: pick.comment || 'Please review draft' });
         setPick({ ...pick, comment: '' });
       } else if (memberPickerPurpose === 'share') {
-        const res = await grantAccess(txnId, member.id);
+        const res = await grantAccess(txnId, { toMemberId: member.id });
         const fullLink = `${window.location.origin}${res.link}`;
         setGeneratedShareLink({ name: member.name, pb: member.pb, link: fullLink });
         setSuccessMsg(`Need-to-know access link generated for ${member.name} (${member.pb}).`);
@@ -351,9 +356,24 @@ export default function NoteDetail() {
     }
   };
 
+  const handleLinkAiCase = async () => {
+    setAiBusy(true);
+    setError(null);
+    try {
+      const out = await linkAiCase(txnId, { sourceCase: aiLinkSource });
+      setAiCascade(out);
+      setSuccessMsg(`✓ AI case #${out.case?.id} linked to this file.`);
+      load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
   const kase = aiCascade?.case;
   const permissions = kase?.permissions;
-  const currentStageNo = kase?.node?.stageNo || 1;
+  const currentStageNo = kase?.node?.stageNo ?? 'pre-tender';
 
   return (
     <section className="screen">
@@ -529,6 +549,18 @@ export default function NoteDetail() {
                 {proposal.current.holder_name ? `, with ${proposal.current.holder_name}` : ''}
               </span>
               <span>Tender initiator: <strong>{proposal.file.tender_initiator?.name || 'not assigned'}</strong></span>
+            </div>
+          )}
+
+          {/* Module E: the internal approval chain this stage must clear before it can be approved here */}
+          {approvalChain && (
+            <div className={'banner ' + (approvalChain.released ? 'banner-success' : 'banner-restricted')} style={{ marginBottom: 10, fontSize: 12 }}>
+              Approval chain <Link to={`/approvals/chain/${approvalChain.id}`}>#{approvalChain.id}</Link>
+              {approvalChain.label ? ` (${approvalChain.label})` : ''} — {approvalChain.hops} hop{approvalChain.hops === 1 ? '' : 's'} recorded ·{' '}
+              {approvalChain.released
+                ? 'released: this stage may now be approved.'
+                : `not released${approvalChain.decision ? ` (CFA ${approvalChain.decision}ed)` : ''}: ${approvalChain.releaseBlockedBy.slice(0, 3).join('; ')}${approvalChain.releaseBlockedBy.length > 3 ? '; …' : ''}`}
+              {approvalChain.unresolved > 0 && ` ${approvalChain.unresolved} position(s) still to be named on the chain.`}
             </div>
           )}
 
@@ -713,7 +745,12 @@ export default function NoteDetail() {
                   )}
 
                   <div className="ef-noting-item-body">
-                    <div dangerouslySetInnerHTML={{ __html: entry.body || '<p>—</p>' }} />
+                    {entry.seq === 1 && note.source === 'ai' && note.body_text ? (
+                      // The pipeline's note: pipe-delimited rows become real tables (NoteRenderer).
+                      <NoteRenderer bare note={{ title: note.title, meta: {}, fullOutput: note.body_text, annexures: [] }} />
+                    ) : (
+                      <div dangerouslySetInnerHTML={{ __html: entry.body || '<p>—</p>' }} />
+                    )}
                   </div>
 
                   <div className="ef-noting-item-signature">
@@ -888,6 +925,31 @@ export default function NoteDetail() {
             </div>
           )}
 
+          {/* No AI case yet: offer to link one (read-only GET never creates it) */}
+          {aiCascade && aiCascade.linked === false && aiCascade.canLink && (
+            <div className="ef-accordion-item open">
+              <div className="ef-accordion-trigger"><span>AI Cascade</span></div>
+              <div className="ef-accordion-content" style={{ display: 'block' }}>
+                <p className="field-hint" style={{ marginTop: 0 }}>
+                  No AI case is linked to this file. Link one to draft the next stages with the cascade.
+                </p>
+                <select
+                  className="field-input"
+                  value={aiLinkSource}
+                  onChange={(e) => setAiLinkSource(e.target.value)}
+                  style={{ marginBottom: 8 }}
+                >
+                  {(aiCascade.sources || []).map((s) => (
+                    <option key={s.id} value={s.id}>{s.label}{s.fixture ? ' [fabricated]' : ''}</option>
+                  ))}
+                </select>
+                <button type="button" className="btn" style={{ width: '100%', fontSize: 11 }} disabled={aiBusy} onClick={handleLinkAiCase}>
+                  Link AI case
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* AI Cascade: Allowed Notes — compact accordion in right panel */}
           {kase && kase.status === 'open' && kase.options?.length > 0 && (
             <div className={`ef-accordion-item${accordionOpen.cascade ? ' open' : ''}`}>
@@ -969,7 +1031,18 @@ export default function NoteDetail() {
               <span className="arrow">▼</span>
             </button>
             <div className="ef-accordion-content">
-              <Attachments txnId={txnId} isInitiator={me && me.id === note.initiator_id} canAdd={isHolder} />
+              <Attachments txnId={txnId} isInitiator={me && me.id === note.initiator_id} canAdd={isHolder} requisitionId={file.requisition_id} />
+            </div>
+          </div>
+
+          {/* Clarifications: two-party threads (asker + asked), never part of the note body */}
+          <div className={`ef-accordion-item${accordionOpen.clarifications ? ' open' : ''}`}>
+            <button type="button" className="ef-accordion-trigger" onClick={() => toggleAccordion('clarifications')}>
+              <span>Clarifications</span>
+              <span className="arrow">▼</span>
+            </button>
+            <div className="ef-accordion-content">
+              {accordionOpen.clarifications && <Clarifications txnId={txnId} me={me} people={members} />}
             </div>
           </div>
 

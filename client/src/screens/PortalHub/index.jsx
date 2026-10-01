@@ -2,10 +2,25 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PortalItemModal from '../../components/portal/PortalItemModal.jsx';
 import { PORTAL_TABS } from '../../config/portalStructure.js';
+import { fetchFormats } from '../../lib/toolsApi.js';
+
+const TOTAL_ITEMS = PORTAL_TABS.reduce((n, t) => n + t.items.length, 0);
+const KPI_COUNT = PORTAL_TABS.find((t) => t.id === 'kpi')?.items.length ?? 0;
 
 export default function PortalHub() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  // The formats count is the server library's (GET /api/formats), not a client constant.
+  const [formatsSummary, setFormatsSummary] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetchFormats()
+      .then((d) => !cancelled && setFormatsSummary(d.summary))
+      .catch(() => !cancelled && setFormatsSummary(null));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Read active tab from URL query param if present
   const initialTabId = searchParams.get('tab');
@@ -36,7 +51,7 @@ export default function PortalHub() {
   const activeTab = PORTAL_TABS.find((t) => t.id === activeTabId) ?? null;
 
   const handleItemClick = (item, tab) => {
-    if (item.type === 'route' && item.route) {
+    if ((item.type === 'route' || item.type === 'workflow') && item.route) {
       navigate(item.route);
     } else {
       setActiveModal({ item, tab });
@@ -85,7 +100,7 @@ export default function PortalHub() {
                 className="ph-back-btn"
                 onClick={() => selectTab(null)}
               >
-                ← All 6 Lifecycle Modules
+                ← All {PORTAL_TABS.length} Lifecycle Modules
               </button>
               <span className="ph-crumb-sep">/</span>
               <span className="ph-crumb-current">{activeTab.title}</span>
@@ -210,7 +225,7 @@ export default function PortalHub() {
               <input
                 type="text"
                 className="ph-search-input"
-                placeholder="Search 80+ tools, formats, calculators, or manuals (e.g. LD, PAC, RV, STC, CAR, FTR)..."
+                placeholder={`Search ${TOTAL_ITEMS} tools, formats, calculators, or manuals (e.g. LD, PAC, RV, STC, CAR, FTR)...`}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -229,22 +244,24 @@ export default function PortalHub() {
             {/* 4 Metric Items */}
             <div className="ph-compact-metrics">
               <div className="ph-metric-item">
-                <span className="ph-metric-num">6</span>
+                <span className="ph-metric-num">{PORTAL_TABS.length}</span>
                 <span className="ph-metric-lbl">Lifecycle Modules</span>
               </div>
               <div className="ph-metric-sep" />
               <div className="ph-metric-item">
-                <span className="ph-metric-num">80+</span>
+                <span className="ph-metric-num">{TOTAL_ITEMS}</span>
                 <span className="ph-metric-lbl">Integrated Tools &amp; Notes</span>
               </div>
               <div className="ph-metric-sep" />
               <div className="ph-metric-item">
-                <span className="ph-metric-num">26</span>
-                <span className="ph-metric-lbl">Standard Formats (Issue-4)</span>
+                <span className="ph-metric-num">{formatsSummary ? formatsSummary.total : '—'}</span>
+                <span className="ph-metric-lbl">
+                  Standard Formats{formatsSummary ? ` (${formatsSummary.verified} from HAL docs)` : ' (library)'}
+                </span>
               </div>
               <div className="ph-metric-sep" />
               <div className="ph-metric-item">
-                <span className="ph-metric-num">16</span>
+                <span className="ph-metric-num">{KPI_COUNT}</span>
                 <span className="ph-metric-lbl">Statutory KPIs &amp; SLAs</span>
               </div>
             </div>

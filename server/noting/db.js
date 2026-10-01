@@ -33,6 +33,15 @@ ensureColumn('notes', 'planned_routing', 'TEXT');
 ensureColumn('files', 'tender_initiator_id', 'INTEGER');
 ensureColumn('files', 'tender_handover_at', 'TEXT');
 ensureColumn('cabinet', 'note_id', 'INTEGER');
+ensureColumn('notes', 'priority', "TEXT DEFAULT 'Medium'");
+ensureColumn('notes', 'approver_id', 'INTEGER');
+ensureColumn('notes', 'body_text', 'TEXT');
+ensureColumn('notes', 'otp_verified_at', 'TEXT');
+ensureColumn('notes', 'approval_chain_id', 'INTEGER');
+ensureColumn('routing_steps', 'on_behalf_of_id', 'INTEGER');
+ensureColumn('attachments', 'payload', 'TEXT');
+ensureColumn('delegations', 'cancelled_at', 'TEXT');
+ensureColumn('files', 'requisition_id', 'INTEGER');
 
 // Thin helpers. Params are positional `?` bound via spread (node:sqlite anonymous params).
 export const all = (sql, ...p) => db.prepare(sql).all(...p);

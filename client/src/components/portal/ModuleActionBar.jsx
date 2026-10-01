@@ -1,53 +1,15 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { PORTAL_TABS } from '../../config/portalStructure.js';
+import { groupById, groupForPath } from '../../config/roles.js';
 import PortalItemModal from './PortalItemModal.jsx';
 
-/**
- * Maps any pathname to its parent tab in PORTAL_TABS.
- */
+// The ribbon shows the Portal Hub tab of the nav group the current path belongs to
+// (config/roles.js GROUPS[].tab). Detail routes map through the same table, so
+// /approvals/chain/:id gets the Procurement ribbon like /approvals/chains does.
 function getActiveTabForPath(pathname) {
-  if (!pathname || pathname === '/' || pathname === '/portal') return null;
-
-  if (pathname.startsWith('/provisioning')) {
-    return PORTAL_TABS.find((t) => t.id === 'provisioning') || null;
-  }
-  if (
-    pathname.startsWith('/noting') ||
-    pathname.startsWith('/ai-cases') ||
-    pathname.startsWith('/ai-documents') ||
-    pathname.startsWith('/approvals/bids') ||
-    pathname.startsWith('/approvals/committees') ||
-    pathname.startsWith('/approvals/directory') ||
-    pathname.startsWith('/approvals/chains')
-  ) {
-    return PORTAL_TABS.find((t) => t.id === 'procurement') || null;
-  }
-  if (pathname.startsWith('/approvals/intake')) {
-    return PORTAL_TABS.find((t) => t.id === 'provisioning') || null;
-  }
-  if (pathname.startsWith('/contracts')) {
-    return PORTAL_TABS.find((t) => t.id === 'contract_management') || null;
-  }
-  if (
-    pathname === '/rv-inbox' ||
-    pathname === '/payment-advice' ||
-    pathname === '/forward-advice' ||
-    pathname === '/process-payment' ||
-    pathname === '/hod-approval' ||
-    pathname === '/payment-register' ||
-    pathname === '/payment-kpis'
-  ) {
-    return PORTAL_TABS.find((t) => t.id === 'payment') || null;
-  }
-  if (pathname.startsWith('/claims')) {
-    return PORTAL_TABS.find((t) => t.id === 'claim_management') || null;
-  }
-  if (pathname.startsWith('/kpis')) {
-    return PORTAL_TABS.find((t) => t.id === 'kpi') || null;
-  }
-
-  return null;
+  const tabId = groupById(groupForPath(pathname)).tab;
+  return tabId ? PORTAL_TABS.find((t) => t.id === tabId) || null : null;
 }
 
 export default function ModuleActionBar() {
@@ -63,17 +25,20 @@ export default function ModuleActionBar() {
 
   const handleActionClick = (item) => {
     setDrawerOpen(false);
-    if (item.type === 'route' && item.route) {
+    if ((item.type === 'route' || item.type === 'workflow') && item.route) {
       navigate(item.route);
     } else {
       setActiveModal({ item, tab: activeTab });
     }
   };
 
+  // An item that carries a query string (e.g. /noting/initiate?stage=emd) is "current" only
+  // when the query matches too, so eight stage items don't all light up at once.
   const isCurrentRoute = (item) => {
     if (!item.route) return false;
-    const baseRoute = item.route.split('?')[0];
-    return location.pathname === baseRoute;
+    const [base, query] = item.route.split('?');
+    if (location.pathname !== base) return false;
+    return query ? location.search === `?${query}` : true;
   };
 
   return (

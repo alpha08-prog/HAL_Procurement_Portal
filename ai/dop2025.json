@@ -1,0 +1,24 @@
+{
+  "_status": "bands_pending_client",
+  "_note": "DOP-2025 Annexure-3 value bands are NOT in sampleData. `bands` stays empty until HAL supplies the table; until then rules.dopCfaLevel() reports pending:true and the CFA level is taken from the indentor checklist (provisioning sl 11). `rows` is the illustrative matrix shown by the DoP picker in the client; every row is verified:false because none of it comes from a client document. Read by server/ai/rules.js and (to mirror) ai/rules.py.",
+  "levelDesig": {
+    "Level I": "GM(AOD)",
+    "Level II": "AGM(IMM-OH)"
+  },
+  "clauses": [
+    { "clause": "Annex-3-B-2", "when": "L1 basis, more than one valid offer, Open/Limited tender" },
+    { "clause": "Annex-3-B-3", "when": "single valid offer" }
+  ],
+  "bands": [],
+  "bandsShape": { "min": "INR, inclusive", "max": "INR, inclusive or null", "tenderType": "Open|Limited|Single|null", "level": "Level I|Level II|…", "cfa": "designation" },
+  "rows": [
+    { "annexure": "Annexure 3(B)(1)", "para": "Para 1.1", "goodsType": "Goods / Consumables", "approvalType": "Purchase Concurrence & Sanction", "subCategory": "General Stores & Consumables (< ₹5 Lakhs)", "approxVal": "₹5,00,000", "fca": "FCA (Finance)", "cfa": "CFA: HOD (IMM)", "verified": false },
+    { "annexure": "Annexure 3(B)(2)", "para": "Para 1.2", "goodsType": "Goods / Stores", "approvalType": "Purchase Proposal Approval (DPC)", "subCategory": "Spares & Production Materials (₹5L – ₹25L)", "approxVal": "₹25,00,000", "fca": "FCA (Finance / IMM-OH)", "cfa": "CFA: AGM (IMM-OH)", "verified": false },
+    { "annexure": "Annexure 3(A)(1)", "para": "Para 2.1", "goodsType": "Capital Goods", "approvalType": "Plant & Machinery / Tools Sanction", "subCategory": "High Value Machinery / Tools (₹25L – ₹1 Cr)", "approxVal": "₹1,00,00,000", "fca": "FCA (Finance / GM-Fin)", "cfa": "CFA: GM (AOD)", "verified": false },
+    { "annexure": "Annexure 3(A)(2)", "para": "Para 2.2", "goodsType": "Proprietary Spares", "approvalType": "Single Tender Sanction (PAC / Proprietary)", "subCategory": "OEM / Proprietary Overhaul Spares (> ₹10L)", "approxVal": "₹50,00,000", "fca": "FCA (Finance / IMM)", "cfa": "CFA: GM (AOD)", "verified": false },
+    { "annexure": "Annexure 3(C)(1)", "para": "Para 3.1", "goodsType": "Services / AMC", "approvalType": "Service Contract Sanction", "subCategory": "Maintenance / Equipment AMC / Calibrations (< ₹10L)", "approxVal": "₹10,00,000", "fca": "FCA (Finance)", "cfa": "CFA: DGM (IMM / Maint)", "verified": false },
+    { "annexure": "Annexure 3(C)(2)", "para": "Para 3.2", "goodsType": "Turnkey Overhaul / IT", "approvalType": "Major Technical Sanction & Consultancy", "subCategory": "Turnkey Services / Software Licences (> ₹50L)", "approxVal": "₹75,00,000", "fca": "FCA (Finance / Dir-Fin)", "cfa": "CFA: Executive Director / Director", "verified": false },
+    { "annexure": "Annexure 1(A)", "para": "Para 4.1", "goodsType": "Emergency / Fast-Track", "approvalType": "Operational Sanction (AOG / Aircraft On Ground)", "subCategory": "Urgent Overhaul Aircraft Spares & Services", "approxVal": "₹20,00,000", "fca": "FCA (Finance)", "cfa": "CFA: General Manager (AOD)", "verified": false },
+    { "annexure": "Annexure 2(B)", "para": "Para 5.1", "goodsType": "Rate Contract", "approvalType": "Annual Rate Contract Finalisation", "subCategory": "Standard Consumables / Fasteners / Hardware", "approxVal": "₹1,50,00,000", "fca": "FCA (Corporate Finance)", "cfa": "CFA: Executive Director (IMM)", "verified": false }
+  ]
+}

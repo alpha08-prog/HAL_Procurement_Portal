@@ -4,9 +4,9 @@ This document covers two things: how to get the portal running, and exactly what
 on each screen — who acts, what they may and may not do, and why the system refuses what
 it refuses.
 
-It is the guide to the **whole** portal. Two companion documents go deeper on the older
-parts: `WORKFLOW_GUIDE.md` (e-File Noting and Contract Generation) and `ai/CASCADE.md`
-(the responsibility cascade and its provenance).
+It is the guide to the **whole** portal. `WORKFLOW_GUIDE.md` goes deeper on e-File Noting
+and Contract Generation screen by screen, and `ai/CASCADE.md` on the responsibility
+cascade and its provenance.
 
 ---
 
@@ -15,17 +15,21 @@ parts: `WORKFLOW_GUIDE.md` (e-File Noting and Contract Generation) and `ai/CASCA
 ### 1.1 One-time setup
 
 ```bash
-cd ~/github/hal/HAL_Procurement_Portal
-npm install                                                    # client + server (workspaces)
-conda run -n hal pip install pymupdf python-docx requests reportlab openpyxl
+cd HAL_Procurement_Portal
+npm install                                    # client + server (npm workspaces)
+cp server/.env.example server/.env             # optional — see 1.7
 ```
 
-The Python side lives in a conda env called `hal`. Nothing in the **web app** needs
-Python — that only matters for the CLI in Part 4.
+**Node.js 22.5 or newer is required** (development runs on Node 24): every persistent store
+is the built-in `node:sqlite`, created and seeded under `server/data/` on first boot.
+There is no database to install and no Docker needed for development.
 
-**No database to install.** Every store is `node:sqlite`, created under `server/data/` on
-first boot. The `pg` dependency is only used by the optional `server/database/migrate.js`;
-you do not need PostgreSQL, and you do not need Docker.
+The Python side (Module B, the CLI) lives in a conda env called `hal` and is optional:
+
+```bash
+conda create -n hal python=3.10 -y
+conda run -n hal pip install pymupdf python-docx requests reportlab openpyxl
+```
 
 ### 1.2 Start the language model (optional)
 
@@ -34,22 +38,21 @@ ollama serve                  # in its own terminal, leave it running
 ollama pull qwen2.5:3b        # one-time
 ```
 
-Only the note *drafting* uses this. Without it everything still works — each note's
+Only the note *drafting* uses this. Without it everything still works — each AI note's
 drafted section comes back marked `[SLM_UNAVAILABLE]` and the screen says so. Annexures,
-figures, carry-forward, custody and every approval rule are unaffected, because none of
-them ever went near the model.
+figures, carry-forward, custody, gates and every approval rule are unaffected, because
+none of them ever went near the model.
 
 ### 1.3 Start the portal
 
 ```bash
-cd ~/github/hal/HAL_Procurement_Portal
 npm run dev
 ```
 
 Wait for **both** lines before touching the browser:
 
 ```
-[server] Mock API listening on http://localhost:3001
+[server] HAL portal API listening on http://localhost:3001
 [client]   ➜  Local:   http://localhost:5173/
 ```
 
@@ -63,111 +66,175 @@ Then open **http://localhost:5173**.
 `npm run dev:client` — a second copy cannot bind the same port and you get `EADDRINUSE`.
 One `Ctrl+C` stops both.
 
-Vite is ready in about 200 ms and Express takes a second or two longer. If you submit the
-login form in that gap you get `NetworkError when attempting to fetch resource` — just
-reload once both lines are up.
-
 ### 1.4 Sign in
 
-Every account uses the password **`hal@1234`** (four characters after the `@`).
+Every account uses the password **`hal@1234`**.
 
 | Email | Role | Cascade agency | What it is for |
 |---|---|---|---|
-| `indentor@hal.local` | `indentor` | **Indenting** | Raises requirements; opens AI cases |
-| `maker@hal.local` | `purchase_maker` | **Tendering** | The purchase desk (IMM) |
-| `officer@hal.local` | `purchase_officer` | **Tendering** | Routing and forwarding |
-| `hod@hal.local` | `hod_imm` | **Tendering** | Approvals |
+| `indentor@hal.local` | `indentor` | **Indenting** | Requisitions, the checklist, provisioning stage files, opening AI cases |
+| `maker@hal.local` | `purchase_maker` | **Tendering** | The purchase desk (IMM): tender-stage notes, contracts, payment advices |
+| `officer@hal.local` | `purchase_officer` | **Tendering** | Routing and forwarding; contract release and verification |
+| `hod@hal.local` | `hod_imm` | **Tendering** | Approvals: chains, stage files, the HOD stamp on advices |
 | `gm@hal.local` | `hod_imm` | **Tendering** | Division-wide supervision demo |
-| `cm@hal.local` | `hod_imm` | **Tendering** | Direct-head visibility demo |
-| `stores@hal.local` | `stores_inspection` | *none* | Read-only downstream position |
-| `desk@hal.local` | `payment_desk` | *none* | Payment processing |
-| `admin@hal.local` | `admin` | **both** | Sees every screen, acts as either agency |
-| `test@hal.local` | `admin` | **both** | QA login |
+| `cm@hal.local` | `hod_imm` | **Tendering** | Gaurav Yadav, the tender initiator in the seeded storyline |
+| `stores@hal.local` | `stores_inspection` | *none* | RV inbox, raising and dispatching claims; read-only elsewhere |
+| `desk@hal.local` | `payment_desk` | *none* | Payment processing and the 23-point checklist |
+| `cppc@hal.local` | `cppc` | *none* | Releases the final payment |
+| `admin@hal.local`, `test@hal.local` | `admin` | **both** | Sees every screen, acts as either agency, gets the role switcher |
 
-**For demonstrating the portal, use two accounts, not admin.** Admin acts for both
-agencies, so it is never blocked — and the blocking is the most interesting behaviour in
-the system.
+**For demonstrating the portal, use the named accounts, not admin.** Admin acts for both
+agencies and passes every role check, so it is never blocked — and the blocking is the
+most interesting behaviour in the system. The admin **role switcher** in the top bar
+previews what another role *sees*; it never changes what the server *allows*.
 
-### 1.5 If something is already on a port
+### 1.5 Finding your way around
+
+Every role lands on **`/portal`**, the Portal Hub: six tabs (Provisioning, Procurement,
+Contract Management, Payment, Claim Management, KPI) holding the 80 items of HAL's portal
+specification. The top bar offers a **module switcher** (Provisioning · Noting · Approvals
+· AI Cases · Contracts · Payments · Claims · KPIs — only the modules your role can see) and,
+under it, the screens of the current module. Both come from one file,
+`client/src/config/roles.js`, and the same rules are enforced by the server.
+
+### 1.6 If something is already on a port
 
 ```bash
+# Linux / macOS
 ss -ltnp | grep -E ':(3001|5173) '     # shows pid=NNNNN
 kill <that pid>
+# Windows (PowerShell)
+netstat -ano | findstr ":3001 "        # last column is the PID
+taskkill /PID <pid> /F
 ```
 
-Do **not** use `pkill 3001` — `pkill` matches process *names*, never ports, so it silently
-does nothing. When a server runs under `node --watch`, kill the **parent** (`node --watch
-index.js`), or the watcher just restarts the child and the port stays busy.
+When a server runs under `node --watch`, kill the **parent** (`node --watch index.js`),
+or the watcher just restarts the child and the port stays busy.
 
-### 1.6 Resetting data
+### 1.7 Environment (`server/.env`, template `server/.env.example`)
+
+| Variable | Purpose |
+|---|---|
+| `PORT` | API port (3001) |
+| `JWT_SECRET` | Token signing secret (dev fallback when unset) |
+| `STORAGE_PATH` | Where uploaded attachments go (`server/uploads`) |
+| `NOTING_DB` `CONTRACTS_DB` `APPROVALS_DB` `AI_CASES_DB` `REQUISITIONS_DB` | SQLite file overrides; the check scripts use them for throwaway DBs |
+| `CONTRACT_ENCRYPTION_KEY` | 32-byte key for the contract payload encryption. Unset → a fixed demo key, and every verify result says "built-in DEMO key" |
+| `OLLAMA_URL` `SLM_MODEL` | The local model (`http://localhost:11434`, `qwen2.5:3b`) |
+| `OTP_DEMO_ENDPOINT` | `true` exposes `GET /api/auth/otp-demo`, which returns the signed-in user's current one-time code |
+
+### 1.8 Resetting data
 
 ```bash
-rm server/data/ai_cases.db      # AI cases
-rm server/data/approvals.db     # approval chains and committees
-node server/noting/seed.js      # re-seed the noting demo
-node server/contracts/seed.js   # re-seed the contracts demo
+node server/noting/seed.js          # force-reseed the noting demo
+node server/contracts/seed.js       # force-reseed contracts
+rm server/data/requisitions.db      # requisitions — reseeded on next boot
+rm server/data/approvals.db         # approval chains and committees — rebuilt on boot
+rm server/data/ai_cases.db          # AI cases — rebuilt on boot
+# payment advices, RVs and claims are in memory: restart the server
 ```
 
-Each store rebuilds on the next request.
+Seed order matters once: the requisition seed back-fills `requisition_id` on the seeded
+NVB contract, so if you reseed contracts, delete `requisitions.db` as well.
 
 ---
 
 ## Part 2 — The pipeline at a glance
 
 ```
- ┌──────────────┐   ┌───────────────┐   ┌────────────┐   ┌────────────┐   ┌──────────┐
- │ 1  INTAKE    │──▶│ 2  APPROVAL   │   │ 3  AI      │──▶│ 4  BIDS    │──▶│ 5 CONTRACT│──▶ PAYMENT
- │ the checklist│   │    CHAIN      │   │    CASES   │   │            │   │           │
- │ decides WHO  │   │ WHO signs,    │   │ WHAT the   │   │ WHO is     │   │ the PO    │
- │ must sign    │   │ + release gate│   │ note says  │   │ eliminated │   │ becomes a │
- └──────────────┘   └───────────────┘   └────────────┘   └────────────┘   │ contract  │
-        │                   ▲                                             └──────────┘
-        └───────────────────┘
+ G REQUISITION ──▶ E CHAIN + C PROVISIONING ──▶ F AI CASE ──▶ C PURCHASE PROPOSAL ──▶ F PO NOTE
+ CAR/25/229        the checklist decides        EMD … PP       + its own E chain          validated
+                   who signs; the stage         drafted in                                against the
+                   file waits for the gate      code + SLM                                PO fixture
+                                                                                             │
+ KPIs · claims · trackers ◀── A PAYMENT ADVICE ◀── A RECEIPT VOUCHER ◀── D CONTRACT ◀────────┘
+                               LD · securities      SEC/26/031           finalise · release
+                               CPPC release
 ```
 
-Modules 1–2 and module 3 are deliberately **independent** today. The approval chain governs
-*who signs a note*; AI Cases governs *what the note says*. Joining them — so raising a note
-in AI Cases spawns its approval chain automatically — is not built yet.
+The modules are joined by stored links and by gates:
+
+| Hand-off | Link | Gate |
+|---|---|---|
+| Requisition → noting file | `files.requisition_id` | a cascade stage other than provisioning cannot start a new file |
+| Noting stage → approval chain | `notes.approval_chain_id` (provisioning and purchase-proposal stages, per `server/noting/approvalPolicy.json`) | the stage cannot be **approved** until its chain is **released** |
+| Noting file ↔ AI case | `files.ai_case_id` / `ai_cases.noting_file_pk` | the **PO note** cannot be raised until the Purchase Proposal is approved on the noting side (override recorded) |
+| PO note → requisition | `tender_no`, `po_no` on the requisition | the PO number must exist in the PO fixture unless the case is the fabricated one |
+| PO → contract | `contracts.requisition_id`, `po_no` | a contract is generated only from a PO; release only after finalisation |
+| PO → RV → payment advice | joined at read time by PO number | credit note required before a PA when the invoice exceeds the RV |
+
+A requisition's **status is derived** from those links, never typed:
+`Registered → Checklist submitted → Provisioning → Tendering → PP approved → PO placed →
+Contracted → Received → Paid`, or `Short-closed` / `Rejected`.
 
 ---
 
 ## Part 3 — Every flow, in detail
 
-### 3.1 Indent Intake — the checklist decides who signs
+### 3.1 Portal Hub (`/portal`)
 
-**`Approvals ▸ Indent Intake`** · visible to indentor, maker, officer, HOD, admin
+Six tabs, 80 items, three kinds of item — and none of them is a placeholder:
 
-**What it is.** The 67-row Indentor Checklist from the client's workbook, filled in the
-browser: 25 provisioning-file rows and 42 tender-document rows.
+- **Routes** open a screen, usually deep-linked: PRV-01 opens the requisition register,
+  PRO-02 … PRO-18 open the noting Initiate screen at that stage, CON-01 the "PP approved"
+  contract queue, CLM-01 the claim form, PAY-04 the payment advice.
+- **Format modals** render one of the 36 standard formats on the server, pre-filled from a
+  requisition, PO, contract or RV you pick, and print it (**Print / Save as PDF**).
+  Eight formats HAL has not yet supplied open with a *"Template not on file"* banner and a
+  working draft of the fields.
+- **Tools** — the eight trackers (CON-02, 04–07, 09, 10, PAY-06), the **LD calculator**
+  (PAY-03) and **price estimation sheet** (PRV-06), the **DOP-2025 lookup** (PRV-11) and the
+  sixteen **KPI detail views** — all read from the server.
 
-**Why it matters, and this is the point of the screen.** There is **no fixed approval
-ladder.** Nine rows of the checklist name an approving authority inside their own
-description text, so the answers decide who must sign. The right-hand panel recomputes
-after every keystroke.
+The counter on the hub shows how many formats are transcribed and how many are pending.
 
-**Who does what.**
+### 3.2 Provisioning workspace — the requisition register (`/provisioning`)
 
-| Actor | Action |
-|---|---|
-| Indentor | Fills the checklist, picks division + requisitioning department |
-| — | Presses **Resolve the chain** to preview, or **Start the file** to commit |
+**Visible to everyone; creating and editing needs indentor, the purchase chain, HOD or admin.**
 
-**Walk it.**
+Three tabs: **Requisitions**, **Certificates** (the proprietary, single-tender, brand and
+adequacy formats, rendered for the selected requisition), **Manuals** (DOP-2025, Purchase
+Manual Issue-4, the works manual reference).
+
+**Walk it, as `indentor@hal.local`.**
+
+1. The register lists the ten seeded requisitions (MPR/CAR/CPR/SPR) with their derived
+   status and **Linked records** — the noting file, AI case, approval chain, contract, PO.
+   `CAR/25/229` (Night Vision Binocular) is the storyline case.
+2. **+ New requisition** — kind, title, item, part no, quantity, UOM, delivery period,
+   tendering type, budget, DoP clause, technical specification, scope of work, then the
+   **estimate**: basis (LPP / budgetary quotation / GeM / in-house), reference, quantity,
+   unit basic rate, escalation, GST, freight. **Preview estimate** asks the server for the
+   basic, escalation, GST and landed totals with the amount in words; nothing is computed
+   in the browser.
+3. Click a row to open the detail panel: every field, the estimate, the linked records,
+   **Edit** (refused with 409 once a noting file is linked — the requisition is then
+   frozen), **Tender document** (the compiled tender document from the checklist answers
+   and the standard clauses), and **Initiate note** — which opens the noting wizard with the
+   requisition locked in — or **Open note** once one exists.
+
+**What the system refuses.**
+
+- Editing a requisition that already has a noting file → 409
+- Starting a noting file for an unknown requisition → 422; for one that already has a file → 409
+
+### 3.3 Indent Intake — the checklist decides who signs (`/approvals/intake`)
+
+**Visible to indentor, maker, officer, HOD, admin.**
+
+The 67-row Indentor Checklist from the client's workbook, filled in the browser: 25
+provisioning-file rows and 42 tender-document rows. There is **no fixed approval ladder.**
+Nine rows name an approving authority inside their own description text, so the answers
+decide who must sign. The right-hand panel recomputes after every keystroke.
 
 1. Set **Requisition ref**, **Subject**, **Division** (`DIV9`), **Requisitioning
    department** (`FIRE & SEC`). The Start button stays disabled until a department is
    chosen, because the chain cannot be resolved without one.
-2. Expand *Provisioning file*. Each row shows its category (**Technical** / **Commercial**,
-   from column G of the sheet) and what it feeds downstream (**TEC Report** /
-   **Commercial Eval** / **Provisioning**, from column H).
-3. Change **sl 22 — Short Tender** from `NA` to `YES`. Watch the right panel go from **4
+2. Change **sl 22 — Short Tender** from `NA` to `YES`. The right panel goes from **4
    obliged authorities to 5**; the new one is the Head of Division, and the card quotes the
    clause that requires them.
-4. **Resolve the chain** — 14 to 16 positions appear, each with the person the directory
-   resolved and any caveat about how confidently.
-5. **Start the file** — persists the answers and creates the chain.
-
-**The nine rows that pull in an authority.**
+3. **Resolve the chain** previews the 14–16 positions with the person the directory
+   resolved for each; **Start the file** persists the answers and creates the chain.
 
 | Row | Answer | Adds |
 |---|---|---|
@@ -181,231 +248,252 @@ after every keystroke.
 | prov sl 21 | indigenisation check | Indigenisation Cell |
 | prov sl 22 | short tender, under 3 weeks | Head of Division |
 
-**One subtlety worth knowing.** Row 13 reads *"Same requirement **not** raised within six
-months"*, so answering **YES** means compliant and pulls in **nobody**. It is the only
-inverted trigger, and it is marked as such in the code.
+Row 13 reads *"Same requirement **not** raised within six months"*, so answering **YES**
+means compliant and pulls in nobody. It is the only inverted trigger.
 
-### 3.2 Approval Files — the chain, and the gate
+### 3.4 Approval Files — the chain, and the gate (`/approvals/chains`)
 
-**`Approvals ▸ Approval Files`** · visible to everyone
+**Visible to everyone; acting needs indentor, the purchase chain, HOD or admin.**
 
-**What it is.** Files travelling their internal approval chain. The list is a queue: how
-many are open, and how many are approved but still held by the gate.
+Files travelling their internal approval chain. Chains are created here from the checklist,
+and **automatically** when a provisioning or purchase-proposal stage file opens in noting
+(the noting note shows an *Approval chain #n* strip linking here).
 
-**Where the chain shape comes from.** Not invented. `sampleData` contains a genuine
-approved Provisioning Note that prints its own routing table — **14 hops, 10 people, 7
-departments, 34 days**, all before the file reaches IMM. The chain is modelled on it, and
-`ai/approval_run.py --replay-f1` replays that trail through the model and checks 8 of 8
-properties.
+**Where the chain shape comes from.** `sampleData` contains a genuine approved Provisioning
+Note that prints its own routing table — **14 hops, 10 people, 7 departments, 34 days** —
+and the chain is modelled on it (`ai/approval_run.py --replay-f1` replays that trail).
 
-**The positions, in order.**
+| Position | Who it resolves to |
+|---|---|
+| Originator | grade 3–4 in the requisitioning department |
+| Section check, Department head | the next rung up, then the highest grade in that department |
+| Concurrences ×5 | HR, Planning, Plant Maintenance, QA/QC/QE, Projects |
+| Finance, two tiers | AGM (Finance), then DGM (Finance) |
+| *injected* | whatever the checklist obliged |
+| CFA | via the DOP level |
 
-| Position | Who it resolves to | From the real note |
-|---|---|---|
-| Originator | grade 3–4 in the requisitioning department | N1, Manager (Security) |
-| Section check | the next rung up, same department | N2, Chief Manager |
-| Department head | highest grade in that department | N3, DGM |
-| Concurrences ×5 | HR, Planning, Plant Maintenance, QA/QC/QE, Projects | N4–N8 |
-| Finance, two tiers | AGM (Finance), then DGM (Finance) | N9–N13 |
-| *injected* | whatever the checklist obliged | — |
-| CFA | via the DOP level | N14, GM(AOD) |
+**Acting on a hop.** The person the slot resolved to (or an admin acting for them) picks a
+hop: **Forward**, **Concur & forward**, **Concur with a rider** (binds a later stage to a
+condition), **Send down to examine**, **Query the originator** (not a rejection), **Send
+back to an earlier hop**, and for the CFA only **Approve** / **Reject**. Each hop asks for
+the **6-digit one-time password**; **Get demo code** fetches the current one from the
+server (`OTP_DEMO_ENDPOINT`). The hop's date is stamped by the server.
 
-**Who does what.** Whoever holds the note picks from the hop types open to them:
-
-| Hop | What it means | In the real note |
-|---|---|---|
-| **Forward** | pass it along | N2, *"forwarded for approval pl."* |
-| **Concur & forward** | agree and move on | N3, N4, N6, N7 |
-| **Concur with a rider** | agree, but bind a **later stage** to a condition | N8, *"remove brand/make before releasing the RFQ"* |
-| **Send down to examine** | delegate to a junior in your own unit, expecting it back | N9 → N10, AGM(Fin) writes *"Pl examine"* |
-| **Query the originator** | bounce a question back — **not** a rejection | N10 → N11 |
-| **Approve / Reject** | CFA only | N14, *"Approved / मंजूर"* |
+**Positions the directory cannot resolve** (a unit with several officers at the top grade)
+show a **Name** button: name the holder, and the hop is recorded as an `assign`. **Riders**
+list under the chain with **Record as discharged**; an undischarged rider blocks release.
 
 **What the system refuses.**
 
-- Approving from any desk but the CFA → *"Only the CFA (name, grade) may approve this note"*
-- A rider hop with no condition typed → refused; a rider that binds nothing is not a rider
-- **Releasing the file on a CFA signature alone** — every obliged authority must have acted
+- A hop from an account that is not the slot's holder → 403 (admin excepted)
+- Approving from any desk but the CFA → *"Only the CFA … may approve this note"*
+- A rider with no condition typed; a wrong or missing OTP
+- **Releasing the file on a CFA signature alone** — the **release gate** lists exactly what
+  is outstanding (*"Concurrence — QA has not acted"*, *"rider not discharged"*, *"position
+  not named"*)
 
-**The release gate** is the heart of it. It reports exactly what is outstanding, for
-example *"Concurrence — QA has not acted"*. A CFA approval with concurrences pending does
-**not** free the file.
+Grade decides *authority*, never *who may come next*: the real chain descends in grade twice.
 
-**Grade is not used to police the order.** The real chain runs
-`4 → 6 → 7 → 7 → 6 → 7 → 8 → 8 → 8 → 7 → 4 → 7 → 8 → 9` — it descends twice. Grade decides
-*authority* (who heads a unit, who is the CFA), never *who may come next*.
+### 3.5 AI Cases — the notes get written (`/ai-cases`)
 
-### 3.3 AI Cases — the notes get written
+**Visible to everyone; raising notes needs a position in the holding agency.**
 
-**`AI Cases`** · visible to everyone · **this is where generation happens**
-
-**What it is.** A case is one procurement file walking the eight-stage responsibility
-cascade. It is **shared, with custody**: the file sits with either the Indenting or the
-Tendering agency, and only positions belonging to that agency may raise its next note.
-Everyone else sees the same file, read-only.
-
-That is the spreadsheet's row 23 — *"Note Can only be Generated by"* — turned into an
-authorisation check, enforced server-side.
-
-**Who does what.**
+A case is one procurement file walking the eight-stage responsibility cascade under
+**custody**: it sits with the Indenting or the Tendering agency, and only positions of that
+agency may raise its next note. That is the spreadsheet's row 23 — *"Note Can only be
+Generated by"* — enforced server-side (`server/ai/access.js`).
 
 | Position | May do |
 |---|---|
-| `indentor@` (Indenting) | Open a case; raise the Provisioning Note (stage 1) and the TEC Report / TEC Query (stage 3) |
+| `indentor@` (Indenting) | Open a case; raise the Provisioning Note and the TEC Report / TEC Query |
 | `maker@` `officer@` `hod@` (Tendering) | Everything from tender opening to PO + Contract |
 | `admin@` (both) | Any note, but still has to move the file across at each boundary |
-| `stores@` `desk@` (neither) | Read any file. Raise nothing. Take custody of nothing. |
+| `stores@` `desk@` `cppc@` (neither) | Read any file. Raise nothing. |
 
-**Walk it — and use two accounts, or you will not see the interesting part.**
+**Walk it with two accounts.** As `indentor@`: **Open the file**, choose the case that
+seeds the facts — *Night Vision Binoculars — CAR/25/229* (real) or *250W LED High Bay —
+E-33046* (**fabricated bids**, labelled everywhere) — then **Raise this note** on the
+Provisioning Note, check the pre-filled form and generate. As `maker@`: the same case shows
+no raise buttons, only **Take the file over**; take it, raise **EMD Stage Acceptance** and
+**TEC Request** (the banner reports how many characters were carried forward in code), and
+carry on to **PO + HAL Contract**, **Retender** or **Short Closure**.
 
-**As `indentor@hal.local`:**
+**What happens inside a generation.** Ingest → branch rule (recorded either way) →
+annexures built in code → the delta of new fields → the prior prose fetched **and never
+sent to the model** → the model drafts the new section from the delta and the annexure
+names → everything stored with the case path. That is why each later note is ~80% a copy
+moved in code, and no figure can be re-invented in transit.
 
-1. **AI Cases** → **Open the file**. Set the requisition ref and subject, and choose which
-   case seeds the facts:
-   - *Night Vision Binoculars — CAR/25/229* — real, from `sampleData`
-   - *250W LED High Bay — E-33046* — **fabricated bids**, and labelled as such everywhere
-2. Click the requisition number to open the case.
-3. Under **"Notes the sheet allows here"**, only the notes that stage permits appear. Press
-   **Raise this note** on the Provisioning Note.
-4. A pre-filled form appears — the fields are seeded from the case facts, and semicolons
-   separate list items. Press **Generate the note**.
-5. It takes a few seconds. Then a green banner:
-   > **Provisioning Note raised.** The model drafted 326 characters; this note starts a
-   > fresh chain. 1 annexure(s) computed. The next stage belongs to the **Tendering** Agency.
+**Gates and advisories.**
 
-**As `maker@hal.local`**, open the same case:
+- Wrong agency → **403**; a note the sheet does not list here → **422**; stage crossed but
+  file not handed over → **409** *"Hand it over first"*; opening a case as Tendering → 403.
+- `pnc_required()` (L1 above estimate, or no reverse-auction participation) and
+  `retender_required()` only **advise**; choosing against one returns **428** and **Raise it
+  anyway (recorded as an override)** stamps the override on the note.
+- The **PO note** has a hard gate: the linked noting proposal's Purchase Proposal must be
+  **approved** with its approval chain **released**. Otherwise 428 with the reason; a
+  purchase officer may still override, and the note records `gate post_pp: …`.
+- The PO number is validated against `server/mock/pos.json` (422 if unknown) unless the
+  case is the fabricated fixture; raising it writes the tender and PO numbers onto the
+  linked requisition.
+- Rejecting an AI-sourced stage on the noting side **rolls the case back** to the state
+  before that note (the note is voided, the event logged).
 
-6. **No raise buttons.** Only a banner — *"The file is with the Indenting Agency. Take it
-   over to act."* — and a **Take the file over** button.
-7. Take it. The hand-over is counted.
-8. Raise **EMD Stage Acceptance**, then **TEC Request**. On that second one the banner
-   reports *"745 characters of the previous note were carried forward in code"* — the prior
-   prose is moved, not re-drafted.
-9. Continue to **PO + HAL Contract**, or take a branch: **Retender**, or **Short Closure**
-   (which closes the file permanently).
+Each case view prints with **Download PDF**.
 
-**As `stores@hal.local`:** the same file is readable, with no buttons at all.
+### 3.6 Bid Evaluation, Committees, Directory (`/approvals/bids`, `/committees`, `/directory`)
 
-**What happens inside a generation, in order.**
+**Bid Evaluation** recomputes the two gates that eliminate suppliers from the returned
+technical-bid sheets. HAL's own sheet in `sampleData` is blank; the filled version is a
+fixture with fabricated bidders (`DV1`–`DV6`) and every screen says so. **Gate 1 — EMD**: a
+bidder may skip the deposit only if it manufactures the offered product in the relevant NIC
+category; the claim is not evidence, the server reads Nature-of-Firm and the NIC code.
+**Gate 2 — TEC**: the rows marked `NO`, cited by specification line. Then L1, variance
+against the estimate, reverse-auction result, whether negotiation is required, the
+negotiated saving, SD at 5% and PBG at 10% — all server-computed.
 
-1. **Ingest** — the entered and seeded fields land on the case
-2. **Branch** — a conditional note asks a rule; the answer is recorded either way
-3. **Annexures** — built deterministically in code from the case
-4. **Delta** — only the fields this note declares as new
-5. **Carry-forward** — the prior note's prose is fetched **and never sent to the model**
-6. **Draft** — the model sees the delta and the annexure *names*, nothing else
-7. **Store** — drafted section, carried prose, annexures, path
+**Committees.** Every member signs, and every member declares no conflict of interest with
+any bidder (Annexure 21A Amendment 1, 29-01-2024). The **PNC** composition is real (sample
+note F5). For the **TEC**, **no document in `sampleData` states who sits on it**, so the
+server refuses to invent a composition and asks for the members by name.
 
-Step 5 is why this is cheap and exact: each later note is roughly 80% a copy of the one
-before, that 80% moves in code, and no figure can be re-invented in transit.
+**Directory.** 1,354 officers across 19 units and 47 departments; authority comes from
+grade. The **"who heads this unit?"** lookup answers honestly: where several officers share
+the top grade the answer is not in the data, and the screen lists the candidates instead
+of picking one (88 of 272 division-department pairs).
 
-**What the system refuses.**
+### 3.7 e-File Noting (`/noting/*`)
 
-- Raising a note from the wrong agency → **403**, naming the agency that may
-- Raising a note the sheet does not list at this stage → **422**, listing what is allowed
-- Raising anything when the stage has crossed but the file has not → **409**, *"Hand it over first"*
-- Opening a case as a Tendering position → **403**; a case starts with the indent
-- Any action by `stores@` / `desk@` → **403**
+`WORKFLOW_GUIDE.md` covers every screen and button. The essentials:
 
-**Advisory rules are overridable, and the override is recorded.** Two preferences come from
-the Purchase Manual and the sample notes rather than the sheet — `pnc_required()` (L1 above
-estimate, or no reverse-auction participation) and `retender_required()` (nil bids, or no
-EMD-accepted bidder). Choosing against one returns **428** with a confirmation; proceeding
-stamps *"override"* on the note. The spreadsheet holds no conditional logic of its own, so
-no branch is ever hard-blocked.
+- **A proposal is a chain of stage files** — Provisioning, EMD, TEC Request, TEC Report,
+  Price Bid Opening, PNC Request, PNC Recommendation, Purchase Proposal, PO — plus
+  need-based notes (Retender, Short Closure, TEC Query, Advance Payment, PO Amendment, and
+  the off-cascade TEC Representation, Bank Detail Insertion, Vendor ID Creation, Vendor
+  Registration, Due-Date Extension, Addendum, Misc). Each stage file has its own routing
+  trail and minutes N1…Nx.
+- **Custody, not roles.** Exactly one member holds a note; only they (or their active
+  **delegate**, from the Inbox's **Delegate Authority** panel) can act. Everyone who ever
+  held it can read it. The **planned routing** set at initiation is enforced hop by hop
+  unless the holder deviates with a reason.
+- **Authority.** A stage is decided by its planned approving authority. Provisioning and
+  Purchase Proposal stages also carry a Module E chain and return **409** on approve until
+  it is released.
+- **Classification per note** (normal → restricted → confidential → secret → top secret)
+  with need-to-know links that revoke on re-share; **clarifications** are two-party threads
+  in their own accordion on the note.
+- **Formats on file.** Any holder can **Render & attach** a standard format from the
+  library to a note; AI annexures arrive as computed attachments, never as fake files.
+- **Initiate** collects the routing plan, approver, priority, DoP row, stamping setup, files
+  and the **one-time password** (verified by the server) in one wizard; the Portal Hub's
+  note items and the requisition register deep-link into it.
 
-**Hand-overs are the model working, not a nuisance.** A file on the normal route crosses
-three times: Indenting raises the indent, Tendering runs the tender, Indenting does the TEC,
-Tendering carries it to PO. The count is on the file.
+### 3.8 Contracts (`/contracts/*`)
 
-### 3.4 Bid Evaluation — who is eliminated, and on what
+- **CON-01 PP approved list** (`/contracts/register?filter=approved_pp`) — requisitions
+  whose Purchase Proposal is approved with a released chain and no contract yet; each row
+  opens **Generate Contract** pre-filled with its tender, PO and requisition.
+- **Generate** builds the draft from the PO fixture and the 71 × 8 clause matrix (auto,
+  offered and excluded clauses classified server-side), with additional clauses and annexed
+  standard formats rendered from the library.
+- **Finalise & stamp** freezes the content, computes SHA-256 and the QR payload, and (with
+  the smart-contract toggle) encrypts the canonical payload — with a **fixed demo key**
+  unless `CONTRACT_ENCRYPTION_KEY` is set, and the verify result says which.
+- **Release to IFS** (CON-02) records the release with an optional GeM contract number;
+  status becomes `released`. **Verify integrity** recomputes the hash and the simulated
+  anchor and names the key source. **Decrypt (admin, demo)** proves the round trip.
+- Every draft edit, finalisation, release and verification is written to the contract's
+  audit trail.
 
-**`Approvals ▸ Bid Evaluation`** · visible to everyone
+### 3.9 Payment (`/rv-inbox` → `/payment-advice` → `/forward-advice` → `/process-payment` → `/hod-approval` → CPPC)
 
-**What it is.** The two gates that actually eliminate suppliers, recomputed from the
-returned technical-bid compliance sheets. HAL's real sheet in `sampleData` is blank — it is
-what HAL *issues*. The filled version is a fixture with fabricated bidders (`DV1`–`DV6`)
-and every screen says so.
+`RV Inbox` shows every receipt voucher with its linked **requisition and contract**, aging
+badges and pending-days SLA. Vouchers whose invoice exceeds the accepted value need a
+**credit note** first: **Upload Credit Note** (maker) takes the number, remarks and **the
+document itself** (stored with a SHA-256 digest) before a payment advice can be generated.
 
-**Gate 1 — EMD.** A bidder may skip the deposit only if it **manufactures the offered
-product in the relevant NIC category**. The bidder's own claim is not evidence: the server
-reads Nature-of-Firm and the NIC code and decides.
+**Payment Advice** (maker): LD is computed by the server from the PO due date and gate
+entry (0.5% of RV value per week or part, capped at 10% — cap base pending HAL's
+confirmation in `server/config/ldPolicy.json`); securities and attachments are **real
+uploads** (RV copy, invoice, FTR, warranty, bank change, SD/PBG/EMD/indemnity copies, CA
+approval, vendor request, SSL intimation) with **Upload / Replace / View**; **Fetch from IFS
+/ EMD portal** shows the fixture facts the advice was built from, labelled as such. The
+creator's name comes from the signed-in account.
 
-> `DV5 Dummy Vendor 5 Trading Company` — **OUT at EMD**. Claimed an MSE waiver, but its NIC
-> 46592 is wholesale trade, not manufacture of lighting equipment (27400).
+Then the state machine: officer **Forward** (or send back), desk **Forward to HOD** with the
+23-point checklist note, HOD **Stamp & forward** / **Return**, desk **Forward to CPPC** with
+the PPR, and `cppc@` **Record payment released**. Each actor is checked against the JWT role
+on the server; the register and **Payment KPIs** derive every cycle time from the history.
 
-That is the same test HAL applied to two bidders in the real Night Vision Binocular case.
+### 3.10 Claims (`/claims`)
 
-**Gate 2 — TEC.** The rows the bidder marked `NO`, cited by specification line number so
-the rejection can be defended.
+Tabs: **Claim status (all)**, **Units dispatched under claim**, **Item received against
+claim**, **Claims closed**, **+ Raise a claim**, **Discrepancies without a claim** (the RVs
+whose credit note or bank verification is still open in Module A).
 
-> `DV2` — **OUT at TEC**, specification sl no 2 and 7: 110 lm/W against 130 required,
-> IP 54 against IP 66.
+Stores or the purchase maker **raise** a claim on an RV/PO (rejection at inward inspection,
+transit damage, shortage, warranty…; action sought: replacement, repair, credit note, free
+supply). Stores **dispatch** it to the vendor with a returnable gate pass, **receive** the
+replacement, and stores or the maker **close & settle**. Claim numbers are
+`CLM/<financial year>/NNN`. The store is in memory, like the payment module.
 
-**Then the price bid.** L1, variance against the estimate (+17.86%), reverse-auction
-result, whether negotiation is therefore required, the negotiated saving (11.11%), and SD
-at 5% and PBG at 10% of basic. Every figure is computed server-side; the screen calculates
-nothing.
+### 3.11 KPIs, trackers, calculators (`/kpis`, `/payment-kpis`, hub tools)
 
-### 3.5 Committees — where a panel decides
-
-**`Approvals ▸ Committees`** · visible to indentor, maker, officer, HOD, admin
-
-Some stages are not a chain. **Every member signs, and since Annexure 21A Amendment 1 of
-29-01-2024, every member also declares no conflict of interest with any bidder.** Order
-does not matter; completeness does. One missing declaration blocks the report.
-
-- **PNC** — its composition is real, named in the sample note F5. Leave the members box
-  blank to use it.
-- **TEC** — **no document in `sampleData` states who sits on a TEC.** The server refuses to
-  generate a composition and asks for the members by name. That refusal is deliberate.
-
-### 3.6 Personnel Directory
-
-**`Approvals ▸ Directory`** · visible to everyone
-
-1,354 officers across 19 units and 47 departments. Authority comes from grade:
-`4 Manager → 6 Chief Manager → 7 DGM → 8 AGM → 9 GM → 10 ED`.
-
-The useful part is the **"who heads this unit?"** lookup, because it is where the source
-data runs out. The HR extract has no head-of-unit column, so where several officers share
-the top grade the answer genuinely is not in the data — and the screen says so, listing the
-candidates, rather than picking one. That is the case for **88 of 272** division-department
-pairs.
-
-### 3.7 e-File Noting and Contract Generation
-
-Unchanged, and documented in detail in `WORKFLOW_GUIDE.md`. In brief:
-
-- **Noting** (`/noting/*`) — any member initiates a file, routes notes member-to-member,
-  raises clarifications, and a competent authority approves or rejects. Access is
-  *positional*: exactly one member holds a note and only they can act.
-- **Contracts** (`/contracts/*`) — an approved PO becomes a contract with its clause set
-  auto-crawled from the 71 × 8 Contract Clauses Matrix, then finalised with a SHA-256
-  integrity hash and a scannable QR code.
-
-### 3.8 Payment
-
-`RV Inbox → Payment Advice → Forward Advice → Process Payment → HOD Approval → CPPC`,
-with the register and cycle-time metrics at the end. The state machine stamps the actor
-server-side; the role switcher is not trusted. See `PROJECT_OVERVIEW.md` §7.
+- **Procurement KPIs & MIS** — the sixteen KPIs of the specification, computed over the
+  last 3 / 6 / 12 months from the requisitions, notes, cases, contracts, POs, RVs and
+  advices actually in the stores, each with its series, target, source and a note.
+  KPI-11/12 (SC/ST and women entrepreneurs) read the `mseScSt` / `mseWomen` flags in the
+  vendor fixture — fixture values until HAL's vendor master supplies the real ones — and
+  name that source. **Print MIS report** prints the page.
+- **Payment Desk KPIs** — cycle times, stage timeline, pipeline, monthly trend, vendor
+  breakdown, officer performance and SLA distribution, all from advice history over the
+  chosen window; where there is no data the tile says "No data source in prototype".
+- **Trackers** (hub) — PO due, DP expired (with LD from `ld.js`), live PO status, PO
+  receipts, EMD/SD/PBG securities, balance outstanding, e-release and GeM sync, each
+  stating its source (`pos.json` + `rvs.json` + contracts) and as-of time.
+- **LD calculator** and **price estimation sheet** post their inputs to the server and
+  render the result.
 
 ---
 
-## Part 4 — The command-line side (optional)
+## Part 4 — The integrated storyline, account by account
 
-The Python module in `ai/` is the original of the note pipeline. The web app no longer needs
-it — the runtime was ported to Node in `server/ai/` — but the CLI is still the best way to
-see the whole flow narrated.
+The seeded data is the real Night Vision Binocular case. To walk it end to end:
+
+1. **`indentor@`** — Provisioning → `CAR/25/229` → **Initiate note** (or open the seeded
+   file `AOD/IMM/2026/0001`). The Provisioning stage opens with its approval chain.
+2. **The chain** — Approvals → Approval Files → the chain for that file: concurrences,
+   finance, CFA, each with the OTP; release gate green.
+3. **`hod@`** — Noting → Inbox → the Provisioning stage → **Approve & File** (refused with
+   409 while the chain is not released).
+4. **`indentor@`** — Cabinet → **Send to Tender Initiator** → Gaurav Yadav (`cm@`).
+5. **`cm@` / `maker@`** — Cabinet → **Generate EMD Stage Acceptance Note** → **Draft & Raise
+   with AI →** through TEC Request, TEC Report (Indenting), Price Bid Opening, PNC, and the
+   **Purchase Proposal** — which gets its own chain; approve it once released.
+6. **`maker@`** — AI Cases → the case → **PO + HAL Contract**: gated on that approval,
+   pre-filled with `IMM/PO/25-26/0533`, validated against the PO fixture.
+7. **`maker@`** — Contracts → **PP approved list** → Generate → **Finalise & stamp** →
+   `officer@` **Release to IFS** → **Verify integrity**.
+8. **`stores@`** — RV Inbox → `SEC/26/031` shows the requisition and the contract.
+9. **`maker@`** — Payment Advice: LD ₹7,970 for the late gate entry, uploads, forward.
+   `officer@` → `desk@` → `hod@` → `desk@` → **`cppc@` Record payment released**.
+10. **KPIs** — `/kpis` and `/payment-kpis` move; Provisioning shows `CAR/25/229` as **Paid**.
+
+---
+
+## Part 5 — The command-line side (optional)
+
+The Python module in `ai/` is the original of the note pipeline. The web app runs the Node
+port in `server/ai/`, but the CLI is still the best way to see the whole flow narrated.
 
 ```bash
-conda activate hal            # then plain `python` works
-cd ~/github/hal/HAL_Procurement_Portal
+conda activate hal
 ```
 
 | What | Command | Ollama? |
 |---|---|---|
-| Narrated walkthrough, act by act | `./ai/demo.sh --pause` | optional |
+| Narrated walkthrough, act by act (acts 0–10) | `./ai/demo.sh --pause` | optional |
 | Same, skipping note drafting | `./ai/demo.sh --quick` | no |
 | Replay the real 14-hop chain | `python ai/approval_run.py --replay-f1` | no |
 | Build a chain and walk it | `python ai/approval_run.py --auto` | no |
@@ -414,113 +502,156 @@ cd ~/github/hal/HAL_Procurement_Portal
 | The nine notes, LED fixture | `python ai/run.py --auto --case ai/fixtures/case_input_E33046.json` | **yes** |
 | Rebuild the server's seed JSON | `python ai/export_web.py` | no |
 
-Only `ai/demo.sh` is executable. The `.py` files are modules — `ai/run.py --auto` gives
-*Permission denied*; it is `python ai/run.py --auto`.
-
-`ai/run.py` writes to `ai/outputs/`, which is what the **AI Documents** screen reads. That
-screen is read-only and separate from **AI Cases**, which is the live one.
+`ai/run.py` writes to `ai/outputs/`, which is what the **AI Documents** screen
+(`/noting/ai-documents`) reads. That screen is read-only and separate from **AI Cases**.
 
 ---
 
-## Part 5 — Verification
+## Part 6 — Verification
 
 ```bash
-node server/approvals/approvals.check.mjs     #  94/94  the approval layer vs its sources
-node server/noting/noting.check.mjs           #         the noting workflow
-node server/contracts/contracts.check.mjs     #         the contracts module
-node server/ld.check.mjs                      #         the LD calculation
-python ai/approval_check.py                   # 125/125 the Python layer vs its sources
+npm run check                                  # all of the below
+node server/ld.check.mjs                       # LD math
+node server/server.check.mjs                   # routers, nav/hub config, no inline columns or MOCK_ data in screens
+node server/noting/noting.check.mjs            # noting workflow, access, chain gate
+node server/contracts/contracts.check.mjs      # contracts, release, verify, decrypt
+node server/approvals/approvals.check.mjs      # 113/113 the approval layer vs its sources
+node server/ai/ai.check.mjs                    # rules, post_pp gate, rollback
+node server/formats/formats.check.mjs          # 36 formats, every hub modal mapped
+node server/trackers/trackers.check.mjs
+node server/requisitions/requisitions.check.mjs
+node server/claims/claims.check.mjs
+node server/kpis/kpis.check.mjs
+
+conda run -n hal python ai/cascade_check.py    # the cascade vs the spreadsheet
+conda run -n hal python ai/approval_check.py   # the Python approval layer vs its sources
+conda run -n hal python ai/validate.py         # generated notes vs gold facts
 ```
 
 Each check re-reads the client's own spreadsheets and asserts the encoding against them —
 including the sheets' own typos (`ACCPETANCE`, `Indnetor`, `Evalaution`), so a silent
 rewrite fails the check rather than passing quietly.
 
-### Known issue, carried from an upstream commit
-
-```bash
-python ai/cascade_check.py     # KeyError: 'tender_doc'
-```
-
-`ai/cascade_check.py:125` asserts a `tender_doc` cascade node that the *tendering indenting
-flow* refactor deliberately removed — `ai/stages.py` kept `tender_doc` in `STAGES`,
-relabelled it *"Tender Document (Checklist + 72 Clauses)"*, and dropped it from `ORDER`.
-`./ai/demo.sh` act 9 fails on the same line. Either delete the stale assertion or restore
-the node, depending on the intent. **Nothing in the web app depends on it** — the server
-reads exported JSON, not the Python.
-
 ---
 
-## Part 6 — What the system deliberately will not do
+## Part 7 — What the system deliberately will not do
 
-Stated plainly, and surfaced in the API and on screen rather than hidden:
-
-- **It will not compute a CFA level from an amount.** The DOP-2025 Annexure-3 value-band
-  table is not in `sampleData`, so the level is read from the checklist and marked
-  *human-supplied*.
-- **It will not name the head of a unit when the data cannot.** Ties at the top grade are
-  reported with all candidates (88 of 272 units).
-- **It will not invent a TEC committee.** No source document states its composition.
+- **It will not compute a CFA level from an amount.** The DOP-2025 Annexure-3 value bands
+  are not in `sampleData`; `ai/dop2025.json` holds the empty table, and the level is read
+  from the checklist and marked pending.
+- **It will not name the head of a unit when the data cannot.** Ties are reported with all
+  candidates, and a chain slot stays unfilled until someone names the holder.
+- **It will not invent a TEC committee.**
 - **It will not present fabricated data as real.** The LED case, its six bidders and every
   price are labelled fabricated on every screen and in every API response.
-- **It will not let a file leave an agency early.** A CFA signature alone is not release.
-- **It will not let the language model touch a figure.** LD, SD, PBG, variance, savings and
-  the DOP level are computed in code; the model drafts prose and nothing else.
+- **It will not let a file leave an agency early**, approve a stage before its chain is
+  released, or raise a PO note before the Purchase Proposal is approved — without a recorded
+  override where the sheet allows one.
+- **It will not let the language model touch a figure.**
+- **It will not pretend to integrate.** Every IFS/GeM value is fixture data and labelled so;
+  the contract "blockchain" is a simulation and says so; the OTP is a demo scheme.
 
 ---
 
 ## Appendix — API reference
 
-All routes require a Bearer JWT. Base `/api`.
+All routes require a Bearer JWT except `/api/auth/login` and `/api/health`. Base `/api`.
+
+**Auth** — `POST /auth/login` · `GET /auth/me` · `GET /auth/otp-demo`
+
+**Requisitions** (`/api/requisitions`)
+
+```
+GET  /kinds  /estimate/bases         MPR/CAR/CPR/SPR and the estimate bases
+POST /estimate                       stateless price estimate
+GET  /                               register (?kind &status)
+POST /                               create (indentor, purchase chain, HOD, admin)
+GET  /:id   PATCH /:id               detail with links; edit until a file is linked (409)
+POST /:id/estimate                   store an estimate
+GET  /:id/tender-doc                 the compiled tender document
+```
+
+**Noting** (`/api/noting`)
+
+```
+GET  /stages /me /org /members /overview /sentbox /upcoming /dashboard
+GET  /delegation   POST /delegation   POST /delegation/cancel
+POST /files                          new file + N1 (?requisitionId; cascade stages refused)
+POST /files/:filePk/notes            next stage file
+GET  /files        GET /inbox        GET /cabinet    GET /cabinet/:filePk/stage-history
+POST /files/:filePk/tender-initiator POST /cabinet/:filePk/generate-next-stage
+GET  /notes/:txnId                   detail (note, file, entries, plannedRouting, approvalChain, proposal)
+POST /notes/:txnId/{entries,draft,send-check,forward,send-back,retract,decision,retrieve}
+GET  /notes/:txnId/{history,summary,grants,clarifications,attachments}
+POST /notes/:txnId/{grant,clarifications,attachments}     GET /alerts
+POST /clarifications/:id/messages    GET /notes/:txnId/attachments/:attachmentId/download
+GET  /notes/:txnId/ai-cascade        POST /notes/:txnId/ai-link
+GET  /notes/:txnId/ai-form/:noteId   POST /notes/:txnId/ai-raise   POST /notes/:txnId/ai-handover
+GET  /reports/{lifecycle,stage-time,tree,live-status}
+```
 
 **Approvals** (`/api/approvals`)
 
 ```
-GET  /meta                                  notes, units, hop vocabulary, stated limits
-GET  /directory?division&dept&minGrade&q    the personnel directory
-GET  /head?division&dept                    who heads a unit — or that it is unknowable
-GET  /checklist                             the intake form, both blocks
-POST /checklist/preview                     answers in → obliged authorities out
-POST /checklist/submissions                 persist a filled checklist
-GET  /checklist/submissions[/:id]
-POST /plan                                  resolve a chain without starting it
-GET  /chains                                every file in flight
-POST /chains                                start one
-GET  /chains/:id
-POST /chains/:id/hops                       act (428 = an advisory points elsewhere)
-GET  /committees                            TEC / PNC panels
-POST /committees
-GET  /committees/:id
-POST /committees/:id/members/:memberId/sign
-GET  /bids                                  the EMD and TEC verdicts
+GET  /meta /directory /head /checklist          POST /checklist/preview
+POST /checklist/submissions   GET /checklist/submissions[/:id]     POST /plan
+GET  /chains   POST /chains   GET /chains/:id
+POST /chains/:id/hops                           act (OTP verified; 428 = advisory)
+POST /chains/:id/slots/:index/assign            name an unresolved position
+GET  /committees  POST /committees  GET /committees/:id  POST /committees/:id/members/:memberId/sign
+GET  /bids
 ```
 
-**AI cases** (`/api/ai`)
+**AI** (`/api/ai`)
 
 ```
-GET  /me                       your cascade agency, and the role→agency mapping
-GET  /slm                      is the model reachable, and is it pulled
-GET  /cascade                  the responsibility graph and stage metadata
-GET  /checklist-block1         the pre-tender input checklist and who owns each line
-GET  /cases/sources            which case files can seed the facts
-GET  /cases                    every case, flagged with whether it waits on you
-POST /cases                    open one (Indenting only)
-GET  /cases/:id
-GET  /cases/:id/form/:noteId   the pre-filled form for a note
-POST /cases/:id/notes          raise it — this is the generation call
-POST /cases/:id/handover       take the file across
-GET  /notes                    read-only: what the Python CLI wrote
-GET  /pdf/:name                read-only: a generated PDF
+GET  /me /slm /cascade /checklist-block1 /cases/sources /cases
+POST /cases         GET /cases/:id      GET /cases/:id/form/:noteId
+POST /cases/:id/notes                   raise (403/422/409; 428 advisory or post_pp gate)
+POST /cases/:id/handover
+GET  /notes         GET /pdf/:name      the Python CLI's outputs (read-only)
+```
+
+**Contracts** (`/api/contracts`)
+
+```
+GET  /tenders /lookup /lookup/po /clause-plan /formats /pp-approved
+GET  /            POST /            GET /:id      PATCH /:id (draft only)
+POST /:id/finalise   GET /:id/verify   POST /:id/release   GET /:id/decrypt (admin)
+GET  /library   GET /library/clauses/:id/history   PUT /library/clauses/:id (admin)
+```
+
+**Payments** (`/api/rvs`, `/api/payment-advices`)
+
+```
+GET  /rvs                       POST /rvs/credit-note-decision
+GET  /payment-advices           (?state ?pa)    POST /payment-advices    POST /payment-advices/update
+POST /payment-advices/transition                POST /payment-advices/ld-calc
+POST /payment-advices/credit-note (JSON or multipart)   POST /payment-advices/credit-note-waiver
+GET  /payment-advices/attachments?pa=   POST /payment-advices/attachments (multipart paNo,key,file)
+GET  /payment-advices/attachments/download?pa=&key=
+GET  /payment-advices/register  GET /payment-advices/history   GET /payment-advices/kpis?months=
+```
+
+**Formats, trackers, claims, KPIs**
+
+```
+GET  /formats  GET /formats/dop  GET /formats/:id  POST /formats/:id/render {fields, requisitionId|contractId|poNo|rvNo}
+GET  /trackers  GET /trackers/:name      po-due dp-expired live-po po-receipts securities balance-outstanding erelease gem-sync
+GET  /claims/enums  GET /claims/discrepancies  GET /claims?tab=  POST /claims  POST /claims/transition
+GET  /kpis?months=  GET /kpis/:code
 ```
 
 **Where the code lives**
 
 ```
-server/ai/            the note runtime ported to Node — stages, rules, formats, slm,
-                      pipeline, cascadeGraph, access, caseStore
-server/approvals/     the approval chain — org, checklist, chain, bids, store
-server/routes/        approvals/index.js · aiCases.js · ai.js
-client/src/screens/   Approvals/ · AiCases/
-client/src/config/    approvalColumns.jsx · aiCaseColumns.jsx · roles.js
+server/requisitions/  register, derived status, cross-module links
+server/noting/        workflow, access, delegation, approvalLink, stages, seed
+server/approvals/     org, checklist, chain, bids, store
+server/ai/            the note runtime ported to Node — stages, rules, formats, gates, slm, pipeline, cascadeGraph, access, caseStore
+server/contracts/     matrix, generate, money, poSource, seed
+server/formats/  server/trackers/  server/claims/  server/kpis/
+server/routes/        one router per module
+client/src/config/    roles.js, portalStructure.js and every column config
 ai/                   the original Python module and its CLI
 ```

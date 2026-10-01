@@ -27,7 +27,8 @@ export const ROLE_AGENCIES = {
   admin: [INDENTING, TENDERING],
   // Downstream positions: they can read a case but never raise a procurement note.
   stores_inspection: [],
-  payment_desk: []
+  payment_desk: [],
+  cppc: []
 };
 
 export const ROLE_LABEL = {
@@ -37,7 +38,8 @@ export const ROLE_LABEL = {
   hod_imm: 'HOD — IMM',
   admin: 'Administrator',
   stores_inspection: 'Stores & Inspection',
-  payment_desk: 'Payment Desk'
+  payment_desk: 'Payment Desk',
+  cppc: 'CPPC (payment release)'
 };
 
 export const agenciesFor = (role) => ROLE_AGENCIES[role] ?? [];

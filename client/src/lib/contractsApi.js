@@ -35,6 +35,9 @@ export const generateContract = (payload) => sendJson('POST', '/api/contracts', 
 export const patchContract = (id, payload) => sendJson('PATCH', `/api/contracts/${id}`, payload);
 export const finaliseContract = (id) => sendJson('POST', `/api/contracts/${id}/finalise`, {});
 export const verifyContract = (id) => getJson(`/api/contracts/${id}/verify`);
+export const releaseContract = (id, payload) => sendJson('POST', `/api/contracts/${id}/release`, payload || {});
+export const decryptContract = (id) => getJson(`/api/contracts/${id}/decrypt`);
+export const fetchPpApproved = () => getJson('/api/contracts/pp-approved');
 
 // STC clause library (amendment is admin-only — the server enforces the account role)
 export const fetchLibrary = () => getJson('/api/contracts/library');

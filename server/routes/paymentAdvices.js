@@ -1,8 +1,14 @@
 import { Router } from 'express';
+import { readFileSync } from 'node:fs';
 import { computeLd } from '../ld.js';
 import { requireRoles } from '../middleware/requireRoles.js';
 import { applyTransition } from '../stateMachine.js';
 import { daysBetween, daysSince, db, paByNo, rvByNo, todayISO, vendorById } from '../store.js';
+import { findById } from '../auth/users.js';
+import { poLinks } from '../requisitions/links.js';
+import { paymentDeskKpis } from '../kpis/paymentDesk.js';
+import paFilesRouter, { fileSummary, recordFile } from './paFiles.js';
+import { upload } from '../storage.js';
 
 // PA creation and draft editing are purchase_maker actions; transition enforcement
 // is handled per-action inside the state machine. Admin always passes.
@@ -77,7 +83,10 @@ function joinPa(pa) {
     creditNoteWaiverReason: pa.creditNoteWaiverReason ?? rv.creditNoteWaiverReason ?? null,
     creditNoteDecisionDate: pa.creditNoteDecisionDate ?? rv.creditNoteDecisionDate ?? null,
     pendingDaysGate: rv.gateEntryDate ? daysSince(rv.gateEntryDate) : null,
-    pendingDaysPa: daysSince(pa.createdDate)
+    pendingDaysPa: daysSince(pa.createdDate),
+    files: fileSummary(pa),
+    // Cross-module: the requisition and contract behind this PO (server/requisitions/links.js).
+    ...poLinks(pa.poNo)
   };
 }
 
@@ -176,9 +185,11 @@ function summarise(rows) {
 }
 
 const router = Router();
+// Document uploads (real files) — must be mounted before the parameter-less GET '/'.
+router.use(paFilesRouter);
 
 router.get('/register', (req, res) => {
-  const all = db.paymentAdvices.map(registerRow);
+  const all = db.paymentAdvices.map((pa) => ({ ...registerRow(pa), ...poLinks(pa.poNo) }));
   const options = {
     fys: [...new Set(all.map((r) => r.fy).filter(Boolean))].sort().reverse(),
     statuses: [...new Set(all.map((r) => r.status))],
@@ -201,110 +212,10 @@ router.get('/register', (req, res) => {
   res.json({ rows, summary: summarise(rows), options });
 });
 
+// Payment-desk analytics: every number is computed from the in-memory advices, their history
+// dates and the RV/vendor fixtures (server/kpis/paymentDesk.js). ?months= sets the window.
 router.get('/kpis', (req, res) => {
-  const allPas = db.paymentAdvices.map(joinPa);
-  const allRvs = db.rvs;
-
-  const totalAdvices = allPas.length;
-  const totalRvValue = allPas.reduce((acc, p) => acc + (Number(p.rvValue) || 0), 0);
-  const totalFinalPayment = allPas.reduce((acc, p) => acc + (Number(p.finalPayment) || 0), 0);
-  const totalLdAmount = allPas.reduce((acc, p) => acc + (Number(p.ldAmount) || 0), 0);
-  const totalPaid = allPas.filter((p) => p.status === 'paid' || p.status === 'sent_to_cppc');
-  const totalPaidCount = totalPaid.length;
-  const totalPaidValue = totalPaid.reduce((acc, p) => acc + (Number(p.finalPayment) || 0), 0);
-  const totalInFlight = allPas.filter((p) => p.status !== 'paid' && p.status !== 'sent_to_cppc');
-  const totalInFlightCount = totalInFlight.length;
-  const totalInFlightValue = totalInFlight.reduce((acc, p) => acc + (Number(p.finalPayment) || 0), 0);
-
-  const regRows = db.paymentAdvices.map(registerRow);
-  const completedRows = regRows.filter((r) => r.rvToPaymentDays != null);
-  const avgRvToPaymentDays = completedRows.length
-    ? +(completedRows.reduce((sum, r) => sum + r.rvToPaymentDays, 0) / completedRows.length).toFixed(1)
-    : 4.2;
-  const geRows = regRows.filter((r) => r.geToPaymentDays != null);
-  const avgGateToPaymentDays = geRows.length
-    ? +(geRows.reduce((sum, r) => sum + r.geToPaymentDays, 0) / geRows.length).toFixed(1)
-    : 6.8;
-
-  const mseRows = regRows.filter((r) => r.mseCategory === 'MSE');
-  const mseSharePct = regRows.length ? Math.round((mseRows.length / regRows.length) * 100) : 42;
-  const ldRows = allPas.filter((p) => Number(p.ldAmount) > 0);
-  const ldPct = allPas.length ? Math.round((ldRows.length / allPas.length) * 100) : 18;
-
-  const stageTimeline = [
-    { stage: 'Gate Entry → RV Acceptance', days: 2.1, benchmark: 3.0, status: 'Within Target' },
-    { stage: 'RV Acceptance → PA Creation (Maker)', days: 1.3, benchmark: 2.0, status: 'Within Target' },
-    { stage: 'Maker Draft → Officer Check', days: 1.1, benchmark: 2.0, status: 'Within Target' },
-    { stage: 'Officer → Payment Desk Verification', days: 1.7, benchmark: 2.5, status: 'Within Target' },
-    { stage: 'Payment Desk → HOD IMM Approval', days: 0.9, benchmark: 1.5, status: 'Within Target' },
-    { stage: 'HOD Stamped → CPPC Bank Clearance', days: 1.8, benchmark: 3.0, status: 'Within Target' }
-  ];
-
-  const stageMap = {
-    rv_pending: { label: 'RV Pending (Stores)', count: allRvs.filter((r) => r.paStatus === 'rv_pending').length, color: '#64748b' },
-    pa_created: { label: 'Draft PA (Maker)', count: allPas.filter((p) => p.status === 'pa_created').length, color: '#3b82f6' },
-    forwarded_to_officer: { label: 'Officer Review', count: allPas.filter((p) => p.status === 'forwarded_to_officer').length, color: '#0ea5e9' },
-    at_payment_desk: { label: 'Desk Verification', count: allPas.filter((p) => p.status === 'at_payment_desk').length, color: '#f59e0b' },
-    sent_to_hod: { label: 'HOD IMM Approval', count: allPas.filter((p) => p.status === 'sent_to_hod').length, color: '#8b5cf6' },
-    stamped_by_hod: { label: 'HOD Stamped', count: allPas.filter((p) => p.status === 'stamped_by_hod').length, color: '#10b981' },
-    sent_to_cppc: { label: 'CPPC Dispatched', count: allPas.filter((p) => p.status === 'sent_to_cppc').length, color: '#059669' },
-    paid: { label: 'Disbursed / Paid', count: allPas.filter((p) => p.status === 'paid').length, color: '#15803d' }
-  };
-
-  const pipeline = Object.entries(stageMap).map(([key, val]) => ({
-    id: key,
-    label: val.label,
-    count: val.count,
-    color: val.color
-  }));
-
-  const monthlyTrend = [
-    { month: 'Dec 2025', billsReceived: 14, billsCleared: 12, valueClaimedLakhs: 184.2, valueClearedLakhs: 181.5, ldDeductedLakhs: 2.7, avgDays: 5.2 },
-    { month: 'Jan 2026', billsReceived: 19, billsCleared: 17, valueClaimedLakhs: 265.8, valueClearedLakhs: 260.4, ldDeductedLakhs: 5.4, avgDays: 4.8 },
-    { month: 'Feb 2026', billsReceived: 16, billsCleared: 16, valueClaimedLakhs: 198.5, valueClearedLakhs: 196.1, ldDeductedLakhs: 2.4, avgDays: 4.1 },
-    { month: 'Mar 2026', billsReceived: 28, billsCleared: 25, valueClaimedLakhs: 412.0, valueClearedLakhs: 405.3, ldDeductedLakhs: 6.7, avgDays: 3.9 },
-    { month: 'Apr 2026', billsReceived: 22, billsCleared: 20, valueClaimedLakhs: 310.4, valueClearedLakhs: 306.2, ldDeductedLakhs: 4.2, avgDays: 4.3 },
-    { month: 'May 2026', billsReceived: 24, billsCleared: 21, valueClaimedLakhs: 345.9, valueClearedLakhs: 341.1, ldDeductedLakhs: 4.8, avgDays: 4.2 }
-  ];
-
-  const vendorBreakdown = [
-    { category: 'MSE - Micro Enterprises', count: 6, valueLakhs: 84.5, onTimePct: 98, avgDays: 3.4 },
-    { category: 'MSE - Small Enterprises', count: 9, valueLakhs: 142.8, onTimePct: 96, avgDays: 3.8 },
-    { category: 'MSE - Medium Enterprises', count: 5, valueLakhs: 98.2, onTimePct: 94, avgDays: 4.1 },
-    { category: 'Large Public & Private OEMs', count: 12, valueLakhs: 420.6, onTimePct: 91, avgDays: 5.0 },
-    { category: 'Foreign / Import Spares', count: 4, valueLakhs: 285.0, onTimePct: 88, avgDays: 6.5 }
-  ];
-
-  const officerPerformance = [
-    { officer: 'R. Deshpande', section: 'Airframe & Spares', active: 4, cleared: 18, totalValueLakhs: 312.4, avgDays: 3.9, rating: 'Excellent' },
-    { officer: 'A. K. Sharma', section: 'Avionics & Systems', active: 3, cleared: 14, totalValueLakhs: 245.8, avgDays: 4.1, rating: 'Excellent' },
-    { officer: 'M. S. Patil', section: 'Hydraulics & Fuel', active: 5, cleared: 12, totalValueLakhs: 188.0, avgDays: 4.6, rating: 'On-Track' },
-    { officer: 'V. S. Kulkarni', section: 'Engine & Gearbox', active: 2, cleared: 10, totalValueLakhs: 165.2, avgDays: 4.4, rating: 'On-Track' }
-  ];
-
-  res.json({
-    summary: {
-      totalAdvices,
-      totalRvValue,
-      totalFinalPayment,
-      totalLdAmount,
-      totalPaidCount,
-      totalPaidValue,
-      totalInFlightCount,
-      totalInFlightValue,
-      avgRvToPaymentDays,
-      avgGateToPaymentDays,
-      mseSharePct,
-      ldPct,
-      msmeSlaTargetDays: 45,
-      halInternalSlaDays: 7
-    },
-    stageTimeline,
-    pipeline,
-    monthlyTrend,
-    vendorBreakdown,
-    officerPerformance
-  });
+  res.json(paymentDeskKpis({ months: req.query.months }));
 });
 
 router.get('/history', (req, res) => {
@@ -351,10 +262,12 @@ router.post('/', makerOnly, (req, res) => {
     poNo: rv.poNo,
     vendorId: rv.vendorId,
     status: 'pa_created',
+    // A credit note uploaded against the RV before the advice existed travels with it.
+    files: rv.files?.creditNote ? { creditNote: rv.files.creditNote } : {},
     createdDate: todayISO(),
-    createdBy: 'purchase_maker',
-    createdByName: 'Yogesh M.',
-    createdByPb: 'PB-44731',
+    createdBy: req.user?.role ?? 'purchase_maker',
+    createdByName: req.user?.name ?? '—',
+    createdByPb: findById(req.user?.id)?.pb ?? null,
     officer: rv.poOfficer ? rv.poOfficer.split(' / ')[0] : '—',
     rvValue: rv.rvValue,
     ...computeLd(rv),
@@ -428,7 +341,10 @@ router.post('/credit-note-waiver', makerOnly, (req, res) => {
 // Credit note generation/upload gate for an RV whose accepted value is below its
 // invoice value. Document storage is represented by the retained document number
 // and timestamp in this prototype; the PA route enforces that it exists.
-router.post('/credit-note', makerOnly, (req, res) => {
+// Credit note: JSON (number + remarks) or multipart with the document itself. With a file the
+// bytes are stored (server/storage.js) on the PA when one exists, else on the RV until the
+// advice is generated; the name on record is the uploaded file's.
+router.post('/credit-note', makerOnly, upload.single('file'), async (req, res) => {
   let rv = rvByNo(req.body?.rvNo);
   let pa = paByNo(req.body?.paNo);
   if (!rv && pa) {
@@ -436,8 +352,17 @@ router.post('/credit-note', makerOnly, (req, res) => {
   }
   if (!rv) return res.status(404).json({ error: `Unknown RV ${req.body?.rvNo ?? pa?.rvNo}` });
 
+  let uploaded = null;
+  if (req.file) {
+    try {
+      uploaded = await recordFile(pa ?? rv, 'creditNote', req.file, req.user);
+      if (!pa) rv.files = { ...(rv.files ?? {}), creditNote: uploaded };
+    } catch (e) {
+      return res.status(500).json({ error: `Upload failed: ${e.message}` });
+    }
+  }
   const creditNoteNo = req.body?.creditNoteNo?.trim() || rv.creditNoteNo || `CN/${rv.rvNo.replaceAll('/', '-')}`;
-  const fileName = req.body?.fileName?.trim() || req.body?.creditNoteFileName?.trim() || `CreditNote_${rv.rvNo.replaceAll('/', '_')}.pdf`;
+  const fileName = uploaded?.name || req.body?.fileName?.trim() || req.body?.creditNoteFileName?.trim() || rv.creditNoteFileName || null;
   const remarks = req.body?.remarks?.trim() || req.body?.creditNoteRemarks?.trim() || 'Credit note uploaded successfully.';
   const uploadedDate = req.body?.uploadedDate || todayISO();
 
@@ -464,7 +389,9 @@ router.post('/credit-note', makerOnly, (req, res) => {
     creditNoteNo: rv.creditNoteNo,
     uploadedDate: rv.creditNoteUploadedDate,
     fileName: rv.creditNoteFileName,
-    remarks: rv.creditNoteRemarks
+    remarks: rv.creditNoteRemarks,
+    fileStored: Boolean(uploaded),
+    sha256: uploaded?.sha256 ?? null
   });
 });
 
@@ -559,6 +486,42 @@ router.post('/transition', (req, res) => {
   } catch (err) {
     res.status(err.status ?? 500).json({ error: err.message });
   }
+});
+
+// PAY-03 LD calculator: the same computeLd() the payment advice uses, on caller-supplied
+// inputs. Either dates (delivery due + gate entry) or a bare delay in weeks; the 10% ceiling
+// base comes from server/config/ldPolicy.json (capBase 'po' until HAL confirms).
+const LD_POLICY = JSON.parse(readFileSync(new URL('../config/ldPolicy.json', import.meta.url), 'utf8'));
+router.post('/ld-calc', (req, res) => {
+  const b = req.body || {};
+  const num = (v) => (v == null || v === '' ? null : Number(v));
+  const poValue = num(b.poValue);
+  const rvValue = num(b.rvValue) ?? poValue;
+  if (!Number.isFinite(poValue ?? rvValue) || (poValue ?? rvValue) <= 0) return res.status(422).json({ error: 'poValue (or rvValue) must be a positive number' });
+  let { deliveryDueDate, gateEntryDate } = b;
+  const delayWeeks = num(b.delayWeeks);
+  if (!deliveryDueDate && delayWeeks != null) {
+    if (!Number.isFinite(delayWeeks) || delayWeeks < 0) return res.status(422).json({ error: 'delayWeeks must be >= 0' });
+    gateEntryDate = todayISO();
+    const d = new Date(`${gateEntryDate}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() - Math.round(delayWeeks * 7));
+    deliveryDueDate = d.toISOString().slice(0, 10);
+  }
+  if (!deliveryDueDate || !gateEntryDate) return res.status(422).json({ error: 'Give deliveryDueDate + gateEntryDate, or delayWeeks' });
+  const rv = { deliveryDueDate, gateEntryDate, rvValue: rvValue ?? poValue, poValue: LD_POLICY.capBase === 'rv' ? (rvValue ?? poValue) : (poValue ?? rvValue) };
+  const opts = {
+    ldIcAmount: num(b.ldIcAmount) ?? 0,
+    ldApplicable: b.ldApplicable ?? 'Yes',
+    ldByGateEntry: b.ldByGateEntry ?? 'Yes',
+    ldByFtr: b.ldByFtr ?? (num(b.ldIcAmount) ? 'Yes' : 'No')
+  };
+  res.json({
+    inputs: { ...rv, ...opts },
+    daysLate: Math.max(0, daysBetween(deliveryDueDate, gateEntryDate)),
+    policy: { capBase: LD_POLICY.capBase, status: LD_POLICY._status, ratePerWeek: LD_POLICY.ratePerWeek, capPct: LD_POLICY.capPct, reference: LD_POLICY.reference },
+    result: computeLd(rv, opts),
+    source: 'server/ld.js computeLd() — identical to the payment advice'
+  });
 });
 
 export default router;

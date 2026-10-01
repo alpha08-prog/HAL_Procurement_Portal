@@ -1,0 +1,6 @@
+{
+  "_note": "Which noting stage files get a Module E internal approval chain planned automatically when the stage opens, and where that chain is planned. The stage cannot be approved on the noting side until its chain is released (every required position acted, riders discharged, CFA approved). division/dept must exist in ai/dummy_employees.json (divisions are coded DIV1..DIV19 there); the seeded AOD demo members are not in that directory, so chains for AOD proposals are planned in the division/dept below and the originator position is filled from it. HAL to supply the real division/department mapping and the chain shapes for stages beyond provisioning (approvals/chain.js NOTE_CHAINS uses DEFAULT_CHAIN for them).",
+  "autoChain": ["provisioning", "pp"],
+  "division": "DIV9",
+  "dept": "FIRE & SEC"
+}

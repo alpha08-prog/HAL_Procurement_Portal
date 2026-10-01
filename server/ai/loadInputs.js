@@ -1,14 +1,17 @@
 // Case facts → per-stage inputs. A port of ai/load_inputs.py.
 //
 // One case object is assembled once, then each note draws only the fields it needs. The
-// derived figures (variance, savings, SD, PBG) are computed here through rules.js, not
-// transcribed from the source file — so a case can be edited and the numbers follow.
+// derived figures (variance, savings, SD, PBG, indemnity, the DoP clause) are computed here
+// through rules.js, not transcribed from the source file — so a case can be edited and the
+// numbers follow. The PO number comes from the PO register (server/mock/pos.json), never
+// from a placeholder.
 //
 // The seed is ai/case_input.json, which is itself machine-generated from sampleData by
 // ai/seed_case_input.py. A fixture (ai/fixtures/case_input_E33046.json) can be loaded
 // instead; it carries `_fixture: true` so every screen can say so.
 
 import { existsSync, readFileSync } from 'node:fs';
+import { findTender } from '../contracts/poSource.js';
 import * as rules from './rules.js';
 
 const CASES = {
@@ -44,7 +47,11 @@ export function loadCase(id = 'nvb') {
 const detail = (b) =>
   `${b.name} | ${b.udyam} | ${b.mse ?? ''} | NIC ${b.nic ?? 'N/A'}`;
 
-// Map the case object onto the fields each note declares as new (stages.js `neu`).
+export const LD_TERMS = 'LD 0.5% per week or part thereof on the delayed portion, capped at 10% of the PO value (Checklist clause 18)';
+
+// Map the case object onto the fields each note declares as new (stages.js `neu`). Keys
+// outside `neu` (dop_cfa, indemnity_amount, ld_terms, …) still land in case.data for the
+// annexures and the screens, but are never sent to the language model.
 export function toStageInputs(ci) {
   const req = ci.requisition ?? {};
   const tn = ci.tender ?? {};
@@ -56,14 +63,19 @@ export function toStageInputs(ci) {
   const pnc = ci.pnc ?? {};
   const pr = ci.proposal ?? {};
 
-  const acc = b.filter((x) => x.emd === 'Accepted');
-  const rej = b.filter((x) => x.emd !== 'Accepted');
+  // An EMD waiver is valid only for a manufacturer in the relevant NIC category
+  // (rules.emdWaiver); a bidder recorded as accepted in the source stays accepted.
+  const acc = b.filter((x) => x.emd === 'Accepted' || rules.emdWaiver(x));
+  const rej = b.filter((x) => !acc.includes(x));
   const est = req.mpr_estimate;
   const l1 = pb.l1_price;
 
   const varPct = rules.variance(l1, est);
   const [savAmt, savPct] = rules.savings(l1, co.price);
   const basic = rules.basicOf(co.price);
+  const qualified = tec.accepted ?? [];
+  const dopCfa = rules.dopCfaLevel({ tenderType: tn.tender_type ?? 'Open', validOffers: qualified.length, value: pr.value ?? est });
+  const poNo = findTender(tn.tender_no)?.pos?.[0]?.poNo ?? '';
 
   return {
     provisioning: {
@@ -88,15 +100,17 @@ export function toStageInputs(ci) {
     tec_req: { tec_forwarded_detail: acc.map(detail) },
     tec_report: {
       tec_query: tec.query,
-      tec_accepted_final: tec.accepted ?? [],
+      tec_accepted_final: qualified,
       tec_rejected_final: (tec.rejected ?? []).map((r) => r.name),
       spec_non_compliance: (tec.rejected ?? []).map((r) => `${r.name}: sl no ${r.spec_slnos}`)
     },
     pbo: {
-      pb_accepted: tec.accepted ?? [],
+      pb_accepted: qualified,
       pb_rejected: (tec.rejected ?? []).map((r) => r.name),
       pm_clause: tec.pm_clause, l1_vendor: pb.l1_vendor, l1_price: l1,
-      budget_estimate: est, ra_status: pb.ra_status
+      budget_estimate: est, ra_status: pb.ra_status,
+      qualified_offers: qualified.length,
+      pb_qualified: rules.pb_accepted({ pb_accepted: qualified })
     },
     pnc_req: {
       lpp_contract: lpp.contract, lpp_price: lpp.price, price_variance_pct: varPct,
@@ -110,12 +124,15 @@ export function toStageInputs(ci) {
     pp: {
       proposal_id: pr.id, initiator: pr.initiator, initiator_desig: pr.initiator_desig,
       fca_name: pr.fca, fca_designation: pr.fca_desig, cfa_name: pr.cfa,
-      cfa_designation: pr.cfa_desig, dop_level: pr.dop_level, final_value: pr.value,
-      recommended_vendor: pr.vendor, recommended_qty: req.quantity
+      cfa_designation: pr.cfa_desig,
+      // The level stays what the indentor recorded until the DoP bands can compute it.
+      dop_level: pr.dop_level ?? dopCfa.level ?? '', dop_cfa: dopCfa,
+      final_value: pr.value, recommended_vendor: pr.vendor, recommended_qty: req.quantity
     },
     po: {
-      po_no: '<from IFS-ERP>', recommended_vendor: pr.vendor,
+      po_no: poNo, recommended_vendor: pr.vendor,
       sd_amount: rules.sd(basic), pbg_amount: rules.pbg(basic),
+      indemnity_amount: rules.indemnity(co.price), ld_terms: LD_TERMS,
       warranty: '12 months from acceptance / 18 from delivery',
       delivery_terms: 'FOR HAL Nashik'
     },
@@ -136,10 +153,10 @@ export function toStageInputs(ci) {
       advance_bg_amount: '', advance_justification: ''
     },
     po_amendment: {
-      po_no: '<from IFS-ERP>', amendment_no: '', amendment_reason: '',
+      po_no: poNo, amendment_no: '', amendment_reason: '',
       revised_value: '', recommended_vendor: pr.vendor
     }
   };
 }
 
-export default { availableCases, loadCase, toStageInputs };
+export default { availableCases, loadCase, toStageInputs, LD_TERMS };

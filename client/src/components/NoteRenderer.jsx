@@ -57,18 +57,22 @@ function Block({ block }) {
   );
 }
 
-export default function NoteRenderer({ note, mode = 'full' }) {
+// `bare` drops the organisation head — for a note body embedded in another document
+// (a noting minute), where the file already carries the letterhead.
+export default function NoteRenderer({ note, mode = 'full', bare = false }) {
   if (!note) return null;
   const metaRows = Object.entries(note.meta || {});
   const blocks = parseNote(mode === 'new' ? note.newSection : note.fullOutput);
 
   return (
-    <article className="note-doc">
-      <div className="note-doc-head">
-        <div className="note-doc-org">HINDUSTAN AERONAUTICS LIMITED</div>
-        <div className="note-doc-sub">Aircraft Overhaul Division, Nashik</div>
-        <h2 className="note-doc-title">{note.title}</h2>
-      </div>
+    <article className={bare ? 'note-doc note-doc-bare' : 'note-doc'}>
+      {!bare && (
+        <div className="note-doc-head">
+          <div className="note-doc-org">HINDUSTAN AERONAUTICS LIMITED</div>
+          <div className="note-doc-sub">Aircraft Overhaul Division, Nashik</div>
+          <h2 className="note-doc-title">{note.title}</h2>
+        </div>
+      )}
 
       {metaRows.length > 0 && <FieldTable rows={metaRows} />}
 

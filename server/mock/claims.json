@@ -1,0 +1,160 @@
+[
+  {
+    "claimNo": "CLM/26-27/002",
+    "rvNo": "ELE/26/092",
+    "poNo": "IMM/PO/25-26/0402",
+    "vendorId": "V002",
+    "type": "rejection",
+    "qty": 12,
+    "reason": "Magnetic particle inspection indications on 12 fittings — rejected at inward inspection",
+    "actionSought": "Replacement",
+    "status": "dispatched",
+    "raisedBy": "S. Kulkarni",
+    "raisedByRole": "stores_inspection",
+    "raisedDate": "2026-05-04",
+    "gatePassNo": "RMGP/26/041",
+    "dispatchDate": "2026-05-06",
+    "receivedDate": null,
+    "settlement": null,
+    "creditNoteNo": null,
+    "closedDate": null,
+    "history": [
+      {
+        "action": "raised",
+        "by": "S. Kulkarni",
+        "role": "stores_inspection",
+        "date": "2026-05-04",
+        "remark": "12 fittings rejected — MPI indications."
+      },
+      {
+        "action": "dispatch",
+        "by": "S. Kulkarni",
+        "role": "stores_inspection",
+        "date": "2026-05-06",
+        "remark": "Dispatched to vendor under returnable gate pass RMGP/26/041."
+      }
+    ]
+  },
+  {
+    "claimNo": "CLM/26-27/001",
+    "rvNo": "COM/26/144",
+    "poNo": "IMM/PO/25-26/0463",
+    "vendorId": "V004",
+    "type": "shortage",
+    "qty": 50,
+    "reason": "Shortage in consignment — 150 received against 200 invoiced (waybill WB/26/1988)",
+    "actionSought": "Free supply of shortage",
+    "status": "raised",
+    "raisedBy": "S. Kulkarni",
+    "raisedByRole": "stores_inspection",
+    "raisedDate": "2026-05-02",
+    "gatePassNo": null,
+    "dispatchDate": null,
+    "receivedDate": null,
+    "settlement": null,
+    "creditNoteNo": null,
+    "closedDate": null,
+    "history": [
+      {
+        "action": "raised",
+        "by": "S. Kulkarni",
+        "role": "stores_inspection",
+        "date": "2026-05-02",
+        "remark": "Shortage recorded at inward inspection; vendor informed on 02/05/2026."
+      }
+    ]
+  },
+  {
+    "claimNo": "CLM/25-26/002",
+    "rvNo": "RAW/26/065",
+    "poNo": "IMM/PO/25-26/0151",
+    "vendorId": "V003",
+    "type": "transit_damage",
+    "qty": 4,
+    "reason": "Transit damage — 4 billets with surface gouging beyond machining allowance",
+    "actionSought": "Replacement",
+    "status": "received",
+    "raisedBy": "S. Kulkarni",
+    "raisedByRole": "stores_inspection",
+    "raisedDate": "2026-02-05",
+    "gatePassNo": "RMGP/26/012",
+    "dispatchDate": "2026-02-10",
+    "receivedDate": "2026-03-02",
+    "settlement": null,
+    "creditNoteNo": null,
+    "closedDate": null,
+    "history": [
+      {
+        "action": "raised",
+        "by": "S. Kulkarni",
+        "role": "stores_inspection",
+        "date": "2026-02-05",
+        "remark": "Transit damage on 4 billets."
+      },
+      {
+        "action": "dispatch",
+        "by": "S. Kulkarni",
+        "role": "stores_inspection",
+        "date": "2026-02-10",
+        "remark": "Returned under RMGP/26/012."
+      },
+      {
+        "action": "receive",
+        "by": "S. Kulkarni",
+        "role": "stores_inspection",
+        "date": "2026-03-02",
+        "remark": "Replacement billets received; QC cleared."
+      }
+    ]
+  },
+  {
+    "claimNo": "CLM/25-26/001",
+    "rvNo": "COM/26/072",
+    "poNo": "IMM/PO/25-26/0188",
+    "vendorId": "V001",
+    "type": "warranty",
+    "qty": 10,
+    "reason": "Gas-lift cylinders failed within warranty on 10 chairs",
+    "actionSought": "Credit note",
+    "status": "closed",
+    "raisedBy": "S. Kulkarni",
+    "raisedByRole": "stores_inspection",
+    "raisedDate": "2026-01-16",
+    "gatePassNo": "RMGP/25/390",
+    "dispatchDate": "2026-01-20",
+    "receivedDate": "2026-02-14",
+    "settlement": "Credit note CN/26/884 issued by the vendor; account reconciled",
+    "creditNoteNo": "CN/26/884",
+    "closedDate": "2026-02-20",
+    "history": [
+      {
+        "action": "raised",
+        "by": "S. Kulkarni",
+        "role": "stores_inspection",
+        "date": "2026-01-16",
+        "remark": "Warranty failure on 10 units."
+      },
+      {
+        "action": "dispatch",
+        "by": "S. Kulkarni",
+        "role": "stores_inspection",
+        "date": "2026-01-20",
+        "remark": "Units sent for rectification under RMGP/25/390."
+      },
+      {
+        "action": "receive",
+        "by": "S. Kulkarni",
+        "role": "stores_inspection",
+        "date": "2026-02-14",
+        "remark": "Rectified units received."
+      },
+      {
+        "action": "close",
+        "by": "Yogesh M. (Purchase Maker)",
+        "role": "purchase_maker",
+        "date": "2026-02-20",
+        "remark": "Credit note CN/26/884 received; claim settled."
+      }
+    ]
+  }
+]

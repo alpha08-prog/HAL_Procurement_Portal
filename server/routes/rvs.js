@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requireRoles } from '../middleware/requireRoles.js';
 import { db, daysSince, todayISO, vendorById } from '../store.js';
+import { poLinks } from '../requisitions/links.js';
 
 const makerOnly = requireRoles(['purchase_maker', 'admin'], 'Only the Purchase Maker (or admin) may perform this action.');
 
@@ -27,7 +28,8 @@ router.get('/', (req, res) => {
       mseWomen: vendor.mseWomen ?? 'NA',
       mseScSt: vendor.mseScSt ?? 'NA',
       pendingDaysRv: daysSince(rv.rvDate),
-      pendingDaysGate: daysSince(rv.gateEntryDate)
+      pendingDaysGate: daysSince(rv.gateEntryDate),
+      ...poLinks(rv.poNo)
     };
   });
 

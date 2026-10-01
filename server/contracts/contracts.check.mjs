@@ -7,7 +7,8 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-process.env.CONTRACTS_DB = join(mkdtempSync(join(tmpdir(), 'contracts-')), 'test.db');
+const tmpDir = mkdtempSync(join(tmpdir(), 'contracts-'));
+for (const k of ['CONTRACTS_DB', 'REQUISITIONS_DB', 'APPROVALS_DB', 'NOTING_DB', 'AI_CASES_DB']) process.env[k] = join(tmpDir, `${k.toLowerCase()}.db`);
 
 // Importing the router tree first proves every contracts route module loads.
 await import('../routes/contracts/index.js');
@@ -17,7 +18,7 @@ const { all, get, run } = await import('./db.js');
 const { computeItems } = await import('./money.js');
 const { classifyCell, clausesForType } = await import('./matrix.js');
 const { financialYear, poSerial, nextContractNo } = await import('./refs.js');
-const { generateContract, patchDraft, finaliseContract, verifyContract, fullContract, CLASSIFICATIONS } = await import('./generate.js');
+const { generateContract, patchDraft, finaliseContract, verifyContract, fullContract, releaseContract, decryptContent, CLASSIFICATIONS } = await import('./generate.js');
 const { requireAdmin } = await import('../middleware/requireAdmin.js');
 
 // --- Seed sanity: the client's 72-clause set + 71×8 matrix, verbatim ---
@@ -157,6 +158,18 @@ assert.equal(patched.contract.classification, 'confidential');
 assert.ok(patched.clauses.some((c) => c.source === 'extra' && c.clause_id === optionId), 'Option Clause ticked as extra');
 assert.equal(patched.clauses.filter((c) => c.source === 'custom').length, 1, 'custom replaced, not duplicated');
 assert.equal(patched.formats.length, 1, 'format set replaced');
+assert.equal(patched.formats[0].format_id, 'sd_bg');
+{
+  const annex = patched.formats[0].payload;
+  assert.ok(annex && annex.blocks.length > 0, 'annexed proforma is rendered and stored as blocks');
+  assert.equal(annex.values.sd_amount, Math.round(draft.contract.basic_value * 0.05 * 100) / 100, 'SD in the annex is 5% of the contract basic value');
+  assert.equal(annex.values.vendor_name, draft.contract.vendor_name, 'annex pre-filled from the contract row');
+  assert.equal(annex.values.contract_ref, draft.contract.contract_no, 'annex names the contract');
+  const stored = get('SELECT payload FROM contract_formats WHERE contract_id = ?', draft.contract.id);
+  assert.ok(stored.payload && JSON.parse(stored.payload).id === 'sd_bg', 'payload persisted at patch time');
+}
+assert.ok(nvb.formats.every((f) => f.payload && f.payload.blocks.length), 'seeded contract annexures carry rendered payloads');
+assert.throws(() => patchDraft(draft.contract.id, { formatIds: ['warranty_cert'] }, null), /Unknown format/, 'ids outside the library are refused');
 assert.equal(patched.contract.landed_value, draft.contract.landed_value, 'patch never touches money');
 const auto0 = draft.clauses.filter((c) => c.source === 'auto').map((c) => c.clause_id);
 const auto1 = patched.clauses.filter((c) => c.source === 'auto').map((c) => c.clause_id);
@@ -166,6 +179,29 @@ assert.ok(fin.contract.content_hash && fin.contract.qr_payload, 'finalise stamps
 assert.equal(fin.contract.smart_contract_sim, null, 'no smart anchor unless opted in');
 assert.equal(fin.contract.encrypted_payload, null, 'no encrypted payload unless smart-contract mode is opted in');
 assert.equal(verifyContract(fin.contract.id).match, true);
+
+// --- Release, audit trail, anchor check and the decrypt round trip ---
+assert.ok(fin.events.some((e) => e.kind === 'generated') && fin.events.some((e) => e.kind === 'patched') && fin.events.some((e) => e.kind === 'finalised'), 'generate/patch/finalise are audited');
+assert.throws(() => releaseContract(get(`SELECT id FROM contracts WHERE status = 'draft'`)?.id ?? 0, null), /Finalise|not found/i, 'a draft cannot be released');
+const rel = releaseContract(fin.contract.id, { name: 'R. Deshpande', pb: 'PB-44821' }, { gemContractNo: 'GEMC-511687799990457' });
+assert.equal(rel.contract.status, 'released');
+assert.equal(rel.contract.gem_contract_no, 'GEMC-511687799990457');
+assert.ok(rel.contract.released_at && rel.events.some((e) => e.kind === 'released'), 'release is stamped and audited');
+assert.throws(() => releaseContract(fin.contract.id, null), /Already released/);
+const v2 = verifyContract(fin.contract.id, { name: 'auditor', pb: 'PB-0' });
+assert.equal(v2.match, true, 'release does not disturb the finalisation hash');
+assert.equal(v2.anchorMatch, null, 'no anchor without smart-contract mode');
+assert.ok(fullContract(fin.contract.id).events.some((e) => e.kind === 'verified'), 'a verification by an actor is audited');
+const vNvb = verifyContract(nvb.contract.id);
+assert.equal(vNvb.anchorMatch, true, 'the simulated anchor re-derives from the stored hash');
+assert.equal(vNvb.keySource, 'demo', 'no CONTRACT_ENCRYPTION_KEY in the check → demo key, said out loud');
+const dec = decryptContent(nvb.contract.id);
+assert.equal(dec.matchesStoredHash, true, 'decrypted canonical content hashes to the stored SHA-256');
+assert.equal(dec.canonical.contractNo, nvb.contract.contract_no);
+assert.equal(dec.keySource, 'demo');
+assert.throws(() => decryptContent(fin.contract.id), /not finalised in smart-contract mode/);
+run(`UPDATE contracts SET smart_contract_sim = json_set(smart_contract_sim, '$.txHash', 'deadbeef') WHERE id = ?`, nvb.contract.id);
+assert.equal(verifyContract(nvb.contract.id).anchorMatch, false, 'tampering the anchor flips anchorMatch');
 
 // --- requireAdmin: real account role only ---
 {

@@ -1,6 +1,7 @@
 // Column configs + shared enums for Module C (noting) grids. Screens compose DataGrid
 // with these — columns are never defined inline in a screen.
 import { Link } from 'react-router-dom';
+import { formatDate } from '../lib/date.js';
 
 export const UNIT_KIND_LABEL = {
   corporate: 'Corporate Office',
@@ -77,22 +78,34 @@ export const FILE_COLUMNS = [
 
 const INCOMING_LABEL = { check: 'To check', forward: 'To act', approve: 'To decide' };
 
+export const PRIORITY_CLASS = { High: 'ef-priority-high', Medium: 'ef-priority-medium', Low: 'ef-priority-low' };
+const daysSince = (iso) => (iso ? Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)) : 0);
+
+// The FLITE-style inbox (server/routes/noting/routing.js /inbox rows).
 export const INBOX_COLUMNS = [
+  { key: 'days', label: 'Days', align: 'right', render: (r) => <span className={`ef-days-badge${daysSince(r.created_at) > 7 ? ' overdue' : ''}`}>{daysSince(r.created_at)}</span> },
+  { key: 'ref_no', label: 'File Ref. No', render: (r) => <Link to={`/noting/note/${r.txn_id}`}>{r.ref_no}</Link> },
+  { key: 'initiator_name', label: 'Sender', render: (r) => r.initiator_name || '—' },
   {
-    key: 'ref_no',
-    label: 'Reference',
-    render: (r) => <Link to={`/noting/note/${r.txn_id}`}>{r.ref_no}</Link>
+    key: 'title',
+    label: 'Subject',
+    render: (r) => (
+      <>
+        <Link to={`/noting/note/${r.txn_id}`} className={`subject-link${r.priority === 'High' ? ' urgent' : ''}`}>
+          {r.title}
+        </Link>
+        {r.delegated && <div className="field-hint" style={{ fontSize: 10 }}>held by {r.on_behalf_of_name} — you act as their delegate</div>}
+      </>
+    )
   },
-  { key: 'title', label: 'Note' },
-  { key: 'file_title', label: 'File' },
-  { key: 'initiator', label: 'Initiator' },
-  { key: 'classification', label: 'Class.', render: (r) => <ClassificationBadge value={r.classification} /> },
+  { key: 'department', label: 'Initiator dept', render: (r) => r.department || '—' },
+  { key: 'created_at', label: 'Received on', render: (r) => formatDate(r.created_at) },
+  { key: 'priority', label: 'Priority', render: (r) => <span className={PRIORITY_CLASS[r.priority] || PRIORITY_CLASS.Medium}>{r.priority || 'Medium'}</span> },
+  { key: 'incoming_purpose', label: 'Action', render: (r) => INCOMING_LABEL[r.incoming_purpose] || (r.status === 'draft' ? 'Draft' : '—') },
   { key: 'status', label: 'Status', render: (r) => <StatusBadge value={r.status} /> },
-  {
-    key: 'incoming_purpose',
-    label: 'Action',
-    render: (r) => INCOMING_LABEL[r.incoming_purpose] || (r.status === 'draft' ? 'Draft' : '—')
-  }
+  { key: 'classification', label: 'Class.', render: (r) => <ClassificationBadge value={r.classification} /> },
+  { key: 'clarifications', label: 'Clarifications', align: 'right', render: (r) => `${r.open_clarifications ?? 0} open / ${r.total_clarifications ?? 0}` },
+  { key: 'file_id', label: 'File ID', render: (r) => <span className="ef-file-id">#{r.file_id}</span> }
 ];
 
 // Report columns (Phase 6)

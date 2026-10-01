@@ -1,119 +1,44 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { fetchDop } from '../../lib/toolsApi.js';
 
-const HAL_DOP_2025_MATRIX = [
-  {
-    annexure: 'Annexure 3(B)(1)',
-    para: 'Para 1.1',
-    goodsType: 'Goods / Consumables',
-    approvalType: 'Purchase Concurrence & Sanction',
-    subCategory: 'General Stores & Consumables (< ₹5 Lakhs)',
-    approxVal: '₹5,00,000',
-    fca: 'FCA (Finance)',
-    cfa: 'CFA: HOD (IMM)'
-  },
-  {
-    annexure: 'Annexure 3(B)(2)',
-    para: 'Para 1.2',
-    goodsType: 'Goods / Stores',
-    approvalType: 'Purchase Proposal Approval (DPC)',
-    subCategory: 'Spares & Production Materials (₹5L – ₹25L)',
-    approxVal: '₹25,00,000',
-    fca: 'FCA (Finance / IMM-OH)',
-    cfa: 'CFA: AGM (IMM-OH)'
-  },
-  {
-    annexure: 'Annexure 3(A)(1)',
-    para: 'Para 2.1',
-    goodsType: 'Capital Goods',
-    approvalType: 'Plant & Machinery / Tools Sanction',
-    subCategory: 'High Value Machinery / Tools (₹25L – ₹1 Cr)',
-    approxVal: '₹1,00,00,000',
-    fca: 'FCA (Finance / GM-Fin)',
-    cfa: 'CFA: GM (AOD)'
-  },
-  {
-    annexure: 'Annexure 3(A)(2)',
-    para: 'Para 2.2',
-    goodsType: 'Proprietary Spares',
-    approvalType: 'Single Tender Sanction (PAC / Proprietary)',
-    subCategory: 'OEM / Proprietary Overhaul Spares (> ₹10L)',
-    approxVal: '₹50,00,000',
-    fca: 'FCA (Finance / IMM)',
-    cfa: 'CFA: GM (AOD)'
-  },
-  {
-    annexure: 'Annexure 3(C)(1)',
-    para: 'Para 3.1',
-    goodsType: 'Services / AMC',
-    approvalType: 'Service Contract Sanction',
-    subCategory: 'Maintenance / Equipment AMC / Calibrations (< ₹10L)',
-    approxVal: '₹10,00,000',
-    fca: 'FCA (Finance)',
-    cfa: 'CFA: DGM (IMM / Maint)'
-  },
-  {
-    annexure: 'Annexure 3(C)(2)',
-    para: 'Para 3.2',
-    goodsType: 'Turnkey Overhaul / IT',
-    approvalType: 'Major Technical Sanction & Consultancy',
-    subCategory: 'Turnkey Services / Software Licences (> ₹50L)',
-    approxVal: '₹75,00,000',
-    fca: 'FCA (Finance / Dir-Fin)',
-    cfa: 'CFA: Executive Director / Director'
-  },
-  {
-    annexure: 'Annexure 1(A)',
-    para: 'Para 4.1',
-    goodsType: 'Emergency / Fast-Track',
-    approvalType: 'Operational Sanction (AOG / Aircraft On Ground)',
-    subCategory: 'Urgent Overhaul Aircraft Spares & Services',
-    approxVal: '₹20,00,000',
-    fca: 'FCA (Finance)',
-    cfa: 'CFA: General Manager (AOD)'
-  },
-  {
-    annexure: 'Annexure 2(B)',
-    para: 'Para 5.1',
-    goodsType: 'Rate Contract',
-    approvalType: 'Annual Rate Contract Finalisation',
-    subCategory: 'Standard Consumables / Fasteners / Hardware',
-    approxVal: '₹1,50,00,000',
-    fca: 'FCA (Corporate Finance)',
-    cfa: 'CFA: Executive Director (IMM)'
-  }
-];
-
+// DoP picker on the noting Initiate screen. Rows come from /api/formats/dop (ai/dop2025.json);
+// the value bands are pending from HAL, so every row is flagged unverified and the banner says
+// so. The chosen row is stored on the note as a DoP reference — nothing is derived from it.
 export default function DopModal({ isOpen, onClose, onSave }) {
+  const [dop, setDop] = useState(null);
+  const [error, setError] = useState(null);
   const [selectedRow, setSelectedRow] = useState(0);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
 
-  const filteredRows = useMemo(() => {
-    return HAL_DOP_2025_MATRIX.filter((row) => {
-      if (categoryFilter === 'goods' && !row.goodsType.toLowerCase().includes('goods') && !row.goodsType.toLowerCase().includes('spares')) return false;
-      if (categoryFilter === 'services' && !row.goodsType.toLowerCase().includes('service') && !row.goodsType.toLowerCase().includes('turnkey')) return false;
-      if (categoryFilter === 'emergency' && !row.goodsType.toLowerCase().includes('emergency')) return false;
+  useEffect(() => {
+    if (!isOpen || dop) return;
+    fetchDop()
+      .then(setDop)
+      .catch((e) => setError(e.message));
+  }, [isOpen, dop]);
 
+  const rows = dop?.rows ?? [];
+  const filteredRows = useMemo(() => {
+    return rows.filter((row) => {
+      const g = row.goodsType.toLowerCase();
+      if (categoryFilter === 'goods' && !g.includes('goods') && !g.includes('spares')) return false;
+      if (categoryFilter === 'services' && !g.includes('service') && !g.includes('turnkey')) return false;
+      if (categoryFilter === 'emergency' && !g.includes('emergency')) return false;
       if (search.trim()) {
         const q = search.toLowerCase();
-        const match =
-          row.annexure.toLowerCase().includes(q) ||
-          row.para.toLowerCase().includes(q) ||
-          row.goodsType.toLowerCase().includes(q) ||
-          row.approvalType.toLowerCase().includes(q) ||
-          row.subCategory.toLowerCase().includes(q) ||
-          row.approxVal.toLowerCase().includes(q) ||
-          row.fca.toLowerCase().includes(q) ||
-          row.cfa.toLowerCase().includes(q);
-        if (!match) return false;
+        return [row.annexure, row.para, row.goodsType, row.approvalType, row.subCategory, row.approxVal, row.fca, row.cfa].some((v) =>
+          String(v).toLowerCase().includes(q)
+        );
       }
       return true;
     });
-  }, [search, categoryFilter]);
+  }, [rows, search, categoryFilter]);
 
   if (!isOpen) return null;
 
-  const currentSelected = filteredRows[selectedRow] || filteredRows[0] || HAL_DOP_2025_MATRIX[0];
+  const currentSelected = filteredRows[selectedRow] || filteredRows[0] || null;
+  const pending = !dop || dop._status !== 'ok' || !dop.bands?.length;
 
   return (
     <div className="ef-modal-overlay" onClick={onClose}>
@@ -124,10 +49,15 @@ export default function DopModal({ isOpen, onClose, onSave }) {
         </div>
         <div className="ef-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <p className="screen-sub" style={{ margin: 0 }}>
-            Select the applicable HAL DOP-2025 clause to automatically assign FCA (Financial Concurring Authority) and CFA (Competent Financial Authority).
+            Select the applicable HAL DOP-2025 clause to record the FCA (Financial Concurring Authority) and CFA (Competent Financial Authority) on the note.
           </p>
+          {pending && (
+            <div className="banner banner-restricted" style={{ margin: 0 }}>
+              <strong>Value bands pending from HAL</strong> — the rows below are illustrative (ai/dop2025.json, every row verified:false). The CFA level on the note comes from the indentor checklist, never from this table.
+            </div>
+          )}
+          {error && <div className="banner banner-error" style={{ margin: 0 }}>Could not load the DoP table: {error}</div>}
 
-          {/* Filter and Search Bar */}
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: 6 }}>
               {[
@@ -150,8 +80,7 @@ export default function DopModal({ isOpen, onClose, onSave }) {
                 </button>
               ))}
             </div>
-
-            <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
               <input
                 className="ef-search-input"
                 style={{ width: '100%', fontSize: 12, paddingLeft: 12 }}
@@ -176,32 +105,29 @@ export default function DopModal({ isOpen, onClose, onSave }) {
                   <th>Approval Band</th>
                   <th>FCA Authority</th>
                   <th>CFA Authority</th>
+                  <th>Verified</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredRows.length === 0 ? (
+                {!dop ? (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', padding: 24, color: 'var(--muted)' }}>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: 24, color: 'var(--muted)' }}>Loading…</td>
+                  </tr>
+                ) : filteredRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: 24, color: 'var(--muted)' }}>
                       No DOP clauses match your search "{search}".
                     </td>
                   </tr>
                 ) : (
                   filteredRows.map((row, idx) => (
                     <tr
-                      key={idx}
+                      key={`${row.annexure}-${row.para}`}
                       onClick={() => setSelectedRow(idx)}
-                      style={{
-                        background: selectedRow === idx ? 'var(--accent-soft)' : 'none',
-                        cursor: 'pointer'
-                      }}
+                      style={{ background: selectedRow === idx ? 'var(--accent-soft)' : 'none', cursor: 'pointer' }}
                     >
                       <td>
-                        <input
-                          type="radio"
-                          name="dop_selection"
-                          checked={selectedRow === idx}
-                          onChange={() => setSelectedRow(idx)}
-                        />
+                        <input type="radio" name="dop_selection" checked={selectedRow === idx} onChange={() => setSelectedRow(idx)} />
                       </td>
                       <td style={{ fontWeight: 700, color: 'var(--accent)' }}>{row.annexure}</td>
                       <td style={{ fontSize: 11, color: 'var(--muted)' }}>{row.para}</td>
@@ -212,6 +138,9 @@ export default function DopModal({ isOpen, onClose, onSave }) {
                       <td style={{ fontWeight: 700 }}>{row.approxVal}</td>
                       <td style={{ color: 'var(--accent)', fontWeight: 600, fontSize: 12 }}>{row.fca}</td>
                       <td style={{ color: '#1e7d43', fontWeight: 600, fontSize: 12 }}>{row.cfa}</td>
+                      <td>
+                        <span className={`tag ${row.verified ? 'tag-fmt-verified' : 'tag-fmt-pending'}`}>{row.verified ? 'verified' : 'pending'}</span>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -247,4 +176,3 @@ export default function DopModal({ isOpen, onClose, onSave }) {
     </div>
   );
 }
-

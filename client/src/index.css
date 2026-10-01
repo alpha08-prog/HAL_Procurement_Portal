@@ -4660,7 +4660,7 @@ body {
   color: var(--accent);
 }
 
-   ══════════════════════════════════════════════════════════════════════════════ */
+/* Portal hub welcome banner ══════════════════════════════════════════════════════════════════════════════ */
 
 .portal-welcome-banner {
   background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
@@ -5228,3 +5228,133 @@ body {
 
 
 
+
+
+/* ============== Formats library, trackers & calculators (Portal Hub tools) ============== */
+
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  cursor: pointer;
+  text-align: left;
+  text-decoration: underline;
+}
+.link-button:hover { color: var(--text); }
+
+.tag-fmt-verified { background: #e3f4e7; color: #1c7d3e; }
+.tag-fmt-pending { background: #fff3d6; color: #8a6100; margin-left: 6px; }
+.fmt-code-cell { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--muted); }
+
+.fmt-filler { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; align-items: start; }
+.fmt-filler-doc-only { grid-template-columns: minmax(0, 1fr); }
+.fmt-fields {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  max-height: 62vh;
+  overflow-y: auto;
+  padding-right: 10px;
+  border-right: 1px solid var(--border);
+}
+.fmt-fields-head { display: flex; flex-direction: column; gap: 2px; }
+.fmt-field { display: grid; gap: 4px; }
+.fmt-field-missing .field-label::after { content: ' • blank'; color: #8a6100; font-weight: 600; }
+.fmt-field-src { font-size: 10px; color: var(--muted); }
+.fmt-field textarea.field-input { min-height: 64px; font-family: inherit; }
+.fmt-computed { border: 1px dashed var(--border); border-radius: var(--radius); padding: 8px 10px; background: var(--bg); }
+.fmt-computed-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 2px 0; }
+.fmt-print-area { min-width: 0; }
+
+.fmt-doc .fmt-code { font-size: 11px; color: var(--muted); letter-spacing: .04em; }
+.fmt-embedded { font-size: 12px; }
+.fmt-embedded .note-heading { font-size: 13px; margin-top: 12px; }
+.fmt-para { white-space: pre-wrap; }
+.fmt-note { font-size: 12px; color: var(--muted); font-style: italic; margin: 4px 0 10px; }
+.fmt-hint { font-size: 10px; font-weight: 400; color: var(--muted); margin-top: 3px; white-space: normal; }
+.fmt-fields-table th[scope='row'] { width: 38%; vertical-align: top; }
+.fmt-fields-table td { white-space: pre-wrap; }
+.fmt-missing { color: #8a6100; }
+.fmt-list { margin: 8px 0 12px; }
+.fmt-list-title { font-weight: 600; font-size: 12px; margin: 10px 0 4px; }
+.fmt-list-items { margin: 0; padding-left: 22px; }
+.fmt-list-items li { margin: 3px 0; }
+.fmt-table { margin: 8px 0 12px; }
+.fmt-signatures { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 18px; margin-top: 28px; }
+.fmt-party-label { font-weight: 600; font-size: 12px; margin-bottom: 26px; border-bottom: 1px solid var(--text); padding-bottom: 2px; }
+.fmt-party-line { font-size: 12px; margin: 3px 0; }
+.fmt-pending-banner {
+  background: #fff3d6;
+  color: #8a6100;
+  border: 1px solid #f0d9a6;
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  font-size: 12px;
+  margin: 8px 0 12px;
+}
+.fmt-source { font-size: 11px; color: var(--muted); margin-top: 16px; }
+.fmt-lib-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.fmt-lib-filters { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 10px; margin-bottom: 12px; }
+
+.tracker-source { font-size: 11px; color: var(--muted); margin: 8px 0 0; }
+.ld-calc-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.ld-calc-grid label { display: grid; gap: 4px; }
+.ld-calc-actions { display: flex; align-items: end; }
+.ld-calc-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
+
+@media (max-width: 900px) {
+  .fmt-filler { grid-template-columns: minmax(0, 1fr); }
+  .fmt-fields { border-right: none; max-height: none; padding-right: 0; }
+  .ld-calc-grid, .ld-calc-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Printing from a Portal Hub modal: the modal is portalled to <body>, so hide everything
+   else, unpin the overlay and let the document flow across pages. */
+@media print {
+  body.has-portal-modal > *:not(.portal-modal-overlay) { display: none !important; }
+  .portal-modal-overlay { position: static; display: block; padding: 0; background: none; backdrop-filter: none; }
+  .portal-modal-container { max-width: 100%; max-height: none; overflow: visible; box-shadow: none; border-radius: 0; display: block; }
+  .portal-modal-body { overflow: visible; padding: 0; }
+  .fmt-filler { display: block; }
+  .fmt-signatures, .fmt-fields-table tr { page-break-inside: avoid; }
+  .fmt-pending-banner { border: 1px solid #999; }
+}
+
+
+/* ============== Requisition register (Provisioning workspace) ============== */
+.req-form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.req-form-grid label { display: grid; gap: 4px; }
+.req-span-2 { grid-column: span 2; }
+.req-span-3 { grid-column: span 3; }
+.req-flags { display: flex; gap: 18px; flex-wrap: wrap; }
+.req-estimate-preview { background: var(--accent-soft); border-radius: var(--radius); padding: 8px 12px; font-size: 12px; align-self: end; }
+.req-links { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+.req-row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.req-detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 16px; margin: 8px 0; }
+.req-detail-field { display: grid; gap: 2px; font-size: 13px; }
+.req-detail-field .field-value { white-space: pre-wrap; }
+.req-events summary { cursor: pointer; font-size: 12px; color: var(--muted); margin-top: 8px; }
+.req-events ul { margin: 6px 0 0; padding-left: 18px; font-size: 12px; }
+.req-anchor-row { font-size: 13px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+@media (max-width: 900px) {
+  .req-form-grid, .req-detail-grid { grid-template-columns: minmax(0, 1fr); }
+  .req-span-2, .req-span-3 { grid-column: span 1; }
+}
+
+.chip { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+.chip:hover { border-color: var(--accent); }
+.chip-active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+
+/* ============== Payment-advice document uploads & noting attachments ============== */
+.pa-file-cell { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pa-ifs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 4px 16px; margin-top: 6px; font-size: 12px; }
+.attach-row { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--border); background: #fff; border-radius: var(--radius); margin-bottom: 8px; overflow: hidden; }
+.attach-ref { font-family: Consolas, monospace; background: #f1f5f9; padding: 1px 6px; border-radius: 3px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attach-form { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; background: #f8fafc; padding: 10px; border-radius: var(--radius); border: 1px solid var(--border); }
+.attach-format-row { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+.tag-attach-annexure { background: #ecfdf5; color: #065f46; }
+.tag-attach-format { background: #eef2ff; color: #3730a3; }
+.note-doc-bare { border: none; padding: 0; box-shadow: none; }

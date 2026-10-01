@@ -107,6 +107,43 @@ export const NEEDBASED_STAGES = {
     seq: 14, phase: 'COMMERCIAL', note: 'PO Amendment Note', file: null, resp: 'Tendering',
     neu: ['po_no', 'amendment_no', 'amendment_reason', 'revised_value', 'recommended_vendor'],
     formats: [], carry: '$last', cond: null, ref: true
+  },
+  // Off-cascade need-based notes (no cascade node leads to them; raised manually). Same shape
+  // so noteForm() can list their fields. Mirrors ai/stages.py NEEDBASED_STAGES.
+  tec_representation: {
+    seq: 15, phase: 'TECHNICAL', note: 'TEC Representation Note', file: null, resp: 'Indenting',
+    neu: ['representation_from', 'representation_summary', 'tec_reply', 'representation_disposal'],
+    formats: [], carry: null, cond: null, ref: false
+  },
+  bank_insertion: {
+    seq: 16, phase: 'COMMERCIAL', note: 'Bank Detail Insertion Note', file: null, resp: 'Tendering',
+    neu: ['recommended_vendor', 'bank_name', 'account_no', 'ifsc', 'po_no'],
+    formats: [], carry: null, cond: null, ref: false
+  },
+  vendor_creation: {
+    seq: 17, phase: 'COMMERCIAL', note: 'Vendor ID Creation Note', file: null, resp: 'Tendering',
+    neu: ['vendor_name', 'pan', 'gstin', 'udyam', 'vendor_category', 'vendor_address'],
+    formats: [], carry: null, cond: null, ref: false
+  },
+  vendor_registration: {
+    seq: 18, phase: 'PROVISIONING', note: 'Vendor Registration Note', file: null, resp: 'Tendering',
+    neu: ['vendor_name', 'registration_category', 'assessment_summary', 'registration_validity'],
+    formats: [], carry: null, cond: null, ref: false
+  },
+  misc: {
+    seq: 19, phase: 'ANY', note: 'Misc / Standalone Note', file: null, resp: 'Indenting',
+    neu: ['subject', 'background', 'proposal'],
+    formats: [], carry: null, cond: null, ref: false
+  },
+  due_date_ext: {
+    seq: 20, phase: 'TENDERING', note: 'Tender Due Date Extension Note', file: null, resp: 'Tendering',
+    neu: ['tender_no', 'original_due_date', 'revised_due_date', 'extension_reason'],
+    formats: [], carry: null, cond: null, ref: false
+  },
+  addendum: {
+    seq: 21, phase: 'TENDERING', note: 'Tender Addendum / Corrigendum Note', file: null, resp: 'Tendering',
+    neu: ['tender_no', 'addendum_no', 'addendum_summary', 'revised_due_date'],
+    formats: [], carry: null, cond: null, ref: false
   }
 };
 
@@ -118,7 +155,10 @@ export const REF = {
   pbo: 'PBO_Req', pnc_req: 'PNC_Req', pnc_rec: 'PNC_Recc',
   pp: 'Purchase_Proposal', po: 'PO_HAL_Contract', retender: 'Retender_Note',
   short_closure: 'Short_Closure_Note', tec_query: 'TEC_Query_Note',
-  advance_payment: 'Advance_Payment_Note', po_amendment: 'PO_Amendment_Note'
+  advance_payment: 'Advance_Payment_Note', po_amendment: 'PO_Amendment_Note',
+  tec_representation: 'TEC_Representation_Note', bank_insertion: 'Bank_Detail_Insertion_Note',
+  vendor_creation: 'Vendor_ID_Creation_Note', vendor_registration: 'Vendor_Registration_Note',
+  misc: 'Misc_Note', due_date_ext: 'Due_Date_Extension_Note', addendum: 'Addendum_Note'
 };
 
 export default { ORDER, STAGES, NEEDBASED_STAGES, ALL_STAGES, REF };

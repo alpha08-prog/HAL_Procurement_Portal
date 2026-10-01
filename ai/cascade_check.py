@@ -122,8 +122,8 @@ def main():
     # pre-tender ownership comes from block 1, not block 2
     check(NODES["provisioning"]["owner"] == INDENTING,
           "provisioning node owned by Indenting Agency (block 1, C6:C11)")
-    check(NODES["tender_doc"]["owner"] == TENDERING,
-          "tender-document node owned by Tendering Agency (block 1, C13 + D7)")
+    check("tender_doc" not in NODES and all(o[0] != "tender_doc" for n in NODES.values() for o in n["options"]),
+          "tender document is not a cascade node -- prepared from the checklist + STC (block 1, C13 + D7)")
 
     # ── block 1: the input checklist and its ownership ───────────────────────
     print("\n block 1 -- input checklist responsibility (B6:C25)")

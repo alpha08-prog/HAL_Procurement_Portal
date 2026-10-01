@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import DataGrid from '../../components/DataGrid.jsx';
 import { COMMITTEE_COLUMNS } from '../../config/approvalColumns.jsx';
 import {
@@ -30,10 +31,18 @@ export default function Committees() {
 
   const reload = () => fetchCommittees().then((d) => setRows(d.committees)).catch((e) => setError(e.message));
 
+  // /approvals/committee/:id opens that committee straight away (the list's Note link).
+  const { id: routeId } = useParams();
+
   useEffect(() => {
     fetchMeta().then(setMeta).catch(() => {});
     reload();
   }, []);
+
+  useEffect(() => {
+    if (!routeId) return;
+    fetchCommittee(routeId).then((d) => setActive(d.committee)).catch((e) => setError(e.message));
+  }, [routeId]);
 
   const committeeNotes = (meta?.notes ?? []).filter((n) => n.mode === 'committee');
 

@@ -109,6 +109,41 @@ export default function ModuleIcon({ id, size = 20, color = 'currentColor', clas
         </svg>
       );
 
+    case 'provisioning':
+      return (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+          <path d="M9 5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+          <rect x="9" y="3" width="6" height="4" rx="1" />
+          <path d="m9 14 2 2 4-4" />
+        </svg>
+      );
+
+    case 'ai':
+      return (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+          <path d="M12 3v3M12 18v3M3 12h3M18 12h3" />
+          <rect x="7" y="7" width="10" height="10" rx="2" />
+          <path d="M10 11h4M10 14h2" />
+        </svg>
+      );
+
+    case 'claims':
+      return (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+          <path d="M21 8v13H3V8" />
+          <path d="M1 3h22v5H1z" />
+          <path d="M10 12h4" />
+        </svg>
+      );
+
+    case 'kpis':
+      return (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+          <path d="M3 3v18h18" />
+          <path d="m7 15 4-5 3 3 5-7" />
+        </svg>
+      );
+
     default:
       return null;
   }

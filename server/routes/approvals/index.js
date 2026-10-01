@@ -14,6 +14,7 @@ import * as checklist from '../../approvals/checklist.js';
 import * as org from '../../approvals/org.js';
 import * as store from '../../approvals/store.js';
 import { requireRoles } from '../../middleware/requireRoles.js';
+import { get as notingGet } from '../../noting/db.js';
 
 const router = Router();
 
@@ -156,8 +157,9 @@ router.post('/plan', (req, res) => {
 router.get('/chains', (_req, res) => res.json({ chains: store.listChains() }));
 
 router.post('/chains', approvalActors, (req, res) => {
-  const { noteId = 'provisioning', division, dept, caseRef, answers, originatorPb,
-    submissionId, fileId } = req.body ?? {};
+  const { noteId = 'provisioning', division, dept, answers, originatorPb,
+    submissionId, notingTxnId, requisitionId } = req.body ?? {};
+  let { caseRef, fileId } = req.body ?? {};
   if (!division) return fail(res, 422, 'division is required');
   if (!org.divisions().includes(division)) return fail(res, 422, `Unknown division "${division}"`);
   const shape = chain.chainShape(noteId);
@@ -165,9 +167,22 @@ router.post('/chains', approvalActors, (req, res) => {
     return fail(res, 422,
       `${shape.label} is decided by a committee, not a serial chain — use /committees`);
   }
+  // A chain bound to a noting stage file takes its ids from that file, not from free text.
+  let notingNoteId = null;
+  if (notingTxnId) {
+    const note = notingGet(
+      'SELECT n.id, n.ref_no, f.car_no, f.file_id FROM notes n JOIN files f ON f.id = n.file_pk WHERE n.txn_id = ?',
+      String(notingTxnId)
+    );
+    if (!note) return fail(res, 422, `No noting stage file with transaction id ${notingTxnId}`);
+    notingNoteId = note.id;
+    fileId = note.ref_no;
+    caseRef = caseRef || note.car_no || note.file_id;
+  }
   const created = store.createChain({
     noteId, division, dept, caseRef, answers: answers ?? null,
-    originatorPb: originatorPb ?? null, submissionId, fileId, user: req.user
+    originatorPb: originatorPb ?? null, submissionId, fileId, notingNoteId,
+    requisitionId: requisitionId ?? null, user: req.user
   });
   res.status(201).json({ chain: created });
 });
@@ -181,20 +196,34 @@ router.get('/chains/:id', (req, res) => {
 // the plan act (a junior examining, or the originator answering a query — both happen on
 // the real note). Refusals come back 422 with the reason.
 router.post('/chains/:id/hops', approvalActors, (req, res) => {
-  const { action, slotIndex, pb, comment, rider, twoFactor, when } = req.body ?? {};
+  const { action, slotIndex, pb, comment, rider, riderRef, otp } = req.body ?? {};
   if (!action) return fail(res, 422, 'action is required');
   if (action === 'concur_with_rider' && !String(rider ?? '').trim()) {
     return fail(res, 422, 'A rider hop needs the condition it binds a later stage to');
   }
+  if (action === 'discharge_rider' && riderRef == null) {
+    return fail(res, 422, 'discharge_rider needs riderRef — the hop that carried the rider');
+  }
+  // The hop date is the server's; two-factor is true only when the one-time password verifies.
   const out = store.act(Number(req.params.id), {
     action,
     slotIndex: slotIndex ?? null,
     pb: pb ?? null,
     comment: comment ?? '',
     rider: rider ?? '',
-    twoFactor: Boolean(twoFactor),
-    when: when ?? null,
+    riderRef: riderRef ?? null,
+    otp: otp ?? null,
     user: req.user
+  });
+  return out.ok ? res.json({ chain: out.chain }) : fail(res, 422, out.error);
+});
+
+// Name the holder of a position the directory could not fill. Audited as an `assign` hop.
+router.post('/chains/:id/slots/:index/assign', approvalActors, (req, res) => {
+  const pb = String(req.body?.pb ?? '').trim();
+  if (!pb) return fail(res, 422, 'pb is required');
+  const out = store.assignSlot(Number(req.params.id), {
+    slotIndex: Number(req.params.index), pb, user: req.user
   });
   return out.ok ? res.json({ chain: out.chain }) : fail(res, 422, out.error);
 });

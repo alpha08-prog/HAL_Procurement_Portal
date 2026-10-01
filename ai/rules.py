@@ -1,4 +1,5 @@
-import math
+import json,math
+from pathlib import Path
 
 def _num(s):
     if s is None: return None
@@ -47,10 +48,22 @@ def variance(l1,est):
     if a is None or b is None: return None
     return round((a-b)/b*100,2) if b else None
 LEVEL_DESIG = {"Level I":"GM(AOD)","Level II":"AGM(IMM-OH)"}
+_DOP=None
+def dop_table():
+    global _DOP
+    if _DOP is None:
+        try: _DOP=json.loads((Path(__file__).parent/"dop2025.json").read_text(encoding="utf-8"))
+        except Exception: _DOP={"_status":"missing","bands":[],"levelDesig":None,"rows":[]}
+    return _DOP
 def dop_cfa_level(tender_type="Open",valid_offers=2,value=None):
-    multi=bool(valid_offers and valid_offers>1)
+    t=dop_table();multi=bool(valid_offers and valid_offers>1)
     clause="Annex-3-B-2 (L1 basis, more than one valid offer, Open/Limited tender)" if multi else "Annex-3-B-3 (single valid offer)"
-    return {"clause":clause,"tender_type":tender_type,"valid_offers":valid_offers,"value":value,
-            "level":"<DOP-2025 Annexure-3 value-band table not in sampleData — level requires the table>",
-            "level_designation_map":LEVEL_DESIG}
+    v=_num(value)
+    band=None if v is None else next((b for b in t.get("bands") or [] if (b.get("min") is None or v>=b["min"]) and (b.get("max") is None or v<=b["max"]) and (not b.get("tenderType") or str(b["tenderType"]).lower()==str(tender_type).lower())),None)
+    desig=t.get("levelDesig") or LEVEL_DESIG
+    return {"clause":clause,"tender_type":tender_type,"valid_offers":valid_offers,"value":v,
+            "level":band.get("level") if band else None,"cfa":(band.get("cfa") or desig.get(band.get("level"))) if band else None,
+            "pending":band is None,"status":t.get("_status"),
+            "note":None if band else "DOP-2025 Annexure-3 value bands are not on file -- the level is taken from the indentor checklist until HAL supplies the table",
+            "level_designation_map":desig}
 def emd_waiver(b): return bool(b.get("manufacturer") and b.get("nic_match"))

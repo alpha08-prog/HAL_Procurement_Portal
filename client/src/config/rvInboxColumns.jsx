@@ -1,5 +1,6 @@
 // Screen 1 (RV — payment status) column config, per the IFS spec doc. Field changes
 // after client feedback happen here, not in DataGrid or the screen component.
+import { Link } from 'react-router-dom';
 import CategoryPills from '../components/CategoryPills.jsx';
 import StatusPill from '../components/StatusPill.jsx';
 import { paymentGroupStatus } from './statusColors.js';
@@ -58,6 +59,15 @@ const BASE_COLUMNS = [
         {pendingValue(r.pendingDaysRv)} / {pendingValue(r.pendingDaysGate)}
       </span>
     )
+  },
+  {
+    key: 'links',
+    label: 'Requisition / Contract',
+    render: (r) =>
+      twoLine(
+        r.requisitionNo ? <Link to={`/provisioning?req=${r.requisitionId}`}>{r.requisitionNo}</Link> : '—',
+        r.contractNo ? <Link to={`/contracts/view/${r.contractId}`}>{r.contractNo}</Link> : '—'
+      )
   },
   {
     key: 'paCreated',

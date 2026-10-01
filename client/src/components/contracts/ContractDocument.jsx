@@ -1,6 +1,7 @@
 import { amountInWords } from '../../lib/amountWords.js';
 import { formatAmount, formatINR } from '../../lib/currency.js';
 import { contractClsLabel } from '../../config/contractColumns.jsx';
+import FormatDocument from '../formats/FormatDocument.jsx';
 import ContractQr from './ContractQr.jsx';
 
 // The printed HAL contract: cover page → index → standard clauses → additional clauses →
@@ -254,10 +255,15 @@ export default function ContractDocument({ doc }) {
       {formats.map((f) => (
         <section key={f.format_id} className="contract-annex">
           <h3 className="note-heading">Annexure {nextLetter()} — {f.label}</h3>
-          <p className="note-para contract-format-placeholder">
-            To be executed as per HAL Standard Format: <strong>{f.label}</strong>. The executed
-            proforma forms an integral part of this contract.
-          </p>
+          {f.payload ? (
+            // The proforma text snapshotted on the contract at generation (server/formats).
+            <FormatDocument rendered={f.payload} embedded />
+          ) : (
+            <p className="note-para contract-format-placeholder">
+              To be executed as per HAL Standard Format: <strong>{f.label}</strong>. The executed
+              proforma forms an integral part of this contract.
+            </p>
+          )}
         </section>
       ))}
 

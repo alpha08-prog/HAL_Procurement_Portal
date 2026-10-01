@@ -27,6 +27,7 @@ async function postJson(path, payload) {
 }
 
 export const fetchOverview = () => getJson('/api/noting/overview');
+export const fetchStages = () => getJson('/api/noting/stages');
 export const fetchOrg = () => getJson('/api/noting/org');
 export const fetchMembers = () => getJson('/api/noting/members');
 export const fetchMe = () => getJson('/api/noting/me');
@@ -40,8 +41,10 @@ export const addNote = (filePk, payload) => postJson(`/api/noting/files/${filePk
 export const saveDraft = (txnId, payload) => postJson(`/api/noting/notes/${encodeURIComponent(txnId)}/draft`, payload);
 export const sendForCheck = (txnId, payload) => postJson(`/api/noting/notes/${encodeURIComponent(txnId)}/send-check`, payload);
 
-// AI Cascade integration
+// AI Cascade integration. ai-cascade is read-only; an unlinked file answers { linked:false }
+// and linkAiCase creates the case.
 export const fetchAiCascade = (txnId) => getJson(`/api/noting/notes/${encodeURIComponent(txnId)}/ai-cascade`);
+export const linkAiCase = (txnId, payload) => postJson(`/api/noting/notes/${encodeURIComponent(txnId)}/ai-link`, payload);
 export const fetchAiNoteForm = (txnId, noteId) => getJson(`/api/noting/notes/${encodeURIComponent(txnId)}/ai-form/${noteId}`);
 export const raiseAiNote = (txnId, payload) => postJson(`/api/noting/notes/${encodeURIComponent(txnId)}/ai-raise`, payload);
 export const handOverAiCase = (txnId, payload) => postJson(`/api/noting/notes/${encodeURIComponent(txnId)}/ai-handover`, payload);
@@ -86,15 +89,13 @@ export const grantAccess = (txnId, payload) => postJson(`/api/noting/notes/${enc
 export const fetchGrants = (txnId) => getJson(`/api/noting/notes/${encodeURIComponent(txnId)}/grants`);
 export const fetchAlerts = () => getJson('/api/noting/alerts');
 
-// AI pipeline notes (existing bridge) — source for AI-drafted N1.
-export const fetchAiNotes = () => getJson('/api/ai/notes');
-
 // eFile FLITE additions
 export const fetchSentBox = () => getJson('/api/noting/sentbox');
 export const fetchUpcoming = () => getJson('/api/noting/upcoming');
 export const fetchDashboard = () => getJson('/api/noting/dashboard');
+export const fetchDelegations = () => getJson('/api/noting/delegation');
 export const delegateAuthority = (payload) => postJson('/api/noting/delegation', payload);
-export const cancelDelegation = () => postJson('/api/noting/delegation/cancel', {});
+export const cancelDelegation = (id) => postJson('/api/noting/delegation/cancel', { id });
 
 // Multi-stage & sequential N1..Nx noting
 export const addNotingEntry = (txnId, payload) => postJson(`/api/noting/notes/${encodeURIComponent(txnId)}/entries`, payload);

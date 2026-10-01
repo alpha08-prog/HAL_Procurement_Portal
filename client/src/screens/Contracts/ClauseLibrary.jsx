@@ -9,8 +9,10 @@ import { useRole } from '../../context/RoleContext.jsx';
 // account role, and every amendment records the superseded text, the person and the
 // legal-vetting reference doc. Amendments never change already-generated contracts.
 export default function ClauseLibrary() {
-  const { role } = useRole();
-  const isAdmin = role === 'admin';
+  // The server checks the real account role (requireAdmin), so the button follows the account,
+  // not the RoleSwitcher preview.
+  const { accountRole } = useRole();
+  const isAdmin = accountRole === 'admin';
   const [tab, setTab] = useState('clauses');
   const [lib, setLib] = useState(null); // { contractTypes, clauses, cells }
   const [selected, setSelected] = useState(null);
@@ -222,11 +224,13 @@ export default function ClauseLibrary() {
                     >
                       {copied ? '✓ Copied!' : '📋 Copy Text'}
                     </button>
-                    {isAdmin && !amend && (
+                    {!amend && (
                       <button
                         type="button"
                         className="btn btn-inline"
-                        onClick={() => setAmend({ body: selected.body, changeNote: '', referenceDoc: '' })}
+                        disabled={!isAdmin}
+                        title={isAdmin ? 'Amend after legal vetting — the superseded text is filed in the clause history' : 'Only an admin account may amend a standard clause (server-enforced)'}
+                        onClick={() => isAdmin && setAmend({ body: selected.body, changeNote: '', referenceDoc: '' })}
                       >
                         ✏️ Amend Clause
                       </button>

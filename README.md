@@ -1,446 +1,299 @@
 # HAL Nashik — Integrated Digital Procurement & e-Office Portal
 
-[![Node.js](https://img.shields.io/badge/Node.js-18%2B%20%7C%2020%2B-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-22.5%2B%20%28dev%20on%2024%29-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![React](https://img.shields.io/badge/React-18.3-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-6.0-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org/)
 [![Ollama](https://img.shields.io/badge/SLM-Ollama%20Qwen2.5--3B-000000?style=flat-square&logo=ollama&logoColor=white)](https://ollama.ai/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker&logoColor=white)](https://docker.com/)
+[![Docker](https://img.shields.io/badge/Docker-node%3A24--alpine-2496ED?style=flat-square&logo=docker&logoColor=white)](https://docker.com/)
 [![Compliance](https://img.shields.io/badge/Compliance-DOP--2025%20%7C%20PM--Issue--4%20%7C%20GeM-blue?style=flat-square)](sampleData/)
 
-An enterprise-grade, end-to-end digital procurement, AI-assisted e-noting, contract generation, and payment lifecycle management portal built for **Hindustan Aeronautics Limited (HAL), Nashik Division (Aircraft Overhaul Division - AOD)**.
+A clickable, end-to-end procurement portal for **Hindustan Aeronautics Limited (HAL), Nashik — Aircraft Overhaul Division (AOD)**: requisition intake, internal approval chains, AI-assisted procurement noting, e-file routing, contract generation, goods-receipt payment advice, claims and management KPIs.
 
-The system digitizes and automates public procurement workflows governed by **DOP-2025 (Delegation of Powers)**, **HAL Purchase Manual (Issue-4)**, and the **Government e-Marketplace (GeM)** framework, covering the entire lifecycle from requisition indenting to CPPC payment release.
+It is a **prototype for client demonstrations**. Every screen is backed by a real server route and a real store, but the data is fixture and seed data: there is **no live IFS-ERP or GeM connection**. Everything the portal "fetches from IFS" comes from `server/mock/*.json`, and every screen that shows such data says so.
 
 ---
 
 ## Table of Contents
 
-- [Executive Summary & Core Principles](#executive-summary--core-principles)
-- [System Architecture](#system-architecture)
-- [End-to-End Procurement Lifecycle](#end-to-end-procurement-lifecycle)
-- [Key Modules & Capabilities](#key-modules--capabilities)
-  - [1. Indent Intake & Dynamic Approval Chains](#1-indent-intake--dynamic-approval-chains)
-  - [2. AI Procurement Note Pipeline & Responsibility Cascade](#2-ai-procurement-note-pipeline--responsibility-cascade)
-  - [3. e-File Noting Workflow & Digital Office](#3-e-file-noting-workflow--digital-office)
-  - [4. Intelligent Contract Generation & Clause Matrix](#4-intelligent-contract-generation--clause-matrix)
-  - [5. Receipt Voucher (RV) & Payment Advice Engine](#5-receipt-voucher-rv--payment-advice-engine)
-  - [6. Payment Analytics & Executive SLA Dashboards](#6-payment-analytics--executive-sla-dashboards)
-- [Security, Governance & Access Model](#security-governance--access-model)
-- [Technology Stack](#technology-stack)
-- [Repository Structure](#repository-structure)
-- [Quick Start Guide](#quick-start-guide)
-- [Test Credentials & Persona Matrix](#test-credentials--persona-matrix)
-- [Docker & Air-Gapped LAN Deployment](#docker--air-gapped-lan-deployment)
-- [Automated Verification & Diagnostics](#automated-verification--diagnostics)
-- [Companion Documentation](#companion-documentation)
+- [Design rules](#design-rules)
+- [Modules](#modules)
+- [The integrated storyline](#the-integrated-storyline)
+- [Portal Hub — the 80 items](#portal-hub--the-80-items)
+- [Architecture](#architecture)
+- [Security & access model](#security--access-model)
+- [Repository structure](#repository-structure)
+- [Quick start](#quick-start)
+- [Test credentials](#test-credentials)
+- [Docker / air-gapped deployment](#docker--air-gapped-deployment)
+- [Verification](#verification)
+- [What still needs HAL's input](#what-still-needs-hals-input)
+- [Companion documentation](#companion-documentation)
 
 ---
 
-## Executive Summary & Core Principles
+## Design rules
 
-Public procurement in defence aerospace demands rigorous compliance, multi-tiered auditability, and zero tolerance for calculation drift. This portal addresses these imperatives through three foundational design rules:
-
-1. **Zero-Hallucination AI Architecture (Deterministic Rules + SLM Narration):**
-   The local Small Language Model (SLM via Ollama) is strictly confined to drafting contextual narrative prose. All financial computations, statutory percentages (SD 5%, PBG 10%, LD 0.5%/week), threshold evaluations, stage routing rules, and DOP authority levels are executed in deterministic, auditable code.
-2. **Positional & Tenure-Aware Access Control:**
-   Beyond static role privileges, access to sensitive procurement notes is governed by real-time file custody, historical participation in the routing chain, security classification grade, and tenure-bounded organizational supervision.
-3. **80% Carry-Forward Single Source of Truth:**
-   Procurement files accumulate evidence sequentially across stages (F1 through F7). The system maintains an immutable case accumulator where preceding stages carry forward automatically, eliminating manual re-typing and transcription errors.
+1. **The server is the single source of truth for state and money.** Liquidated damages, GST, security deposit and bank-guarantee amounts, price estimates, KPI values and every lifecycle transition are computed or applied server-side. The browser sends inputs and renders results.
+2. **The language model only narrates.** In the AI note pipeline the local SLM (Ollama) drafts one new prose section per note. Figures, branch decisions, annexures and the carried-forward 80% of each note are produced in deterministic code.
+3. **Access is enforced where it matters.** Every data route needs a JWT. Role checks (`requireRoles`, `requireAdmin`) and positional checks (who holds a file, who took part in it, its classification) run on the server; the client's navigation is only a convenience.
+4. **Client feedback changes configuration, not architecture.** Screen columns, roles, hub items, formats, stage lists, policies and seeds are JSON or config files. Inputs HAL has not yet supplied (DOP-2025 value bands, the LD cap base, eight standard-format texts) sit in flagged config files rather than in code.
+5. **Nothing is faked.** No hub item opens a placeholder card, no KPI is a typed-in number, and every fabricated dataset (the LED bid fixture) is labelled as such on screen and in the API.
 
 ---
 
-## System Architecture
+## Modules
 
-```mermaid
-flowchart TB
-    subgraph ClientLayer ["Client Layer (React 18 + Vite)"]
-        UI_Hub["Portal Hub / Navigation"]
-        UI_Intake["Indent Intake & Checklist"]
-        UI_Approvals["Approval Chains & Committees"]
-        UI_AICases["AI Cases & Note Drafter"]
-        UI_Noting["e-File Noting & Digital Office"]
-        UI_Contracts["Contract Generation & Clause Matrix"]
-        UI_Payments["RV Inbox, PA Processing & KPIs"]
-    end
+Code comments refer to the modules by letter.
 
-    subgraph ServerLayer ["Backend Services (Node.js / Express ESM)"]
-        AUTH_SVC["Auth & JWT Service\n(Bcrypt + Token Engine)"]
-        INTAKE_ENG["Checklist & Approval Engine\n(Dynamic Ladder Resolver)"]
-        NOTING_ENG["Workflow & Routing Engine\n(Positional Access + Supervision)"]
-        CONTRACT_ENG["Contract Assembly Engine\n(71 STC Matrix + SHA-256 / QR)"]
-        PAYMENT_ENG["Payment State Machine\n(Liquidated Damages Engine)"]
-        AI_BRIDGE["AI Output Bridge\n(Case Ingest & Normalization)"]
-    end
+| Module | What it does | Web routes | Server | Store |
+|---|---|---|---|---|
+| **A** Payment advice | RV → payment advice → officer → payment desk → HOD → CPPC, with LD, securities, credit notes and document uploads | `/rv-inbox` `/payment-advice` `/forward-advice` `/process-payment` `/hod-approval` `/payment-register` `/payment-kpis` | `store.js` `stateMachine.js` `ld.js` `routes/{rvs,paymentAdvices,paFiles}.js` | in-memory (resets on restart) |
+| **B** AI noting pipeline (Python CLI) | Drafts the F1–F7 procurement notes and annexures from `ai/case_input.json` | `/noting/ai-documents` (read-only viewer) | `routes/ai.js` reads `ai/outputs/` | files (gitignored) |
+| **C** e-File noting | Stage files per proposal, dynamic routing, custody, classification, clarifications, delegation, need-to-know sharing | `/noting/*` | `noting/` `routes/noting/` | `server/data/noting.db` |
+| **D** Contracts | PO → contract from the 71 × 8 clause matrix, snapshots, SHA-256 + QR, release to IFS, verify/decrypt | `/contracts/*` | `contracts/` `routes/contracts/` | `server/data/contracts.db` |
+| **E** Approval chains | Checklist-driven internal approval chains with hop types, riders, OTP and a release gate | `/approvals/*` | `approvals/` `routes/approvals/` | `server/data/approvals.db` |
+| **F** AI cases | The live, in-browser Node port of B: a shared file walking the responsibility cascade under agency custody | `/ai-cases` | `server/ai/` `routes/aiCases.js` | `server/data/ai_cases.db` |
+| **G** Requisitions | MPR/CAR/CPR/SPR register with server-side price estimates, derived status and links to every other module | `/provisioning` | `requisitions/` `routes/requisitions.js` | `server/data/requisitions.db` |
+| Formats | 36 HAL standard formats (28 transcribed from `sampleData`, 8 awaiting HAL's text) rendered server-side from a requisition, PO, contract or RV | Portal Hub modals, noting attachments, contract annexures | `formats/` `routes/formats.js` | JSON seed |
+| Trackers | Eight read-only PO/RV trackers (PO due, DP expired + LD, live PO, receipts, securities, balance, e-release, GeM sync) | Portal Hub modals | `trackers/` `routes/trackers.js` | derived from fixtures + contracts |
+| Claims | Rejection / discrepancy claims: raise → dispatch → receive → close | `/claims` | `claims/` `routes/claims.js` | in-memory (`mock/claims.json`) |
+| KPIs | Sixteen procurement KPIs and the payment-desk analytics, computed over a month window | `/kpis` `/payment-kpis` | `kpis/` `routes/kpis.js` | derived |
 
-    subgraph AILayer ["AI & Rule Engine (Python 3.10+ / Ollama)"]
-        AI_CASCADE["Responsibility Cascade\n(Indenting vs Tendering)"]
-        AI_RULES["Deterministic Rule Engine\n(Math, Limits & Predicates)"]
-        AI_FORMATS["Deterministic Annexure Engine\n(Formats 21A-21F, PP, PO)"]
-        AI_SLM["Local SLM Client\n(Ollama Qwen2.5:3B / Fallback)"]
-    end
-
-    subgraph DataLayer ["Data & Persistence Layer"]
-        DB_SQLITE[("SQLite Stores (node:sqlite)\nnoting.db · contracts.db · approvals.db")]
-        DB_FIXTURES[("JSON Master Fixtures\nusers · rvs · pos · vendors · matrix")]
-        DB_OUTPUTS[("AI Pipeline Outputs\ncase_full.json · PDFs")]
-    end
-
-    ClientLayer <-->|REST API + Bearer JWT| ServerLayer
-    ServerLayer <--> DataLayer
-    ServerLayer -.->|Read-only Case Ingestion| DB_OUTPUTS
-    AILayer -->|Emits Artifacts| DB_OUTPUTS
-```
+In domain terms G, E, C and F cover Phases 1–4 (Provisioning → Tendering → Technical → Commercial) and end at the Purchase Order; D turns the PO into a contract; A starts at goods receipt; Claims and KPIs sit across the whole lifecycle.
 
 ---
 
-## End-to-End Procurement Lifecycle
+## The integrated storyline
+
+The demo data tells one story, the real **Night Vision Binocular** case (`CAR/25/229`, tender `GEM/2025/B/6638737`, PO `IMM/PO/25-26/0533`), from requisition to payment. Each module hands the file to the next through stored links, and each hand-off is gated:
 
 ```mermaid
 flowchart LR
-    A["1. Requisition<br/>& Indent Intake"] --> B["2. Approval Chain<br/>& Release Gate"]
-    B --> C["3. AI Note Drafting<br/>(F1 Provisioning)"]
-    C --> D["4. Tendering<br/>& Bid Evaluation"]
-    D --> E["5. e-Noting Approval<br/>(F2 - F7 / PO)"]
-    E --> F["6. Contract Generation<br/>(SHA-256 + QR)"]
-    F --> G["7. Goods Inward<br/>(RV & FTR/QC)"]
-    G --> H["8. Payment Advice<br/>& CPPC Release"]
-
-    classDef stage fill:#f8fafc,stroke:#3b82f6,stroke-width:2px,color:#1e293b;
-    class A,B,C,D,E,F,G,H stage;
+    G["G  Requisition<br/>CAR/25/229"] --> C1["C  Provisioning stage file<br/>+ E approval chain"]
+    C1 -->|chain released,<br/>stage approved| F["F  AI case<br/>EMD … Purchase Proposal"]
+    F -->|PP approved on the<br/>noting side| PO["F  PO note<br/>validated against pos.json"]
+    PO --> D["D  Contract<br/>finalise · release to IFS"]
+    D --> A["A  RV SEC/26/031<br/>payment advice · LD · CPPC"]
+    A --> K["KPIs · claims · trackers"]
 ```
+
+- A provisioning or purchase-proposal stage file **cannot be approved** in noting until its Module E chain is released (every obliged authority has acted, riders discharged, CFA approved).
+- A **PO note cannot be raised** in an AI case until the Purchase Proposal is approved on the noting side; a purchase officer may override, and the override is recorded on the note.
+- The PO number on the note is validated against the PO fixture, the contract is generated from that PO, and the RV, payment advice and register rows show the linked requisition and contract.
+- The requisition's status is **derived** from those links (`registered → checklist_done → provisioning → tendering → pp_approved → po_placed → contracted → received → paid`, or `short_closed` / `rejected`).
+
+`USER_GUIDE.md` walks this storyline account by account.
 
 ---
 
-## Key Modules & Capabilities
+## Portal Hub — the 80 items
 
-### 1. Indent Intake & Dynamic Approval Chains
-- **67-Point Indentor Checklist:** Dynamic intake form covering 25 provisioning criteria and 42 tender specification parameters.
-- **Dynamic Approval Ladder Computation:** Answers in the checklist automatically recompute who must approve the indent based on specific criteria (e.g., PAC/OEM certification, single tender justification, foreign currency, delivery timeline deviations).
-- **Committee Formulation:** Dynamic setup and voting records for Departmental Purchase Committees (DPC) and Price Negotiation Committees (PNC).
-- **Release Gate Validation:** Blocks downstream tender flotation until all mandatory prerequisite clearances and financial concurrences are recorded.
+`/portal` is the landing page for every role: six tabs (Provisioning, Procurement, Contract Management, Payment, Claim Management, KPI) holding the 80 items of HAL's portal specification. Each item is one of three kinds, and none is a placeholder:
 
-### 2. AI Procurement Note Pipeline & Responsibility Cascade
-- **Strict Agency Responsibility Separation:** Encodes the client's official responsibility matrix:
-  - **Indenting Agency:** Owns Indent Inputs, Provisioning Note (F1), and Technical Evaluation Committee (TEC) Report (F3).
-  - **Tendering Agency:** Owns Tender Document, EMD Scrutiny (F2), Price Bid Opening (F4), Price Negotiation Committee (F5/F6), Purchase Proposal (F7), and Purchase Order / Contract issuance.
-- **Interactive Responsibility Cascade CLI (`ai/run.py`):** Enforces desk custody, blocks unauthorized cross-agency actions, and tracks hand-over counts.
-- **Deterministic 11-Annexure Builder (`ai/formats.py`):** Automatically produces HAL standard annexures (Formats 21A–21F, CST, PJS, Price Schedule, Commercial Terms) with 100% mathematical accuracy.
-- **SLM Narrative Synthesis:** Ollama drafts only the newly introduced justification section for the current stage.
+| Kind | Count | What opens |
+|---|---|---|
+| Route | 37 | A real screen, often deep-linked (`/provisioning?tab=requisitions`, `/noting/initiate?stage=emd`, `/contracts/register?filter=approved_pp`, `/claims?tab=raise`) |
+| Format modal | 20 | A standard format rendered by the server, pre-filled from the chosen requisition, PO or contract, printable |
+| Tracker, calculator, DOP or KPI modal | 23 | Eight trackers, the LD calculator and price estimator (server-computed), the DOP-2025 lookup, and the sixteen KPI detail views |
+
+The seventeen procurement-note items (PRO-02 … PRO-18) open the noting Initiate screen at that stage: cascade stages resolve to the proposal's next stage file, and the seven off-cascade need-based notes (TEC representation, bank-detail insertion, vendor creation, vendor registration, misc, due-date extension, addendum) open a new stage file of that kind.
+
+---
+
+## Architecture
 
 ```mermaid
-flowchart TD
-    classDef ind fill:#fef3c7,stroke:#b45309,color:#78350f,stroke-width:1.5px
-    classDef ten fill:#dbeafe,stroke:#1d4ed8,color:#1e40af,stroke-width:1.5px
-    classDef term fill:#f1f5f9,stroke:#64748b,color:#334155,stroke-dasharray:4 4
+flowchart TB
+    subgraph Client ["client/ — React 18 + Vite, plain JSX + one index.css"]
+        Hub["Portal Hub + module nav (config/roles.js GROUPS)"]
+        Screens["Screens: Provisioning · Noting · Approvals · AI Cases · Contracts · Payments · Claims · KPIs"]
+        Grid["DataGrid + column configs (config/*.jsx)"]
+        Docs["Document renderers: NoteRenderer · FormatDocument · ContractDocument · PA documents"]
+    end
 
-    P["PRE-TENDER: Provisioning Note (F1)"]:::ind
-    TD["PRE-TENDER: Tender Document"]:::ten
-    S1["STAGE 1: Tender Opened"]:::ten
-    S2["STAGE 2: EMD Stage Acceptance (F2)"]:::ten
-    S3["STAGE 3: Technical Evaluation / TEC Report (F3)"]:::ind
-    S4["STAGE 4: Price Bid Opening (F4)"]:::ten
-    S5["STAGE 5: PNC Request (F5)"]:::ten
-    S6["STAGE 6: PNC Recommendation (F6)"]:::ten
-    S7["STAGE 7: Purchase Proposal (F7)"]:::ten
-    S8["STAGE 8: Purchase Order & Contract"]:::ten
-    CLOSED(["FILE CLOSED"]):::term
+    subgraph Server ["server/ — Node 22.5+/Express ESM, JWT on every data route"]
+        Auth["auth/ (bcrypt users, JWT, demo OTP)"]
+        A["A store.js + stateMachine.js + ld.js"]
+        C["C noting/ workflow · access · approvalLink"]
+        E["E approvals/ chain · checklist · org · bids"]
+        F["F ai/ pipeline · rules · formats · gates · caseStore"]
+        D["D contracts/ generate · matrix · money"]
+        G["G requisitions/ register · status · links"]
+        X["formats/ · trackers/ · claims/ · kpis/"]
+    end
 
-    P --> TD --> S1 --> S2 --> S3 --> S4
-    S4 -->|L1 > Estimate / No RA| S5 --> S6 --> S7 --> S8
-    S4 -->|L1 <= Estimate| S7
-    S2 -.->|Retender / Short Close| CLOSED
-    S4 -.->|Nil Qualified Bids| CLOSED
-    S8 --> CLOSED
+    subgraph Data ["Persistence"]
+        SQLite[("node:sqlite files under server/data/<br/>noting · contracts · approvals · ai_cases · requisitions")]
+        Fixtures[("server/mock/*.json<br/>users · rvs · pos · vendors · claims")]
+        Seeds[("JSON seeds<br/>formats · clauses · matrix · checklist · bids · employees · ai/dop2025.json")]
+        Uploads[("server/uploads (multer, SHA-256)")]
+    end
+
+    subgraph Python ["ai/ — Module B (CLI only)"]
+        CLI["run.py · cascade.py · rules.py · formats.py · prompts.json"]
+        Out[("ai/outputs/ case_full.json + PDFs")]
+    end
+
+    Client <-->|REST + Bearer JWT| Server
+    Server <--> Data
+    F -.->|reads prompts.json, case_input.json, dop2025.json| CLI
+    CLI --> Out
+    Server -.->|read-only viewer| Out
 ```
 
-### 3. e-File Noting Workflow & Digital Office
-- **Unified Case File (`AOD/<DEPT>/<YEAR>/<NNNN>`):** Maintains the entire case with sequenced notes (`N1...Nn`) and globally unique transaction IDs (`TXN-<YEAR>-<NNNNNN>`).
-- **Positional Authorization Engine:** Rights are dynamically derived based on who holds the file, prior routing participation, and supervisory hierarchy.
-- **Dynamic Routing & Safety Controls:**
-  - **Forward / Send-Back:** Forward to any colleague or return strictly to prior participants or the initiator.
-  - **Instant Retract:** Retract a forwarded note before the recipient opens it.
-  - **Automatic Comment Normalization:** Empty or symbol-only forward remarks (`.`, `,`, `*`) are automatically converted to standard `"Concurred & Forwarded"`.
-  - **In-file Clarifications:** Private, two-party inquiry threads between note holders.
-  - **Stamping & DoP Attachments:** Dedicated attachment classification for official sanctions.
-- **Security Classifications:** Graded access enforcement across **Normal**, **Restricted**, **Confidential**, **Secret**, and **Top Secret** with leak-proof need-to-know access tokens.
-- **Tenure-Bounded Supervision:** Former department heads can only review files active during their posting window; active heads supervise their entire division subtree.
-- **Post-PO Amendments:** Reopen closed cases for need-based amendments while maintaining complete lifecycle audit logs.
-
-### 4. Intelligent Contract Generation & Clause Matrix
-- **71 Standard Terms & Conditions (STC) × 8 Contract Types:** Automated clause crawling from the official HAL matrix (Supply Indigenous, Turnkey, Rate Contract, Service/AMC, Capital Equipment, etc.).
-- **Smart Matrix Filtering:** Automatically classifies clauses into `Mandatory/Auto`, `Excluded`, and `Conditional/Selectable`.
-- **Tamper-Evident SHA-256 Hash & Dynamic QR Code:** Finalizing a contract freezes content, computes a cryptographic digest, and stamps a scannable QR code verification payload.
-- **Clause Versioning & Admin Vetting:** Any clause modification requires an administrative role, mandatory change note, and legal vetting reference document, snapshotting clause text to protect existing contracts.
-- **Simulated Smart Contract Ledger:** Interactive ledger anchor demonstration verifying contract authenticity.
-
-### 5. Receipt Voucher (RV) & Payment Advice Engine
-- **Goods Receipt Trigger (RV / RR):** Ingests Receipt Vouchers directly from stores inward and QC inspection.
-- **Deterministic Liquidated Damages (LD) Calculator:** Re-evaluates delivery delays, grace periods, LD percentages (0.5%/week capped at 10%), and deductions strictly server-side (`server/ld.js`).
-- **5-Stage State Machine:**
-  1. `rv_pending` → Receipt voucher awaiting Maker processing.
-  2. `pa_created` → Maker prepares Payment Advice with tax, securities, and LD entries.
-  3. `forwarded_to_officer` → Purchase Officer reviews and verifies compliance.
-  4. `at_payment_desk` → Payment Desk compiles the 23-point checklist note.
-  5. `sent_to_hod` / `stamped_by_hod` → HOD IMM approves and stamps.
-  6. `sent_to_cppc` / `paid` → Centralised Payment Processing Cell releases funds with PRR/PPR.
-- **Dual Official Hand-Off Formats:**
-  - **Payment Recommendation Report** (Officer → Payment Desk).
-  - **Payment Advice to HOD** with the complete 23-point statutory verification checklist.
-
-### 6. Payment Analytics & Executive SLA Dashboards
-- **Aging & SLA Tracking:** Real-time visual aging badges (Green ≤ 15 days, Amber 16–25 days, Red > 25 days / Critical 30-day limit).
-- **Payment KPIs (`/payment-kpis`):** Interactive metrics for average cycle time, vendor processing turnarounds, total liquidated damages recovered, and stage-wise bottlenecks.
-- **Export Capabilities:** Full audit registers with one-click CSV data export.
+Load-bearing details are in `CLAUDE.md`; the domain glossary is at the top of `PROJECT_OVERVIEW.md`.
 
 ---
 
-## Security, Governance & Access Model
+## Security & access model
 
-The portal implements a dual-layer security model combining authentication-level roles with real-time positional authority:
+- **Authentication:** `POST /api/auth/login` issues a JWT; every `/api/*` data route runs `authMiddleware`. Users are seeded from `server/mock/users.json` and bcrypt-hashed in memory on boot.
+- **Roles:** `indentor`, `purchase_maker`, `purchase_officer`, `stores_inspection`, `payment_desk`, `hod_imm`, `cppc`, `admin`. `client/src/config/roles.js` drives navigation and route guards; `server/middleware/requireRoles.js` and `requireAdmin.js` enforce the same rules on the server. Admin accounts get a top-bar role switcher to preview any role; the preview never changes what the server allows.
+- **Positional access (noting):** a note is acted on only by its custodian (or an active delegate), read by its participants and the proposal's owners, and graded per note. Non-normal classifications have no head bypass; need-to-know grants are per member and revoke on re-share.
+- **Agency custody (AI cases):** only a position in the holding agency may raise the next note; the file must be handed over first.
+- **Two-factor demo:** `server/auth/otp.js` issues and verifies a 6-digit code per user over 30-second windows (`GET /api/auth/otp-demo`). Final review of an e-file and approval-chain hops verify it server-side. Real authenticator enrolment is future scope.
 
-### Positional Access Matrix (e-File Noting)
-
-| Capability | HAL Member | File Initiator | Current Custodian | Recipient / Checker | Approving Authority | Supervisory Head |
-|:---|:---:|:---:|:---:|:---:|:---:|:---:|
-| Initiate File / Draft N1 | ✅ | — | — | — | — | — |
-| Edit Active Draft | — | ✅ | ✅ (Draft stage) | — | — | — |
-| Forward Note / Send for Check | — | ✅ | ✅ | — | — | — |
-| Raise / Reply Clarification | — | ✅ | ✅ | ✅ | ✅ | — |
-| Attach Stamping / DoP Ref | — | ✅ (Only) | — | — | — | — |
-| Send Back to Prior Holder | — | — | ✅ | — | ✅ | — |
-| Retract Unopened Note | — | — | ✅ (Sender) | — | — | — |
-| Approve / Reject Note | — | — | — | — | ✅ (Only) | — |
-| View Normal File | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| View Graded File (Restricted/Confidential) | ❌ | ✅ | ✅ | Grantee | ✅ | ✅ (Tenure) |
-| View Secret / Top Secret | ❌ | ✅ | ✅ | Grantee | ✅ | Direct Head / Token |
-| Generate Next Stage Note (N2...Nn) | — | ✅ | Participant | — | — | — |
+The full positional grid for noting is in `WORKFLOW_GUIDE.md`.
 
 ---
 
-## Technology Stack
-
-```
-HAL Procurement Portal
-├── Frontend (client/)
-│   ├── Framework: React 18.3 (JSX)
-│   ├── Tooling: Vite 6.0
-│   ├── Routing: React Router DOM 6.28
-│   ├── Visualizations: Recharts 3.10
-│   ├── Rich Text / QR: React-Quill 2.0, QRCode.react 4.2
-│   └── Styling: Pure Modular Vanilla CSS (Design System Tokens)
-│
-├── Backend (server/)
-│   ├── Runtime: Node.js (ES Modules, "type": "module")
-│   ├── Framework: Express 4.21
-│   ├── Persistence: node:sqlite (Zero native compilation dependency)
-│   ├── Enterprise DB: PostgreSQL 16 ready (pg 8.23 + migration tool)
-│   ├── Security: JSON Web Token (jsonwebtoken 9.0), BcryptJS 2.4
-│   └── File Storage: Multer 2.2
-│
-└── AI & Rule Engine (ai/)
-    ├── Runtime: Python 3.10+
-    ├── Local SLM: Ollama (Qwen2.5-3B model)
-    ├── PDF Generation: ReportLab
-    └── Document Extractors: PyMuPDF (fitz), Python-docx, OpenPyXL
-```
-
----
-
-## Repository Structure
+## Repository structure
 
 ```
 HAL_Procurement_Portal/
-├── ai/                                # Module B: Python AI Noting & Responsibility Cascade
-│   ├── cascade.py                     # Responsibility cascade schema (stages, owners, formats)
-│   ├── cascade_check.py               # 59-point automated verification against official xlsx
-│   ├── interactive.py                 # Interactive terminal decision-tree runner
-│   ├── pipeline.py                    # Stage orchestrator (delta -> carry-forward -> SLM)
-│   ├── rules.py                       # Deterministic money math & branch conditions
-│   ├── formats.py                     # 11 deterministic HAL standard annexure builders
-│   ├── stages.py                      # Canonical graph (10 sequential stages + need-based)
-│   ├── prompts.json                   # Stage-wise prompts for the SLM
-│   ├── run.py                         # CLI entry point (--auto or interactive)
-│   └── tools/                         # SLM client, ReportLab PDF writer & document extractors
-│
-├── client/                            # Frontend Web Application (React + Vite)
-│   ├── src/
-│   │   ├── components/                # Reusable UI (DataGrid, StatusPill, Header, RoleSwitcher)
-│   │   ├── config/                    # Column definitions, roles, SLA limits & color maps
-│   │   ├── context/                   # AuthContext (JWT) and RoleContext (Preview Switcher)
-│   │   ├── lib/                       # API client, currency (₹ lakh/crore), date helpers
-│   │   └── screens/                   # Modular feature screens
-│   │       ├── AiCases/               # Interactive AI case runner & review screen
-│   │       ├── AiDocuments/           # Read-only viewer for AI notes with print isolation
-│   │       ├── Approvals/             # Indent intake checklist & dynamic approval chains
-│   │       ├── Contracts/             # Contract generator, register & 72-clause library
-│   │       ├── Noting/                # e-File noting (Inbox, Files, Cabinet, Reports, Detail)
-│   │       ├── PaymentAdvice/         # Maker PA preparation & Liquidated Damages
-│   │       ├── PaymentKpis/           # Executive SLA dashboards & cycle time analytics
-│   │       ├── PaymentRegister/       # Historical payment registry with CSV export
-│   │       ├── ProcessPayment/        # Payment Desk processing & checklist compilation
-│   │       └── RvInbox/               # Receipt voucher aging & SLA queue
-│   └── index.html                     # SPA entry point with responsive viewport
-│
-├── server/                            # Backend API Server (Node.js Express)
-│   ├── approvals/                     # Checklist evaluation, approval chains & committees
-│   ├── auth/                          # User authentication, password hashing & JWT handlers
-│   ├── contracts/                     # 71-clause matrix parser, generator, QR & SQLite store
-│   ├── database/                      # Optional PostgreSQL schema & migration runner
-│   ├── middleware/                    # authMiddleware (JWT) & requireAdmin guards
-│   ├── mock/                          # Master JSON fixtures (users, rvs, pos, vendors)
-│   ├── noting/                        # e-File SQLite store, workflow engine, identity & refs
-│   ├── routes/                        # Express API route controllers
-│   ├── ld.js                          # Deterministic Liquidated Damages calculation engine
-│   ├── stateMachine.js                # Payment Advice lifecycle state transitions
-│   └── index.js                       # Express server bootstrapping & route mounting
-│
-├── sampleData/                        # Client purchase formats, templates & validation references
-├── docker-compose.yml                 # Full-stack container orchestration
-├── Dockerfile                         # Production container definition
-├── CLAUDE.md                          # Architecture invariants & developer guidance
-├── USER_GUIDE.md                      # Comprehensive user walkthrough of all screens
-└── WORKFLOW_GUIDE.md                  # Deep dive into Noting, Contracts & AI Documents
+├── ai/                         Module B (Python CLI): cascade, rules, formats, prompts, checks, demo.sh
+│   ├── dop2025.json            DOP-2025 Annexure-3 (bands pending from HAL; read by Node and Python)
+│   └── fixtures/               the fabricated LED case E-33046
+├── client/src/
+│   ├── config/                 roles.js (SCREENS, GROUPS, DETAIL_ROUTES), portalStructure.js, all column configs
+│   ├── components/             DataGrid, Header, formats/, trackers/, tools/, claims/, provisioning/, noting/, contracts/, paDocuments/
+│   ├── lib/                    apiFetch + per-module API wrappers, currency/date/csv helpers
+│   └── screens/                PortalHub, Provisioning, Noting/*, Approvals/*, AiCases/*, Contracts/*, payment screens, ClaimManagement, KpiSuite, PaymentKpis
+├── server/
+│   ├── auth/  middleware/       users, JWT, demo OTP, requireRoles / requireAdmin
+│   ├── store.js stateMachine.js ld.js       Module A
+│   ├── noting/  approvals/  ai/  contracts/  requisitions/   one SQLite store each (db.js + schema.sql + seed)
+│   ├── formats/  trackers/  claims/  kpis/                    JSON-seeded or derived modules
+│   ├── routes/                 one router per module; all mounted behind authMiddleware in index.js
+│   ├── config/ldPolicy.json    LD cap base (pending HAL confirmation)
+│   ├── mock/                   users, rvs, pos, vendors, claims fixtures
+│   ├── data/                   SQLite files (gitignored)   uploads/  binary attachments (gitignored)
+│   └── *.check.mjs             regression checks, one per module
+├── sampleData/                 HAL's own documents (read-only): formats, checklist, cascade sheet, sample notes
+├── docker-compose.yml  server/Dockerfile  client/Dockerfile   node:24-alpine, SQLite + uploads volumes
+└── CLAUDE.md · USER_GUIDE.md · WORKFLOW_GUIDE.md · PROJECT_OVERVIEW.md · DOCKER_DEPLOYMENT.md · ai/ARCHITECTURE.md · ai/CASCADE.md
 ```
 
 ---
 
-## Quick Start Guide
+## Quick start
 
-### Prerequisites
-- **Node.js**: v18.0.0 or higher
-- **npm**: v9.0.0 or higher
-- *(Optional for AI CLI)*: Python 3.10+ with Conda, and [Ollama](https://ollama.ai/) with `qwen2.5:3b`.
-
-### 1. Installation
-
-Clone the repository and install all dependencies for both `client` and `server` in a single command via npm workspaces:
+**Prerequisites:** Node.js **22.5 or newer** (the stores use the built-in `node:sqlite`; development runs on Node 24) and npm 9+. Python 3.10 with conda and [Ollama](https://ollama.ai/) are optional and only needed for the AI note drafting and the Python CLI.
 
 ```bash
 git clone https://github.com/alpha08-prog/HAL_Procurement_Portal.git
 cd HAL_Procurement_Portal
-npm install
+npm install                 # client + server (npm workspaces)
+cp server/.env.example server/.env   # optional: JWT secret, encryption key, Ollama, DB paths
+npm run dev                 # API on :3001 + Vite on :5173
 ```
 
-*(Optional — to enable the local Python AI drafting pipeline)*:
-```bash
-conda create -n hal python=3.10 -y
-conda run -n hal pip install pymupdf python-docx requests reportlab openpyxl
-```
+Open **http://localhost:5173** (port 3001 is the API and serves no HTML). Every SQLite store is created and seeded on first boot under `server/data/`.
 
-### 2. Running the Application
-
-Launch both the backend API server (`localhost:3001`) and the Vite development client (`localhost:5173`) concurrently:
+Optional AI drafting:
 
 ```bash
-npm run dev
-```
-
-Once the terminal outputs both startup confirmation lines, open your browser:
-👉 **[http://localhost:5173](http://localhost:5173)**
-
-> [!NOTE]
-> The Vite frontend on port `5173` automatically proxies all `/api/*` HTTP requests to the backend on port `3001`. Do not open port `3001` directly in the browser.
-
-### 3. Running the AI Pipeline CLI (Optional)
-
-In a separate terminal, launch Ollama and run the interactive responsibility cascade:
-
-```bash
-# Terminal 1: Start local language model
-ollama serve
-ollama pull qwen2.5:3b
-
-# Terminal 2: Run interactive cascade
-conda run --no-capture-output -n hal python ai/run.py
+ollama serve && ollama pull qwen2.5:3b        # AI-case notes are still produced without it; the drafted section is marked unavailable
+conda create -n hal python=3.10 -y && conda run -n hal pip install pymupdf python-docx requests reportlab openpyxl
+conda run --no-capture-output -n hal python ai/run.py    # the Python CLI (Module B)
 ```
 
 ---
 
-## Test Credentials & Persona Matrix
+## Test credentials
 
-All pre-seeded test accounts share the unified password: **`hal@1234`**
+All accounts share the password **`hal@1234`**.
 
-| Email | Role | Department / Position | Accessible Modules & Permissions |
-|:---|:---|:---|:---|
-| **`admin@hal.local`** | `admin` | System Administrator | **Full Access** + Live Top-Bar Role Switcher & Clause Editor |
-| **`test@hal.local`** | `admin` | QA Administrator | **Full Access** + Live Top-Bar Role Switcher |
-| **`indentor@hal.local`** | `indentor` | Indenting Officer | Indent Intake, Provisioning Notes, Register, AI Cases |
-| **`maker@hal.local`** | `purchase_maker` | Purchase Maker (IMM) | RV Inbox, Draft PA Preparation, Contract Generation, Initiating Files |
-| **`officer@hal.local`** | `purchase_officer` | Purchase Officer (IMM) | Forward Advice Review, Noting Routing, Retract Unopened Files |
-| **`desk@hal.local`** | `payment_desk` | Payment Desk (Finance) | Process Payment, 23-Point Checklist Compilation, Share-Link Recipient |
-| **`hod@hal.local`** | `hod_imm` | Head of Dept (IMM) | HOD Approval Stamping, Final Approvals, Retrieve From Cabinet |
-| **`gm@hal.local`** | `hod_imm` | General Manager (AOD) | Division-Wide Supervision of Files across All Departments |
-| **`cm@hal.local`** | `hod_imm` | Chief Manager (Purchase) | Direct-Head "Secret" Grade & Top-Secret Participant Visibility |
-| **`stores@hal.local`** | `stores_inspection` | Stores & Inward Inspection | Goods Receipt Verification, RV Registry |
+| Email | Role | Used for |
+|---|---|---|
+| `admin@hal.local`, `test@hal.local` | `admin` | Every screen, the role switcher, clause amendments, contract decrypt. Admin acts for both cascade agencies, so use two non-admin accounts to show custody. |
+| `indentor@hal.local` | `indentor` | Requisitions, the indentor checklist, provisioning stage files, opening AI cases |
+| `maker@hal.local` | `purchase_maker` | Tendering agency: EMD … PO notes, contract generation, payment advices, credit notes and uploads |
+| `officer@hal.local` | `purchase_officer` | Forwarding advices, noting routing, retract demo, contract release/verify |
+| `hod@hal.local` | `hod_imm` | Approvals (chains, stage files, HOD stamp), retrieve-from-cabinet demo |
+| `gm@hal.local` | `hod_imm` | Division-wide, tenure-aware supervision of files |
+| `cm@hal.local` | `hod_imm` | Tender initiator (Gaurav Yadav); direct-head and top-secret visibility |
+| `stores@hal.local` | `stores_inspection` | RV inbox, raising and dispatching claims; read-only elsewhere |
+| `desk@hal.local` | `payment_desk` | Process payment, the 23-point checklist, need-to-know share-link recipient |
+| `cppc@hal.local` | `cppc` | Centralised Payment Processing Cell: releases the final payment |
 
 ---
 
-## Docker & Air-Gapped LAN Deployment
+## Docker / air-gapped deployment
 
-The application includes a complete containerized setup incorporating **PostgreSQL 16**, the **Node.js Express API**, and **Nginx serving the optimized React SPA**.
-
-### 1. Single-Command Launch (Connected Environment)
+Two containers on `node:24-alpine`: the Express API (SQLite files in the `hal_data` volume, uploads in `hal_uploads`) and nginx serving the built client and proxying `/api`. There is **no database server**.
 
 ```bash
-docker compose up --build -d
+docker compose up --build -d          # http://localhost (PORT=… to change)
+docker compose down                   # keep data;  down -v wipes it
 ```
 
-Access the portal on port 80: **`http://localhost`** (or `http://<server-ip>` over LAN).
+Offline LAN: `docker compose build`, `docker save -o hal_procurement_images.tar hal_procurement_portal-server hal_procurement_portal-client`, copy the tar and `docker-compose.yml`, then `docker load` and `docker compose up -d`. Details, environment variables and backup commands are in `DOCKER_DEPLOYMENT.md`.
 
-### 2. Air-Gapped / Offline Defence Network Deployment
+---
 
-For secure, offline on-premise servers:
+## Verification
 
 ```bash
-# Step 1: On an internet-connected build workstation
-docker compose build
-docker save -o hal_procurement_images.tar postgres:16-alpine hal_procurement_portal-server hal_procurement_portal-client
+npm run check                 # every regression check below, in one run
+npm run build -w client       # production build
 
-# Step 2: Transfer hal_procurement_images.tar and docker-compose.yml via approved storage to the server
+node server/ld.check.mjs                       # LD math
+node server/server.check.mjs                   # routers load, nav/hub config consistent, no inline columns or MOCK_ data in screens
+node server/noting/noting.check.mjs            # Module C (throwaway DB)
+node server/contracts/contracts.check.mjs      # Module D
+node server/approvals/approvals.check.mjs      # Module E vs its seed JSON (113 assertions)
+node server/ai/ai.check.mjs                    # Module F rules, gate, rollback (Ollama not required)
+node server/formats/formats.check.mjs          # every format complete, every hub modal mapped, money right
+node server/trackers/trackers.check.mjs        # trackers vs ld.js
+node server/requisitions/requisitions.check.mjs
+node server/claims/claims.check.mjs
+node server/kpis/kpis.check.mjs
 
-# Step 3: On the offline LAN server
-docker load -i hal_procurement_images.tar
-docker compose up -d
+# Python side (conda env `hal`)
+conda run -n hal python ai/cascade_check.py    # cascade.py vs the responsibility-cascading spreadsheet
+conda run -n hal python ai/approval_check.py   # approval layer vs the directory, checklist and the real F1 note
+conda run -n hal python ai/validate.py         # generated notes vs gold facts (needs a prior ai/run.py --auto)
 ```
 
----
-
-## Automated Verification & Diagnostics
-
-The project includes specialized regression test suites and constraint verifiers:
-
-```bash
-# 1. Assert Liquidated Damages math & grace period logic
-node server/ld.check.mjs
-
-# 2. Run e-File Noting workflow regression checks (isolated throwaway DB)
-node server/noting/noting.check.mjs
-
-# 3. Run Contract Generation & Clause Matrix regression checks
-node server/contracts/contracts.check.mjs
-
-# 4. Verify AI cascade rules against official client spreadsheet (59/59 checks)
-conda run -n hal python ai/cascade_check.py
-
-# 5. Score AI generated note facts against gold sample notes
-conda run -n hal python ai/validate.py
-```
+The checks are hand-rolled `node:assert` scripts; there is no test framework or linter. Each SQLite check points its `*_DB` variable at a throwaway file.
 
 ---
 
-## Companion Documentation
+## What still needs HAL's input
 
-For in-depth operational and architectural details, refer to the specialized reference documents:
+Each of these is isolated in a flagged config file and surfaced on screen; none blocks a demo.
 
-- 📘 **[`USER_GUIDE.md`](USER_GUIDE.md)** — Complete step-by-step walkthrough of every screen, button, decision rule, and common setup pitfalls.
-- 📙 **[`WORKFLOW_GUIDE.md`](WORKFLOW_GUIDE.md)** — Deep dive into e-File Noting, Contract Generation, and the AI Documents viewer with recommended demo sequences.
-- 🏛️ **[`PROJECT_OVERVIEW.md`](PROJECT_OVERVIEW.md)** — Comprehensive glossary, procurement lifecycle breakdown, and sample file mapping.
-- 🧠 **[`ai/ARCHITECTURE.md`](ai/ARCHITECTURE.md)** — Theoretical architecture, data contracts, and prompt design of the AI procurement noting engine.
-- 🔀 **[`ai/CASCADE.md`](ai/CASCADE.md)** — Complete provenance, mathematical proofs, and 17 decision branch specifications for the responsibility cascade.
-- 🐳 **[`DOCKER_DEPLOYMENT.md`](DOCKER_DEPLOYMENT.md)** — Detailed instructions for enterprise container operations and database maintenance.
+| Item | Where it lives |
+|---|---|
+| DOP-2025 Annexure-3 value bands (CFA level from amount) | `ai/dop2025.json` (`_status: bands_pending_client`) |
+| LD ceiling base: PO value or RV value | `server/config/ldPolicy.json` |
+| Texts of eight standard formats (adequacy statement, brand certificate, FTR, claim form, DP extension, supplier letter, tender document, works manual) | `server/formats/seed/formats.json` (`verified: false`) |
+| TEC committee composition rule | `server/approvals/chain.js` `NOTE_CHAINS.tec_report.committeeSpecs` |
+| Division/department mapping for AOD proposals and chain shapes beyond provisioning | `server/noting/approvalPolicy.json` |
+| Real SC/ST and women-entrepreneur supplier flags for KPI-11/12 (fixture values today) | `server/mock/vendors.json` `mseScSt` / `mseWomen` |
 
 ---
+
+## Companion documentation
+
+- **[`USER_GUIDE.md`](USER_GUIDE.md)** — running it, every flow with the account to use, the integrated storyline, verification and the API appendix.
+- **[`WORKFLOW_GUIDE.md`](WORKFLOW_GUIDE.md)** — the AI Documents viewer, e-File Noting and Contract Generation screen by screen, with the seeded demos.
+- **[`PROJECT_OVERVIEW.md`](PROJECT_OVERVIEW.md)** — glossary, HAL's source documents, the noting sequence, and the payment module specification as built.
+- **[`ai/ARCHITECTURE.md`](ai/ARCHITECTURE.md)** and **[`ai/CASCADE.md`](ai/CASCADE.md)** — the AI pipeline design and the responsibility cascade's provenance.
+- **[`DOCKER_DEPLOYMENT.md`](DOCKER_DEPLOYMENT.md)** — container operations, environment, backups.
+- **[`CLAUDE.md`](CLAUDE.md)** — architecture invariants and developer guidance.
 
 <p align="center">
   <b>Hindustan Aeronautics Limited — Nashik Division</b><br/>

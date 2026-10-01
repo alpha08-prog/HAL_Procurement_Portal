@@ -5,15 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch index.js",
-    "start": "node index.js",
-    "db:migrate": "node database/migrate.js"
+    "start": "node index.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "dotenv": "^17.4.2",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^2.2.0",
-    "pg": "^8.23.0"
+    "multer": "^2.2.0"
   }
 }

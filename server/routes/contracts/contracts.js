@@ -5,8 +5,9 @@
 import { Router } from 'express';
 import { all } from '../../contracts/db.js';
 import { contractActor } from '../../contracts/identity.js';
-import { generateContract, patchDraft, finaliseContract, verifyContract, fullContract, CLASSIFICATIONS } from '../../contracts/generate.js';
+import { generateContract, patchDraft, finaliseContract, verifyContract, fullContract, releaseContract, decryptContent, CLASSIFICATIONS } from '../../contracts/generate.js';
 import { requireRoles } from '../../middleware/requireRoles.js';
+import { requireAdmin } from '../../middleware/requireAdmin.js';
 
 const router = Router();
 const boom = (res, e) => res.status(e.status || 500).json({ error: e.message });
@@ -49,9 +50,23 @@ router.post('/:id/finalise', contractWorkflowRole, (req, res) => {
   } catch (e) { boom(res, e); }
 });
 
-router.get('/:id/verify', (req, res) => {
+// Verify (audited when done by the purchase chain), release (e-release to IFS, recorded) and
+// the admin-only decrypt that proves the smart-contract round trip.
+router.get('/:id/verify', contractWorkflowRole, (req, res) => {
   try {
-    res.json(verifyContract(req.params.id));
+    res.json(verifyContract(req.params.id, contractActor(req)));
+  } catch (e) { boom(res, e); }
+});
+
+router.post('/:id/release', contractWorkflowRole, (req, res) => {
+  try {
+    res.json(releaseContract(req.params.id, contractActor(req), { gemContractNo: req.body?.gemContractNo }));
+  } catch (e) { boom(res, e); }
+});
+
+router.get('/:id/decrypt', requireAdmin, (req, res) => {
+  try {
+    res.json(decryptContent(req.params.id));
   } catch (e) { boom(res, e); }
 });
 

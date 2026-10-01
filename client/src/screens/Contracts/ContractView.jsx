@@ -4,19 +4,11 @@ import ContractDocument from '../../components/contracts/ContractDocument.jsx';
 import { CONTRACT_CLASSIFICATIONS, ContractClassificationBadge, ContractStatusBadge } from '../../config/contractColumns.jsx';
 import { useRole } from '../../context/RoleContext.jsx';
 import {
-  fetchClausePlan, fetchContract, fetchFormats, finaliseContract, patchContract, verifyContract
+  decryptContract, fetchClausePlan, fetchContract, fetchFormats, finaliseContract, patchContract, releaseContract, verifyContract
 } from '../../lib/contractsApi.js';
+import { formatDate } from '../../lib/date.js';
 
 const CONTRACT_WORKFLOW_ROLES = new Set(['purchase_maker', 'purchase_officer', 'hod_imm', 'admin']);
-
-const ALLOWED_PROFORMA_IDS = new Set([
-  'pbg_bg',
-  'sd_bg',
-  'adv_bg',
-  'indemnity_bond',
-  'warranty_cert',
-  'service_level'
-]);
 
 // One contract: the printable document plus a .no-print action rail. Draft → edit
 // selections / finalise; finalised → verify integrity + print. The document itself is
@@ -31,6 +23,7 @@ export default function ContractView() {
   const [edit, setEdit] = useState(null); // draft edit form state | null
   const [plan, setPlan] = useState(null);
   const [allFormats, setAllFormats] = useState([]);
+  const [decrypted, setDecrypted] = useState(null);
 
   const load = () =>
     fetchContract(id)
@@ -51,7 +44,7 @@ export default function ContractView() {
     try {
       const [p, f] = await Promise.all([fetchClausePlan(c.contract_type_id), fetchFormats()]);
       setPlan(p);
-      setAllFormats((f.formats || []).filter((fmt) => ALLOWED_PROFORMA_IDS.has(fmt.id)));
+      setAllFormats(f.formats || []);
       setEdit({
         classification: c.classification,
         description: c.description || '',
@@ -115,6 +108,29 @@ export default function ContractView() {
     }
   };
 
+  // e-Release to IFS (CON-02): recorded on the contract, no connector in the prototype.
+  const doRelease = async () => {
+    const gem = window.prompt('Release this contract / PO to IFS (recorded). GeM contract number, if any:', c.gem_contract_no || '');
+    if (gem === null) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setDoc(await releaseContract(c.id, { gemContractNo: gem }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const doDecrypt = async () => {
+    try {
+      setDecrypted(await decryptContract(c.id));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const toggleSet = (key, value) =>
     setEdit((f) => {
       const next = new Set(f[key]);
@@ -145,9 +161,19 @@ export default function ContractView() {
                 </button>
               </>
             )}
-            {c.status === 'finalised' && (
+            {c.status !== 'draft' && canUseContractWorkflow && (
               <button type="button" className="btn btn-secondary" onClick={doVerify}>
                 Verify integrity
+              </button>
+            )}
+            {c.status === 'finalised' && canUseContractWorkflow && (
+              <button type="button" className="btn" onClick={doRelease} disabled={busy}>
+                Release to IFS
+              </button>
+            )}
+            {c.encrypted_payload && accountRole === 'admin' && (
+              <button type="button" className="btn btn-secondary" onClick={doDecrypt}>
+                Decrypt (admin, demo)
               </button>
             )}
             <button type="button" className="btn" onClick={() => window.print()}>
@@ -158,10 +184,24 @@ export default function ContractView() {
 
         {error && <div className="banner banner-error">{error}</div>}
         {verify && (
-          <div className={'banner ' + (verify.match ? 'banner-success' : 'banner-error')}>
+          <div className={'banner ' + (verify.match && verify.anchorMatch !== false ? 'banner-success' : 'banner-error')}>
             {verify.match
               ? `Integrity verified — the stored content matches SHA-256 ${verify.storedHash.slice(0, 20)}…`
               : 'INTEGRITY FAILURE — the stored content no longer matches its finalisation hash.'}
+            {verify.anchorMatch != null && (verify.anchorMatch ? ' Simulated anchor re-derives from the hash.' : ' SIMULATED ANCHOR MISMATCH — the stored anchor does not derive from the hash.')}
+            {verify.keySource && ` Encryption key: ${verify.keySource === 'env' ? 'CONTRACT_ENCRYPTION_KEY' : 'built-in DEMO key (set CONTRACT_ENCRYPTION_KEY for a real deployment)'}.`}
+          </div>
+        )}
+        {decrypted && (
+          <div className="banner banner-restricted">
+            Decrypted with the {decrypted.keySource === 'env' ? 'configured' : 'demo'} key ({decrypted.alg}); SHA-256 of the plaintext {decrypted.matchesStoredHash ? 'matches' : 'DOES NOT match'} the stored hash.
+            Canonical content: {decrypted.canonical.contractNo}, {decrypted.canonical.clauses.length} clauses, {decrypted.canonical.items.length} items, landed {decrypted.canonical.values.landed}.
+            <button type="button" className="link-button" style={{ marginLeft: 8 }} onClick={() => setDecrypted(null)}>hide</button>
+          </div>
+        )}
+        {c.status === 'released' && (
+          <div className="banner banner-success">
+            Released to IFS on {formatDate(c.released_at)} by {c.released_by_name || '—'}{c.gem_contract_no ? ` · GeM contract ${c.gem_contract_no}` : ''} (recorded; no IFS/GeM connector in the prototype).
           </div>
         )}
         {sim && (
@@ -169,7 +209,20 @@ export default function ContractView() {
             Smart-contract encryption enabled: canonical contract content encrypted with{' '}
             <strong>{c.encryption_alg}</strong>. Demo anchor (<strong>{sim.network}</strong> — this is not a real
             blockchain): block #{sim.block}, tx {sim.txHash.slice(0, 24)}…, anchored {sim.anchoredAt?.slice(0, 19).replace('T', ' ')} UTC.
+            {doc.keySource && ` Key source: ${doc.keySource === 'env' ? 'CONTRACT_ENCRYPTION_KEY' : 'built-in demo key'}.`}
           </div>
+        )}
+        {doc.events?.length > 0 && (
+          <details className="req-events">
+            <summary>Audit trail ({doc.events.length})</summary>
+            <ul>
+              {doc.events.map((ev) => (
+                <li key={ev.id}>
+                  <span className="field-hint">{ev.created_at.slice(0, 16).replace('T', ' ')}</span> {ev.kind}: {ev.detail}{ev.actor_name ? ` — ${ev.actor_name}${ev.actor_pb ? ` (${ev.actor_pb})` : ''}` : ''}
+                </li>
+              ))}
+            </ul>
+          </details>
         )}
 
         {edit && (
@@ -250,7 +303,10 @@ export default function ContractView() {
               {allFormats.map((f) => (
                 <label key={f.id} className="clause-tick">
                   <input type="checkbox" checked={edit.formats.has(f.id)} onChange={() => toggleSet('formats', f.id)} />
-                  <span>{f.label}</span>
+                  <span>
+                    {f.label} <span className="fmt-code-cell">{f.code}</span>
+                    {f.verified === false && <span className="tag tag-fmt-pending">pending from HAL</span>}
+                  </span>
                 </label>
               ))}
             </div>

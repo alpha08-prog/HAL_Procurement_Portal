@@ -94,8 +94,10 @@ export default function UpcomingFiles() {
                       <td style={{ whiteSpace: 'nowrap', fontSize: 11 }}>
                         {r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : '—'}
                       </td>
-                      <td style={{ textAlign: 'center', fontWeight: 600 }}>Step #{r.current_step || 1}</td>
-                      <td style={{ textAlign: 'center', fontWeight: 600, color: 'var(--accent)' }}>Step #{r.your_step || 2}</td>
+                      <td style={{ textAlign: 'center', fontWeight: 600 }}>{r.current_step_label ?? '—'}</td>
+                      <td style={{ textAlign: 'center', fontWeight: 600, color: 'var(--accent)' }}>
+                        Step #{r.your_step}{r.total_steps ? ` of ${r.total_steps}` : ''}
+                      </td>
                       <td><span className="ef-file-id">#{r.file_id || r.txn_id}</span></td>
                     </tr>
                   );

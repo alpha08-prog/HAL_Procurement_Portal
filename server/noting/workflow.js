@@ -6,6 +6,17 @@
 // separate stage files (`notes`, ref <File ID>/S<seq>) — Provisioning, EMD, TEC, PBO, …,
 // Retender, PO Amendment — each generated from the result of the one before. Every stage file
 // runs its own N1..Nx noting sheet and, once decided, closes and rests in the cabinet.
+//
+// Three things are enforced here rather than merely displayed:
+//   • custody — the custodian routes, or a member holding an active delegation from them
+//     (delegation.js), in which case the hop is stamped on_behalf_of_id;
+//   • the planned routing — Initiate's chain is followed unless the sender records a
+//     deviation with a reason;
+//   • authority — the planned approving authority (or their delegate) decides a stage;
+//     without a plan, anyone but the initiator.
+import { verify as verifyOtp } from '../auth/otp.js';
+import { actsFor } from './delegation.js';
+import { ensureChain, releaseBlock } from './approvalLink.js';
 import { all, get, nowISO, run } from './db.js';
 import { nextTxnId, noteRefNo } from './refs.js';
 import {
@@ -18,6 +29,10 @@ const fail = (status, message) => {
 
 const active = new Set(['draft', 'in_check', 'routed']);
 
+// Side effects other modules register (routes/noting/notes.js hooks the AI case rollback
+// here), so this file never imports the AI store.
+export const hooks = { onReject: null };
+
 // Email rule: an empty comment — or one that is just symbols ("." "," "*" …) — becomes
 // the auto comment at send time. Anything with at least one letter/digit stands as written.
 export const normComment = (comment, fallback) => {
@@ -28,6 +43,22 @@ export const normComment = (comment, fallback) => {
 export function noteByTxn(txnId) {
   return get('SELECT * FROM notes WHERE txn_id = ?', txnId);
 }
+
+const memberName = (id) => get('SELECT name FROM members WHERE id = ?', id)?.name ?? `member #${id}`;
+
+// planned_routing is a JSON array of member ids (Initiate sends ids; older rows may hold
+// objects). The last planned member is the approving authority unless approver_id says so.
+export const parsePlan = (json) => {
+  try {
+    return (JSON.parse(json || '[]') || [])
+      .map((x) => Number(x && typeof x === 'object' ? x.id : x))
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+};
+
+export const plannedApprover = (note) => note.approver_id ?? (parsePlan(note.planned_routing).at(-1) ?? null);
 
 // Everyone who has ever held or received the note (+ its initiator) — the "routed members".
 export function participants(noteId) {
@@ -165,20 +196,24 @@ export function notingEntries(noteId) {
   );
 }
 
-// Mark the inbound step that brought the note to `me` as acted-upon.
-function closeInbound(noteId, meId, action) {
+// Mark the inbound step that brought the note to `holderId` as acted-upon.
+function closeInbound(noteId, holderId, action) {
   const s = get(
     `SELECT id FROM routing_steps WHERE note_id = ? AND to_member_id = ? AND state IN ('sent','opened')
      ORDER BY seq DESC LIMIT 1`,
-    noteId, meId
+    noteId, holderId
   );
   if (s) run(`UPDATE routing_steps SET state = 'actioned', action = ?, actioned_at = ? WHERE id = ?`, action, nowISO(), s.id);
 }
 
+// The custodian routes, or a member holding an active delegation from the custodian. Returns
+// the custodian's id when `me` is acting as a delegate (stamped on the hop), else null.
 function requireHolder(note, me) {
   if (!me) fail(403, 'No noting member mapped to this account');
   if (!active.has(note.status)) fail(409, `Note is ${note.status} — no routing actions available`);
-  if (note.custodian_id !== me.id) fail(403, 'Only the current holder can route this note');
+  if (note.custodian_id === me.id) return null;
+  if (actsFor(me, note.custodian_id)) return note.custodian_id;
+  fail(403, 'Only the current holder (or their active delegate) can route this note');
 }
 
 // Auto-open on view: when the recipient opens the note, its inbound step is no longer
@@ -193,29 +228,54 @@ export function openIfRecipient(note, me) {
   if (s) run(`UPDATE routing_steps SET state = 'opened', opened_at = ? WHERE id = ?`, nowISO(), s.id);
 }
 
-// Forward to the next member (also covers "add self" and "add a member twice" — the
-// recipient is unrestricted). Empty or symbols-only comment auto-fills "Concurred & Forwarded".
-// Also appends N{entrySeq} to noting_entries for the stage note.
-export function forward(note, me, toId, comment) {
-  requireHolder(note, me);
+// Who the plan expects next. The holder's own position in the plan decides; a holder who is
+// not in the plan (the target of an earlier deviation) resumes it after the last planned
+// member who has already held the note.
+function expectedNext(note, holderId) {
+  const plan = parsePlan(note.planned_routing);
+  if (!plan.length) return null;
+  let at = plan.indexOf(holderId);
+  if (at < 0) {
+    const prior = priorHolders(note.id);
+    plan.forEach((id, i) => { if (prior.has(id)) at = Math.max(at, i); });
+  }
+  return plan[at + 1] ?? null;
+}
+
+// Forward to the next member. The planned routing is enforced: the recipient must be the
+// next planned member unless the sender records a deviation with a reason. Empty or
+// symbols-only comment auto-fills "Concurred & Forwarded". Appends N{entrySeq}.
+export function forward(note, me, toId, comment, { deviate = false, reason = '' } = {}) {
+  const onBehalfOf = requireHolder(note, me);
   if (!toId) fail(422, 'Choose a member to forward to');
   if (!get('SELECT id FROM members WHERE id = ?', toId)) fail(422, 'Unknown member');
-  closeInbound(note.id, me.id, 'forward');
+  const holder = onBehalfOf ?? me.id;
+  const expected = expectedNext(note, holder);
+  let deviation = null;
+  if (expected && expected !== toId) {
+    if (!deviate) fail(409, `Planned routing expects ${memberName(expected)} next — forward there, or record a deviation with a reason`);
+    if (!String(reason || '').trim()) fail(422, 'A deviation from the planned routing needs a reason');
+    deviation = String(reason).trim();
+  }
+  closeInbound(note.id, holder, 'forward');
   const normCom = normComment(comment, 'Concurred & Forwarded');
   run(
-    `INSERT INTO routing_steps(note_id,seq,from_member_id,to_member_id,purpose,state,action,comment,sent_at)
-     VALUES(?,?,?,?, 'forward', 'sent', 'forward', ?, ?)`,
-    note.id, nextSeq(note.id), me.id, toId, normCom, nowISO()
+    `INSERT INTO routing_steps(note_id,seq,from_member_id,to_member_id,purpose,state,action,comment,sent_at,on_behalf_of_id)
+     VALUES(?,?,?,?, 'forward', 'sent', 'forward', ?, ?, ?)`,
+    note.id, nextSeq(note.id), me.id, toId, normCom, nowISO(), onBehalfOf
   );
   const entrySeq = nextEntrySeq(note.id);
   const toMember = get('SELECT name, designation FROM members WHERE id = ?', toId);
   const isQuery = normCom.includes('?') || /clarif|query|please provide|confirm|check/i.test(normCom);
   const entryType = isQuery ? 'query' : 'remark';
   const entryTitle = `N${entrySeq}: ${isQuery ? 'Clarification Query / Remark' : 'Observation / Concurrence'} by ${me.name || 'Officer'}`;
+  const remark = `Forwarded to ${toMember?.name || 'Officer'}`
+    + (onBehalfOf ? ` (on behalf of ${memberName(onBehalfOf)})` : '')
+    + (deviation ? ` — deviation from planned routing: ${deviation}` : '');
   run(
     `INSERT INTO noting_entries(note_id, seq, author_id, title, body, entry_type, remark, created_at)
      VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
-    note.id, entrySeq, me.id, entryTitle, normCom, entryType, `Forwarded to ${toMember?.name || 'Officer'}`, nowISO()
+    note.id, entrySeq, me.id, entryTitle, normCom, entryType, remark, nowISO()
   );
   run(`UPDATE notes SET custodian_id = ?, status = 'routed' WHERE id = ?`, toId, note.id);
   return get('SELECT * FROM notes WHERE id = ?', note.id);
@@ -224,15 +284,15 @@ export function forward(note, me, toId, comment) {
 // Send back to the initiator or any previous member. Returning to the initiator reopens
 // the draft for editing. Appends N{entrySeq} query/clarification note to noting_entries.
 export function sendBack(note, me, toId, comment) {
-  requireHolder(note, me);
+  const onBehalfOf = requireHolder(note, me);
   if (!toId || toId === me.id) fail(422, 'Choose a different member to send back to');
   if (!priorHolders(note.id).has(toId)) fail(422, 'Send back only to the initiator or a previous member');
-  closeInbound(note.id, me.id, 'send_back');
+  closeInbound(note.id, onBehalfOf ?? me.id, 'send_back');
   const normCom = normComment(comment, 'Returned for clarification');
   run(
-    `INSERT INTO routing_steps(note_id,seq,from_member_id,to_member_id,purpose,state,action,comment,sent_at)
-     VALUES(?,?,?,?, 'forward', 'sent', 'send_back', ?, ?)`,
-    note.id, nextSeq(note.id), me.id, toId, normCom, nowISO()
+    `INSERT INTO routing_steps(note_id,seq,from_member_id,to_member_id,purpose,state,action,comment,sent_at,on_behalf_of_id)
+     VALUES(?,?,?,?, 'forward', 'sent', 'send_back', ?, ?, ?)`,
+    note.id, nextSeq(note.id), me.id, toId, normCom, nowISO(), onBehalfOf
   );
   const entrySeq = nextEntrySeq(note.id);
   const toMember = get('SELECT name, designation FROM members WHERE id = ?', toId);
@@ -268,7 +328,7 @@ function stageSkeleton(stageId) {
 }
 
 // Owners, or anyone routed on any stage file of the proposal.
-function isCaseMember(file, me) {
+export function isCaseMember(file, me) {
   return isProposalOwner(file, me) ||
     all('SELECT id FROM notes WHERE file_pk = ?', file.id).some((n) => participants(n.id).has(me.id));
 }
@@ -302,25 +362,33 @@ export function assertCanAddNote(file, me, stageId) {
 
 // Add the next stage file to a proposal — the multi-stage lifecycle (email 13, 21, 23). The
 // connected Reference/Transaction ids continue the same File ID; the stage opens as a draft
-// held by its author with its own N1, and saves planned_routing. A PO amendment reopens a
-// closed proposal (its own approval closes it again). Reaching tendering stamps
+// held by its author with its own N1, and saves planned_routing plus the approving
+// authority (explicit, else the last planned member). A PO amendment reopens a closed
+// proposal (its own approval closes it again). Reaching tendering stamps
 // files.tendering_start. Earlier closed stage files stay in their cabinets.
-export function addNote(file, me, { stageId = null, title, body = '', classification = 'normal', routingList = null } = {}) {
+export function addNote(file, me, {
+  stageId = null, title, body = '', bodyText = null, classification = 'normal', routingList = null,
+  priority = 'Medium', approverId = null, source = 'manual'
+} = {}) {
   stageId = assertCanAddNote(file, me, stageId);
   if (file.status !== 'open') run(`UPDATE files SET status = 'open', closed_at = NULL WHERE id = ?`, file.id);
 
   const today = nowISO();
   const seq = (get('SELECT MAX(seq) AS m FROM notes WHERE file_pk = ?', file.id).m || 0) + 1;
   const stageNo = seq;
-  const plannedRoutingJson = Array.isArray(routingList) && routingList.length > 0 ? JSON.stringify(routingList) : null;
+  const plan = Array.isArray(routingList) ? routingList.map((x) => Number(x && typeof x === 'object' ? x.id : x)).filter(Boolean) : [];
+  const plannedRoutingJson = plan.length ? JSON.stringify(plan) : null;
+  const approver = approverId ? Number(approverId) : (plan.at(-1) ?? null);
   const finalTitle = (title || '').trim() || stageTitle(stageId);
   const finalBody = (body || '').trim() || stageSkeleton(stageId);
+  const prio = ['High', 'Medium', 'Low'].includes(priority) ? priority : 'Medium';
 
   run(
-    `INSERT INTO notes(file_pk,seq,ref_no,txn_id,title,stage_id,source,body,classification,status,initiator_id,custodian_id,stage_no,planned_routing,created_at)
-     VALUES(?,?,?,?,?,?, 'manual', ?,?, 'draft', ?, ?, ?, ?, ?)`,
+    `INSERT INTO notes(file_pk,seq,ref_no,txn_id,title,stage_id,source,body,body_text,classification,status,initiator_id,custodian_id,stage_no,planned_routing,priority,approver_id,created_at)
+     VALUES(?,?,?,?,?,?,?,?,?,?, 'draft', ?, ?, ?, ?, ?, ?, ?)`,
     file.id, seq, noteRefNo(file.file_id, seq), nextTxnId(), finalTitle,
-    stageId, finalBody, classification, me.id, me.id, stageNo, plannedRoutingJson, today
+    stageId, source === 'ai' ? 'ai' : 'manual', finalBody, bodyText, classification, me.id, me.id, stageNo,
+    plannedRoutingJson, prio, approver, today
   );
   const note = get('SELECT * FROM notes WHERE file_pk = ? AND seq = ?', file.id, seq);
 
@@ -330,6 +398,8 @@ export function addNote(file, me, { stageId = null, title, body = '', classifica
      VALUES(?, 1, ?, ?, ?, 'initial', 'Initial stage note / proposal', ?)`,
     note.id, me.id, `N1: ${finalTitle}`, finalBody, today
   );
+  // Stages the DOP requires an internal approval chain for get it planned now (Module E).
+  ensureChain(note, file, me);
 
   run(`INSERT INTO attachments(note_id,kind,name,ref,uploaded_by_id,created_at) VALUES(?, 'pm', ?, ?, NULL, ?)`, note.id, 'Purchase Manual Issue-4', 'PM/Issue-4', today);
   if (startsTendering(stageId) && !file.tendering_start) run(`UPDATE files SET tendering_start = ? WHERE id = ?`, today, file.id);
@@ -340,21 +410,47 @@ export function addNote(file, me, { stageId = null, title, body = '', classifica
 // initiator, routing members, deciding authority and the proposal's owners (client: "once a
 // note is approved it becomes a closed file and sits in cabinet"). Approving an INTERMEDIATE
 // stage leaves the proposal OPEN for the next one; approving the FINAL stage (no next stage)
-// or any rejection CLOSES the proposal.
-export function decide(note, me, decision, comment) {
-  requireHolder(note, me);
+// or any rejection CLOSES the proposal. Only the approving authority (or their delegate)
+// decides; with no plan on file, anyone but the initiator. An optional one-time password is
+// verified server-side and stamped on the note.
+export function decide(note, me, decision, comment, { otp = null } = {}) {
+  let onBehalfOf = requireHolder(note, me);
   // An unrouted draft cannot be decided — the initiator would be approving his own note
   // with zero hand-offs on record. At least one routing step must have happened first.
   if (note.status === 'draft') fail(409, 'Route the note before a decision — a draft cannot be approved/rejected');
   if (!['approve', 'reject'].includes(decision)) fail(422, 'decision must be approve or reject');
+  const approver = plannedApprover(note);
+  if (approver) {
+    if (!actsFor(me, approver)) fail(403, `Only ${memberName(approver)}, the approving authority for this stage, or their active delegate may decide it`);
+    // Deciding under the approver's delegation is stamped on behalf of the approver.
+    if (approver !== me.id && onBehalfOf == null) onBehalfOf = approver;
+  } else if (me.id === note.initiator_id) {
+    fail(403, 'The initiator cannot decide their own note — route it to the approving authority');
+  }
   const today = nowISO();
+  let otpAt = null;
+  if (otp != null && String(otp).trim() !== '') {
+    if (!verifyOtp(me.pb, otp)) fail(422, 'Invalid one-time password');
+    otpAt = today;
+  }
   const approved = decision === 'approve';
+  // A stage with an internal approval chain (Module E) is approved on the noting side only
+  // once that chain is released; a rejection is never blocked.
+  if (approved) {
+    const block = releaseBlock(note);
+    if (block) {
+      const e = new Error(`Approval chain #${block.chainId} for ${note.ref_no} is not released — ${block.why.join('; ') || 'awaiting the CFA'}`);
+      e.status = 409;
+      e.details = { chainId: block.chainId, releaseBlockedBy: block.why };
+      throw e;
+    }
+  }
   const isFinal = nextStage(note.stage_id) == null;
-  closeInbound(note.id, me.id, decision);
+  closeInbound(note.id, onBehalfOf ?? me.id, decision);
   run(
-    `INSERT INTO routing_steps(note_id,seq,from_member_id,to_member_id,purpose,state,action,comment,sent_at,actioned_at)
-     VALUES(?,?,?,?, 'approve', 'actioned', ?, ?, ?, ?)`,
-    note.id, nextSeq(note.id), me.id, me.id, decision, (comment || '').trim() || null, today, today
+    `INSERT INTO routing_steps(note_id,seq,from_member_id,to_member_id,purpose,state,action,comment,sent_at,actioned_at,on_behalf_of_id)
+     VALUES(?,?,?,?, 'approve', 'actioned', ?, ?, ?, ?, ?)`,
+    note.id, nextSeq(note.id), me.id, me.id, decision, (comment || '').trim() || null, today, today, onBehalfOf
   );
 
   // Append N{entrySeq} to noting_entries
@@ -365,11 +461,15 @@ export function decide(note, me, decision, comment) {
     `INSERT INTO noting_entries(note_id, seq, author_id, title, body, entry_type, remark, created_at)
      VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
     note.id, entrySeq, me.id, `N${entrySeq}: Final Decision (${decisionLabel}) by ${me.name || 'Approver'}`,
-    decComment, approved ? 'approval' : 'rejection', `${decisionLabel} by deciding authority`, today
+    decComment, approved ? 'approval' : 'rejection',
+    `${decisionLabel} by deciding authority${onBehalfOf ? ` (on behalf of ${memberName(onBehalfOf)})` : ''}`, today
   );
 
   const status = approved ? 'approved' : 'rejected';
-  run(`UPDATE notes SET status = ?, decision = ?, decided_by = ?, closed_at = ? WHERE id = ?`, status, status, me.id, today, note.id);
+  run(
+    `UPDATE notes SET status = ?, decision = ?, decided_by = ?, closed_at = ?, otp_verified_at = COALESCE(?, otp_verified_at) WHERE id = ?`,
+    status, status, me.id, today, otpAt, note.id
+  );
   if (!approved || isFinal) run(`UPDATE files SET status = 'closed', closed_at = ? WHERE id = ?`, today, note.file_pk);
 
   const file = get('SELECT initiator_id, tender_initiator_id FROM files WHERE id = ?', note.file_pk);
@@ -383,7 +483,11 @@ export function decide(note, me, decision, comment) {
       : pid === note.initiator_id ? 'initiator' : 'router';
     run(`INSERT INTO cabinet(member_id,file_pk,note_id,reason,placed_at) VALUES(?,?,?,?,?)`, pid, note.file_pk, note.id, reason, today);
   }
-  return get('SELECT * FROM notes WHERE id = ?', note.id);
+  const decided = get('SELECT * FROM notes WHERE id = ?', note.id);
+  if (!approved && hooks.onReject) {
+    hooks.onReject({ note: decided, file: get('SELECT * FROM files WHERE id = ?', note.file_pk), me });
+  }
+  return decided;
 }
 
 // The deciding authority can pull a closed file back out of the cabinet into their inbox.
@@ -495,15 +599,16 @@ export function proposalStatus(file, me) {
   };
 }
 
-// Routing history for the timeline (member names resolved).
+// Routing history for the timeline (member names resolved, delegate hops labelled).
 export function history(noteId) {
   return all(
     `SELECT rs.seq, rs.purpose, rs.state, rs.action, rs.comment, rs.sent_at, rs.opened_at, rs.actioned_at,
-            rs.from_member_id AS from_id, rs.to_member_id AS to_id,
-            fm.name AS from_name, tm.name AS to_name
+            rs.from_member_id AS from_id, rs.to_member_id AS to_id, rs.on_behalf_of_id,
+            fm.name AS from_name, tm.name AS to_name, om.name AS on_behalf_of_name
      FROM routing_steps rs
      LEFT JOIN members fm ON fm.id = rs.from_member_id
      LEFT JOIN members tm ON tm.id = rs.to_member_id
+     LEFT JOIN members om ON om.id = rs.on_behalf_of_id
      WHERE rs.note_id = ? ORDER BY rs.seq ASC`,
     noteId
   );

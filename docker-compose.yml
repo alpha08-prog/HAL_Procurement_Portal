@@ -1,26 +1,8 @@
-version: '3.8'
-
+# Two containers: the Express API (in-memory payment store + SQLite files under
+# /app/server/data) and the nginx-served client that proxies /api to it.
+# There is no database server: the app's persistent stores are SQLite files, kept in the
+# hal_data volume. Uploaded attachments go to hal_uploads.
 services:
-  # 1. PostgreSQL Database Service
-  db:
-    image: postgres:16-alpine
-    container_name: hal_postgres_db
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-hal_procurement}
-      POSTGRES_USER: ${POSTGRES_USER:-hal_admin}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hal_password_2026}
-    volumes:
-      - hal_pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hal_admin} -d ${POSTGRES_DB:-hal_procurement}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - hal_network
-
-  # 2. Node.js Backend API Service
   server:
     build:
       context: .
@@ -30,20 +12,22 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
-      DATABASE_URL: postgresql://${POSTGRES_USER:-hal_admin}:${POSTGRES_PASSWORD:-hal_password_2026}@db:5432/${POSTGRES_DB:-hal_procurement}
       JWT_SECRET: ${JWT_SECRET:-hal_nashik_procurement_secret_2026}
-      STORAGE_PATH: /app/uploads
-      DB_HOST: db
-      DB_PORT: 5432
+      CONTRACT_ENCRYPTION_KEY: ${CONTRACT_ENCRYPTION_KEY:-}
+      STORAGE_PATH: /app/server/uploads
+      # Ollama runs on the host in the demo setup; host.docker.internal resolves to it on
+      # Docker Desktop. Leave SLM_MODEL empty to use the server default (qwen2.5:3b).
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      SLM_MODEL: ${SLM_MODEL:-}
+      OTP_DEMO_ENDPOINT: ${OTP_DEMO_ENDPOINT:-true}
     volumes:
-      - hal_uploads:/app/uploads
-    depends_on:
-      db:
-        condition: service_healthy
+      - hal_data:/app/server/data
+      - hal_uploads:/app/server/uploads
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - hal_network
 
-  # 3. Web Portal (Nginx Frontend + API Reverse Proxy)
   client:
     build:
       context: .
@@ -58,7 +42,7 @@ services:
       - hal_network
 
 volumes:
-  hal_pgdata:
+  hal_data:
     driver: local
   hal_uploads:
     driver: local

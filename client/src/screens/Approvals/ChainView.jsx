@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { actOnChain, fetchChain, fetchMeta } from '../../lib/approvalsApi.js';
+import { actOnChain, assignSlot, fetchChain, fetchMeta } from '../../lib/approvalsApi.js';
+import { fetchDemoOtp } from '../../lib/otp.js';
 import { useRole } from '../../context/RoleContext.jsx';
 
 // Walking one file through its approval chain.
@@ -42,7 +43,9 @@ export default function ChainView() {
   const [action, setAction] = useState('concur');
   const [comment, setComment] = useState('');
   const [rider, setRider] = useState('');
-  const [twoFactor, setTwoFactor] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [otpNote, setOtpNote] = useState(null);
+  const [assignPb, setAssignPb] = useState({});
   const [actorPb, setActorPb] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -74,7 +77,7 @@ export default function ChainView() {
         action,
         comment,
         rider: action === 'concur_with_rider' ? rider : '',
-        twoFactor
+        otp: otp || undefined
       };
       // examine/query are acted by somebody outside the planned position — a junior in
       // the same unit, or the originator answering. Everything else acts as the slot.
@@ -85,8 +88,48 @@ export default function ChainView() {
       setChain(d.chain);
       setComment('');
       setRider('');
-      setTwoFactor(false);
+      setOtp('');
+      setOtpNote(null);
       setActorPb('');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const getDemoCode = async () => {
+    try {
+      const d = await fetchDemoOtp();
+      setOtp(d.code);
+      setOtpNote(`Demo code for ${d.pb}, valid ${d.expiresIn}s.`);
+    } catch (e) {
+      setOtpNote(e.message);
+    }
+  };
+
+  // Name the holder of a position the directory could not fill.
+  const assign = async (index) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const d = await assignSlot(id, index, { pb: assignPb[index] });
+      setChain(d.chain);
+      setAssignPb({ ...assignPb, [index]: '' });
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Record that the condition a concurrence attached has been met.
+  const discharge = async (seq) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const d = await actOnChain(id, { action: 'discharge_rider', riderRef: seq, comment: 'Rider discharged' });
+      setChain(d.chain);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -181,8 +224,19 @@ export default function ChainView() {
                 </label>
               )}
               <label className="field-label">
-                <input type="checkbox" checked={twoFactor} onChange={(e) => setTwoFactor(e.target.checked)} />
-                {' '}Two-factor authenticated
+                One-time password (optional — verified by the server)
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input
+                    className="field-input"
+                    style={{ width: 120, letterSpacing: 3 }}
+                    maxLength={6}
+                    value={otp}
+                    placeholder="123456"
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                  />
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={getDemoCode}>Get demo code</button>
+                </div>
+                {otpNote && <span className="field-hint">{otpNote}</span>}
               </label>
             </div>
             <p className="field-hint">{hopHelp[action]?.help}</p>
@@ -223,6 +277,11 @@ export default function ChainView() {
                   {VERB[h.action] ?? h.action}
                 </span>
                 {h.twoFactor && <span className="tag">2FA</span>}
+                {h.onBehalf && (
+                  <span className="tag" title={`Recorded by the signed-in user${h.actedByPb ? ` (PB ${h.actedByPb})` : ''} on behalf of this position`}>
+                    recorded on behalf
+                  </span>
+                )}
                 <span className="route-step-date">{h.date}</span>
               </div>
               <div className="route-step-comment">{h.comment}</div>
@@ -256,6 +315,36 @@ export default function ChainView() {
           </ul>
         </div>
       )}
+      {chain.riders?.length > 0 && (
+        <div className="grid-wrap">
+          <table className="mini-table">
+            <thead><tr><th>Rider</th><th>Attached at</th><th>By</th><th>Status</th></tr></thead>
+            <tbody>
+              {chain.riders.map((r) => (
+                <tr key={r.seq}>
+                  <td>{r.condition}</td>
+                  <td>{r.hop}</td>
+                  <td>{r.by}</td>
+                  <td>
+                    {r.recorded
+                      ? <span className="pill pill-success">discharged</span>
+                      : (
+                        <>
+                          <span className="pill pill-warning">outstanding</span>
+                          {canAct && !chain.closed && (
+                            <button className="btn btn-inline" style={{ marginLeft: 6 }} disabled={busy} onClick={() => discharge(r.seq)}>
+                              Record as discharged
+                            </button>
+                          )}
+                        </>
+                      )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       {chain.gradePath.length > 1 && (
         <p className="field-hint">
           Grade path: {chain.gradePath.join(' → ')} — {chain.monotonic ? 'monotonic' : 'not monotonic, as expected'}
@@ -283,7 +372,23 @@ export default function ChainView() {
                     ? <span className="pill pill-danger">outside HAL</span>
                     : s.person
                       ? <>{s.person.name}<div className="field-hint">{s.person.grade} · {s.person.dept}</div></>
-                      : <span className="pill pill-warning">unresolved</span>}
+                      : (
+                        <>
+                          <span className="pill pill-warning">unresolved</span>
+                          {canAct && !chain.closed && (
+                            <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                              <input
+                                className="field-input"
+                                style={{ width: 110, fontSize: 11 }}
+                                placeholder="PB to name"
+                                value={assignPb[i] ?? ''}
+                                onChange={(e) => setAssignPb({ ...assignPb, [i]: e.target.value })}
+                              />
+                              <button className="btn btn-inline" disabled={busy || !assignPb[i]} onClick={() => assign(i)}>Name</button>
+                            </div>
+                          )}
+                        </>
+                      )}
                 </td>
                 <td>
                   {s.actioned

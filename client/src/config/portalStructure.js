@@ -1,5 +1,7 @@
-// Master configuration for the 6-Tab Procurement Portal Welcome Page
-// Derived directly from HAL Procurement Portal Architecture Specification.
+// Master configuration for the 6-Tab Procurement Portal Welcome Page, derived from the HAL
+// Procurement Portal Architecture Specification. Item types: route/workflow navigate; modal
+// opens PortalItemModal, which dispatches on MODAL_ACTIONS below. The standard-formats library
+// itself lives on the server (server/formats/seed/formats.json, GET /api/formats).
 
 export const PORTAL_TABS = [
   {
@@ -127,7 +129,7 @@ export const PORTAL_TABS = [
     borderColor: '#15803D',
     textColor: '#14532D',
     badgeClass: 'tab-badge-procurement',
-    tagline: 'Tendering, e-File Noting lifecycle, TEC/PNC committees & 26 standard formats',
+    tagline: 'Tendering, e-File Noting lifecycle, TEC/PNC committees & the HAL standard formats library',
     primaryRoute: '/noting/inbox',
     items: [
       {
@@ -159,8 +161,8 @@ export const PORTAL_TABS = [
         code: 'PRO-04',
         name: 'TEC QUERY NOTE',
         desc: 'Technical queries to bidders for specification clarifications',
-        type: 'modal',
-        action: 'tec_query'
+        type: 'route',
+        route: '/noting/initiate?stage=tec_query'
       },
       {
         id: 'tec_report_approval_note',
@@ -175,8 +177,8 @@ export const PORTAL_TABS = [
         code: 'PRO-06',
         name: 'TEC REPRESENTATION NOTE',
         desc: 'Scrutiny and reply note for representations received from rejected bidders',
-        type: 'modal',
-        action: 'tec_representation'
+        type: 'route',
+        route: '/noting/initiate?stage=tec_representation'
       },
       {
         id: 'price_bid_opening_note',
@@ -215,56 +217,56 @@ export const PORTAL_TABS = [
         code: 'PRO-11',
         name: 'PO AMENDMENT NOTE',
         desc: 'Delivery period extension, specification revision & PO amendment note',
-        type: 'modal',
-        action: 'po_amendment'
+        type: 'route',
+        route: '/noting/initiate?stage=po_amendment'
       },
       {
         id: 'short_closure_note',
         code: 'PRO-12',
         name: 'SHORT CLOSURE NOTE',
         desc: 'Tender / PO short closure & contract foreclosure justification note',
-        type: 'modal',
-        action: 'short_closure'
+        type: 'route',
+        route: '/noting/initiate?stage=short_closure'
       },
       {
         id: 'retender_note',
         code: 'PRO-13',
         name: 'RETENDER NOTE',
         desc: 'Retender justification note with revised scope & price benchmark',
-        type: 'modal',
-        action: 'retender_note'
+        type: 'route',
+        route: '/noting/initiate?stage=retender'
       },
       {
         id: 'bank_detail_insertion_note',
         code: 'PRO-14',
         name: 'BANK DETAIL INSERTION NOTE',
         desc: 'Vendor bank account detail insertion & IFSC mandate confirmation note',
-        type: 'modal',
-        action: 'bank_insertion'
+        type: 'route',
+        route: '/noting/initiate?stage=bank_insertion'
       },
       {
         id: 'vendor_id_creation_note',
         code: 'PRO-15',
         name: 'VENDOR ID CREATION NOTE',
         desc: 'New vendor code creation in IFS-ERP & PAN/GST compliance note',
-        type: 'modal',
-        action: 'vendor_creation'
+        type: 'route',
+        route: '/noting/initiate?stage=vendor_creation'
       },
       {
         id: 'vendor_registration_note',
         code: 'PRO-16',
         name: 'VENDOR REGISTRATION NOTE',
         desc: 'Formal vendor registration, assessment & categorization approval note',
-        type: 'modal',
-        action: 'vendor_registration'
+        type: 'route',
+        route: '/noting/initiate?stage=vendor_registration'
       },
       {
         id: 'advance_payment_note',
         code: 'PRO-17',
         name: 'ADVANCE PAYMENT NOTE',
         desc: 'Sanction note for mobilization advance against bank guarantee',
-        type: 'modal',
-        action: 'advance_payment_note'
+        type: 'route',
+        route: '/noting/initiate?stage=advance_payment'
       },
       {
         id: 'misc_standalone_note',
@@ -280,7 +282,7 @@ export const PORTAL_TABS = [
         name: 'ADMIN APPROVAL NOTE + 26 TYPES OF FORMATS',
         desc: 'Administrative Approval Note plus comprehensive 26 standard HAL formats library',
         type: 'modal',
-        action: 'formats_26_library'
+        action: 'formats_library'
       },
       {
         id: 'indemnity_bond_proc',
@@ -388,8 +390,8 @@ export const PORTAL_TABS = [
         code: 'CON-05',
         name: 'LIVE PO STATUS',
         desc: 'Active purchase orders live dashboard across manufacturing & supply stages',
-        type: 'route',
-        route: '/contracts/register'
+        type: 'modal',
+        action: 'live_po_status'
       },
       {
         id: 'po_due',
@@ -542,8 +544,8 @@ export const PORTAL_TABS = [
         code: 'CLM-01',
         name: 'CLAIM GENERATOR',
         desc: 'Rejection, transit damage, shortage and warranty claim form generator',
-        type: 'modal',
-        action: 'claim_generator'
+        type: 'route',
+        route: '/claims?tab=raise'
       },
       {
         id: 'claim_status',
@@ -722,32 +724,65 @@ export const PORTAL_TABS = [
   }
 ];
 
-// The 26 Standard Types of Formats used in HAL Procurement
-export const STANDARD_FORMATS_26 = [
-  { id: 'F01', code: 'F-PRV-01', title: 'Provisioning Note Format (Generalized)', category: 'Provisioning', annexure: 'Annex 1' },
-  { id: 'F02', code: 'F-EMD-02', title: 'EMD Stage Bidder Scrutiny & Acceptance Statement', category: 'Procurement', annexure: 'Annex 2' },
-  { id: 'F03', code: 'F-TEC-03', title: 'Technical Evaluation Committee (TEC) Request Note', category: 'Procurement', annexure: 'Annex 3' },
-  { id: 'F04', code: 'F-TEC-04', title: 'Technical Compliance Statement & Disqualification Format', category: 'Procurement', annexure: 'Annex 4' },
-  { id: 'F05', code: 'F-PBO-05', title: 'Price Bid Opening (PBO) Concurrence Note', category: 'Procurement', annexure: 'Annex 5' },
-  { id: 'F06', code: 'F-CST-06', title: 'Comparative Statement of Tenders (CST / PJS)', category: 'Commercial', annexure: 'Annex 6' },
-  { id: 'F07', code: 'F-PNC-07', title: 'Price Negotiation Committee (PNC) Constitution Note', category: 'Commercial', annexure: 'Annex 7' },
-  { id: 'F08', code: 'F-PNC-08', title: 'PNC Recommendation & Counter-Offer Justification Note', category: 'Commercial', annexure: 'Annex 8' },
-  { id: 'F09', code: 'F-PP-09', title: 'Purchase Proposal (PP) / DPC Approval Note', category: 'Commercial', annexure: 'Annex 9' },
-  { id: 'F10', code: 'F-PO-10', title: 'Purchase Order Standard Template & General Conditions', category: 'Contract', annexure: 'Annex 10' },
-  { id: 'F11', code: 'F-CTR-11', title: 'HAL Standard Bilateral Contract Agreement', category: 'Contract', annexure: 'Annex 11' },
-  { id: 'F12', code: 'F-IB-12', title: 'Indemnity Bond Format (5% PSU Exemption / Third Party)', category: 'Statutory', annexure: 'Annex 12' },
-  { id: 'F13', code: 'F-NDA-13', title: 'Mutual Non-Disclosure Agreement (Defense Projects)', category: 'Statutory', annexure: 'Annex 13' },
-  { id: 'F14', code: 'F-NPC-14', title: 'Non-Poaching & Conflict of Interest Declaration', category: 'Statutory', annexure: 'Annex 14' },
-  { id: 'F15', code: 'F-IP-15', title: 'Integrity Pact Agreement with Independent External Monitor', category: 'Statutory', annexure: 'Annex 15' },
-  { id: 'F16', code: 'F-BP-16', title: 'Board Paper Format for High-Value Capital Procurement', category: 'Governance', annexure: 'Annex 16' },
-  { id: 'F17', code: 'F-SP-17', title: 'Summary of Proposal (Financial Concurrence Sheet)', category: 'Governance', annexure: 'Annex 17' },
-  { id: 'F18', code: 'F-ADV-18', title: 'Advance Payment Request & Justification Format', category: 'Finance', annexure: 'Annex 18' },
-  { id: 'F19', code: 'F-PBG-19', title: 'Performance Bank Guarantee (PBG) Standard Proforma (10%)', category: 'Banking', annexure: 'Annex 19' },
-  { id: 'F20', code: 'F-SDBG-20', title: 'Security Deposit Bank Guarantee Standard Proforma (5%)', category: 'Banking', annexure: 'Annex 20' },
-  { id: 'F21', code: 'F-ABG-21', title: 'Advance Payment Bank Guarantee Standard Proforma (110%)', category: 'Banking', annexure: 'Annex 21' },
-  { id: 'F22', code: 'F-DP-22', title: 'Delivery Period Extension with LD Applicability Format', category: 'Contract', annexure: 'Annex 22' },
-  { id: 'F23', code: 'F-SC-23', title: 'Short Closure & Mutual Settlement Format', category: 'Contract', annexure: 'Annex 23' },
-  { id: 'F24', code: 'F-RT-24', title: 'Retender Approval & Specification Relaxation Format', category: 'Procurement', annexure: 'Annex 24' },
-  { id: 'F25', code: 'F-FTR-25', title: 'Final Test Report (FTR) & Quality Clearance Certificate', category: 'Inspection', annexure: 'Annex 25' },
-  { id: 'F26', code: 'F-CLM-26', title: 'Discrepancy / Rejection Claim Initiation Form', category: 'Claims', annexure: 'Annex 26' }
-];
+// What each `type:'modal'` item opens (components/portal/PortalItemModal.jsx dispatches on
+// `kind`). Every modal action must appear here — server/formats/formats.check.mjs asserts it,
+// so no card can fall through to a placeholder.
+//   format     → a formats-library entry (FormatFiller);   id   = server/formats/seed/formats.json id
+//   tracker    → a fixture-backed tracker (TrackerTable);  name = server/trackers/trackers.js key
+//   calculator → LD calculator / price estimator, both computed on the server
+//   dop        → the DoP-2025 lookup (ai/dop2025.json)
+//   library    → the whole formats library
+//   kpi        → a computed KPI (/api/kpis) with its monthly series
+export const MODAL_ACTIONS = {
+  tech_specs: { kind: 'format', id: 'tec_statement' },
+  adequacy_statement: { kind: 'format', id: 'adequacy_statement' },
+  price_estimation: { kind: 'calculator', name: 'estimate' },
+  pac_certificate: { kind: 'format', id: 'pac_certificate' },
+  single_tender_cert: { kind: 'format', id: 'single_tender_certificate' },
+  brand_cert: { kind: 'format', id: 'brand_certificate' },
+  dop_lookup: { kind: 'dop' },
+  pm_guidelines: { kind: 'format', id: 'pm_issue4_reference' },
+  works_manual: { kind: 'format', id: 'works_manual_reference' },
+  tender_generator: { kind: 'format', id: 'tender_document' },
+  formats_library: { kind: 'library' },
+  indemnity_bond: { kind: 'format', id: 'indemnity_bond' },
+  nda_agreement: { kind: 'format', id: 'nda' },
+  non_poaching: { kind: 'format', id: 'anti_poaching' },
+  integrity_pact: { kind: 'format', id: 'integrity_pact_standalone' },
+  board_paper: { kind: 'format', id: 'board_summary' },
+  proposal_summary: { kind: 'format', id: 'board_summary' },
+  adv_bg_format: { kind: 'format', id: 'adv_bg' },
+  erelease_po: { kind: 'tracker', name: 'erelease' },
+  update_gem: { kind: 'tracker', name: 'gem-sync' },
+  live_po_status: { kind: 'tracker', name: 'live-po' },
+  po_due_tracker: { kind: 'tracker', name: 'po-due' },
+  dp_expired_tracker: { kind: 'tracker', name: 'dp-expired' },
+  supplier_letters: { kind: 'format', id: 'supplier_letter' },
+  po_receipts: { kind: 'tracker', name: 'po-receipts' },
+  securities_tracker: { kind: 'tracker', name: 'securities' },
+  ftr_generator: { kind: 'format', id: 'ftr_certificate' },
+  ld_calculator: { kind: 'calculator', name: 'ld' },
+  balance_outstanding: { kind: 'tracker', name: 'balance-outstanding' },
+  claim_generator: { kind: 'format', id: 'claim_initiation_form' },
+  kpi_mis_report: { kind: 'kpi' },
+  kpi_mpr_received: { kind: 'kpi' },
+  kpi_mpr_converted: { kind: 'kpi' },
+  kpi_mpr_outstanding: { kind: 'kpi' },
+  kpi_po_start_month: { kind: 'kpi' },
+  kpi_po_placed: { kind: 'kpi' },
+  kpi_po_closed: { kind: 'kpi' },
+  kpi_po_end_month: { kind: 'kpi' },
+  kpi_tenders_floated: { kind: 'kpi' },
+  kpi_tenders_opened: { kind: 'kpi' },
+  kpi_sc_st: { kind: 'kpi' },
+  kpi_women_ent: { kind: 'kpi' },
+  kpi_msme: { kind: 'kpi' },
+  kpi_gem: { kind: 'kpi' },
+  kpi_payment_time: { kind: 'kpi' },
+  kpi_mpr_po_time: { kind: 'kpi' }
+};
+
+// Every modal action must be declared. Evaluated once at module load.
+for (const tab of PORTAL_TABS)
+  for (const item of tab.items)
+    if (item.type === 'modal' && !MODAL_ACTIONS[item.action]) throw new Error(`portalStructure: modal action "${item.action}" (${item.code}) is not in MODAL_ACTIONS`);

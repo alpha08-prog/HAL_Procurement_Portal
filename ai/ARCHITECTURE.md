@@ -28,7 +28,7 @@ Run everything from the repo root (`HAL_Procurement_Portal/`). Python deps live 
    ```bash
    conda run --no-capture-output -n hal python ai/run.py --auto
    ```
-   Reads `ai/case_input.json` → walks the 10-stage ORDER → SLM drafts each new section → writes `ai/outputs/`.
+   Reads `ai/case_input.json` → walks the 9-note `ORDER` (provisioning → po) → SLM drafts each new section → writes `ai/outputs/`.
 4. **Inspect outputs** (`ai/outputs/`, gitignored):
    - `case_full.json` — full case object (data, deltas, generated, carry_forward, formats, path, skipped)
    - `pdf/NN_<Ref>.pdf` — one HAL house-style PDF per executed note
@@ -36,7 +36,7 @@ Run everything from the repo root (`HAL_Procurement_Portal/`). Python deps live 
    ```bash
    conda run -n hal python ai/validate.py
    ```
-   And verify the cascade encoding still matches the spreadsheet it came from (59 assertions):
+   And verify the cascade encoding still matches the spreadsheet it came from:
    ```bash
    conda run --no-capture-output -n hal python ai/cascade_check.py
    ```
@@ -148,14 +148,13 @@ flowchart LR
 
 ---
 
-## 4. The 10-Stage Procurement Graph
+## 4. The Procurement Graph (9 notes in `ORDER`)
 
-Derived from `sampleData` "Procurement Flow chart" + "Note & Format Generation Stages" cascade. `pnc_req`/`pnc_rec` are **conditional** (the PB-Accept fork).
+Derived from `sampleData` "Procurement Flow chart" + "Note & Format Generation Stages" cascade. `pnc_req`/`pnc_rec` are **conditional** (the PB-Accept fork). The tender document is prepared from the provisioning checklist + the 72 STC clauses and is **not a note**: `tender_doc` stays in `STAGES` for its format list but outside `ORDER` (see `CASCADE.md`).
 
 ```mermaid
 flowchart TD
-    P0([provisioning<br/>Provisioning Note]) --> P1([tender_doc<br/>Tender Document])
-    P1 --> P2([emd<br/>EMD Stage Acceptance])
+    P0([provisioning<br/>Provisioning Note]) --> P2([emd<br/>EMD Stage Acceptance])
     P2 --> P3([tec_req<br/>TEC Request])
     P3 --> P4([tec_report<br/>TEC Report])
     P4 --> P5([pbo<br/>Price Bid Opening])
@@ -188,7 +187,7 @@ flowchart LR
     R2 --> PP[pp<br/>= prior + NEW]
 ```
 
-The SLM only ever writes the `NEW` box. The chain start is `emd`; `provisioning`, `tender_doc`, `po` are standalone. If a branch stage is skipped, the carry falls back to the last executed note (so `pp` after a skipped PNC carries from `pbo`).
+The SLM only ever writes the `NEW` box. The chain start is `emd`; `provisioning` and `po` are standalone. If a branch stage is skipped, the carry falls back to the last executed note (so `pp` after a skipped PNC carries from `pbo`).
 
 ---
 
@@ -197,7 +196,6 @@ The SLM only ever writes the `NEW` box. The chain start is `emd`; `provisioning`
 | seq | stage | →SLM delta (new only) | Deterministic annexures | Carry |
 |----|-------|----------------------|------------------------|-------|
 | 0 | provisioning | item, CAR, budget, DOP clause | mpr_car | — |
-| 1 | tender_doc | tender type, enquiry no | sd_format, pbg_format | — |
 | 2 | emd | tender, bids, **aligned bidder rows** | — | — (start) |
 | 3 | tec_req | aligned forwarded bidders | — | emd |
 | 4 | tec_report | TEC verdict, spec sl-nos | tec_statement (21A) | tec_req |
@@ -207,7 +205,7 @@ The SLM only ever writes the `NEW` box. The chain start is `emd`; `provisioning`
 | 8 | pp | proposal id, FCA, CFA, DOP level | Annex 21 (PP) | pnc_rec |
 | 9 | po | PO no, SD, PBG, warranty | Purchase Order, HAL Contract | — |
 
-† conditional on `rules.pnc_required`.
+† conditional on `rules.pnc_required`. seq 1 (`tender_doc`) is reserved but not executed. The twelve need-based notes (`stages.NEEDBASED` / `NEEDBASED_STAGES`: retender, short_closure, tec_query, due_date_ext, addendum, advance_payment, po_amendment, tec_representation, bank_insertion, vendor_creation, vendor_registration, misc) share the same shape and carry `$last` where they are reached out of order.
 
 ---
 
@@ -252,7 +250,7 @@ The SLM removes the **writing** burden, not the **judgment**. The six HUMAN grou
 | PBG | `10% × PO basic value` |
 | Indemnity | `5% × PO value` (PSU) |
 | LD | `0.5% × RV × ceil(weeks)`, capped at 10% of PO |
-| CFA level | DOP-2025 Annexure-3 lookup *(table pending → placeholder)* |
+| CFA level | DOP-2025 Annexure-3 lookup over `ai/dop2025.json` — `bands` empty until HAL supplies the table, so `dop_cfa_level()` returns `pending: true` and the level comes from the indentor checklist |
 | EMD waiver | valid only if bidder manufactures the offered product in the relevant NIC code |
 
 ### Rule provenance (document-level, all in sampleData)
@@ -265,7 +263,7 @@ The SLM removes the **writing** burden, not the **judgment**. The six HUMAN grou
 | GST 18%; validity 180 days | Checklist clauses 8, 20 |
 | Indemnity 5% | `Indemnity Bond Format.pdf` |
 | Case figures (estimate, L1, variance, savings) | Sample notes F1/F5/F6 |
-| **CFA level / DOP Annexure-3** | **DOP-2025 — NOT yet in sampleData → `dop_cfa_level` placeholder** |
+| **CFA level / DOP Annexure-3** | **DOP-2025 — NOT in sampleData → `ai/dop2025.json` (`_status: bands_pending_client`), read by `rules.py` and `server/ai/rules.js`** |
 
 ---
 
@@ -274,6 +272,13 @@ The SLM removes the **writing** burden, not the **judgment**. The six HUMAN grou
 ```
 ai/
 ├── case_input.json     external facts (the ONLY pipeline input)
+├── dop2025.json        DOP-2025 Annexure-3 clauses + level→designation; value bands pending (shared with the Node port)
+├── cascade.py          the responsibility cascade (two agencies, 8 stage columns, block-3 formats)
+├── interactive.py      decision-by-decision walker over cascade.NODES
+├── approval.py / approval_run.py / checklist.py / org.py / bid_sheet.py   the approval layer (ported to server/approvals/)
+├── export_web.py       writes server/approvals/seed/{checklist,bids}.json
+├── *_check.py, validate.py   assertions vs the source spreadsheets / gold facts
+├── demo.sh             narrated walkthrough, acts 0–10
 ├── load_inputs.py      case_input → per-stage deltas (+ aligned bidders, rules)
 ├── stages.py           ORDER, STAGES graph, REF names, NEEDBASED
 ├── rules.py            deterministic numbers + decisions
@@ -298,10 +303,14 @@ ai/
 
 ---
 
-## 11. Known Gaps / Future Work
+## 11. The web port (Module F) and what it adds
 
-- **DOP-2025 Annexure-3 table** not yet supplied → `rules.dop_cfa_level` is a placeholder; `dop_level` is a human stopgap.
-- **Need-based notes** (retender, short-closure, TEC query, advance payment, PO amendment) registered in `stages.NEEDBASED` as stubs.
+`server/ai/{stages,rules,formats,loadInputs,pipeline,slm,cascadeGraph}.js` mirror the Python files above one-to-one and read `prompts.json`, `case_input.json`, the fixtures and `dop2025.json` straight out of `ai/`. On top of the pipeline the port adds what a shared web file needs: agency custody (`access.js`), a case store with audit rows and **rollback** when a stage is rejected on the noting side (`caseStore.js`), PO-number validation against the PO fixture, and the `post_pp` **gate** (`gates.js`: a PO note needs the Purchase Proposal approved in noting with its approval chain released; overridable, recorded). Change a rule or a stage in one place and mirror it in the other.
+
+## 12. Known Gaps / Future Work
+
+- **DOP-2025 Annexure-3 value bands** not yet supplied → `ai/dop2025.json` `bands` is empty and `dop_cfa_level()` reports `pending`; the level is read from the checklist.
+- **Need-based notes** run in the web app (noting stage files); in the CLI they are executable (`NEEDBASED_STAGES`) but reached only through the interactive cascade.
 - **Routing/sign-off table** (the N1–N14 approver chain in the F1 PDF) not yet reproduced in generated PDFs.
 - **Foreign-purchase variant** (lettered sections A–G, multi-MPR clubbing, USD + customs) is a separate template.
 - Secondary fields not yet captured: bidder MSE size in annexures, product model no., named PNC members in the agenda annexure.

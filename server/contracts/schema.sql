@@ -129,10 +129,23 @@ CREATE TABLE IF NOT EXISTS contract_items (
   line_total  REAL
 );
 
--- Standard proformas the user attached as annexures (from seed/formats.json).
+-- Standard proformas the user attached as annexures (from the formats library,
+-- server/formats/seed/formats.json). payload = the rendered blocks, snapshotted.
 CREATE TABLE IF NOT EXISTS contract_formats (
   id          INTEGER PRIMARY KEY,
   contract_id INTEGER NOT NULL REFERENCES contracts(id),
   format_id   TEXT NOT NULL,
-  label       TEXT NOT NULL
+  label       TEXT NOT NULL,
+  payload     TEXT
+);
+
+-- Audit trail: who generated, edited, finalised, released or verified the contract.
+CREATE TABLE IF NOT EXISTS contract_events (
+  id          INTEGER PRIMARY KEY,
+  contract_id INTEGER NOT NULL REFERENCES contracts(id),
+  kind        TEXT NOT NULL,                        -- generated|patched|finalised|released|verified
+  detail      TEXT,
+  actor_name  TEXT,
+  actor_pb    TEXT,
+  created_at  TEXT NOT NULL
 );

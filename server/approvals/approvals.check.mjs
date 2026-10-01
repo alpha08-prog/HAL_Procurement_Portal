@@ -6,6 +6,9 @@
 //
 //   node server/approvals/approvals.check.mjs
 
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import * as bids from './bids.js';
 import * as chain from './chain.js';
 import * as checklist from './checklist.js';
@@ -193,6 +196,55 @@ if (!bids.available()) {
   check(e.price.pncAdvised === true, 'no RA participation means negotiation is advised');
   check(e.price.savingPct === 11.11, 'the negotiated saving is 11.11%', `got ${e.price.savingPct}`);
   check(e.price.sd === 473000 && e.price.pbg === 946000, 'SD 5% and PBG 10% computed from basic');
+}
+
+// -- store.js — persisted chains: hop semantics, riders, identity, unresolved positions --
+section('store.js — chains persisted in a throwaway DB');
+process.env.APPROVALS_DB = join(mkdtempSync(join(tmpdir(), 'approvals-')), 'test.db');
+const store = await import('./store.js');
+const hod = { id: 'U006', role: 'hod_imm', name: 'V. Rao' };
+const c1 = store.createChain({ noteId: 'provisioning', division: 'DIV9', dept: 'FIRE & SEC', answers: null, user: hod });
+check(c1.plan.slots.length === 14, 'a persisted chain carries the 14-slot plan', `got ${c1.plan.slots.length}`);
+const firstIdx = c1.plan.slots.findIndex((s, i) => i > 0 && s.person && s.kind !== 'cfa');
+const q = store.act(c1.id, { action: 'query', slotIndex: firstIdx, comment: 'value not stated', user: hod });
+check(q.ok && q.chain.plan.slots[firstIdx].actioned === false, 'a query does not fill the planned position', q.error);
+check(q.ok && q.chain.hops[0].onBehalf === true, 'a demo account outside the directory is recorded as acting on behalf');
+const cc = store.act(c1.id, { action: 'concur_with_rider', slotIndex: firstIdx, rider: 'strip brand names from the spec', user: hod });
+check(cc.ok && cc.chain.plan.slots[firstIdx].actioned === true, 'a concurrence fills the position', cc.error);
+check(cc.ok && cc.chain.riders.length === 1 && cc.chain.riders[0].recorded === false, 'the rider is outstanding until discharged');
+check(cc.ok && cc.chain.releaseBlockedBy.some((w) => /rider/.test(w)), 'the gate waits on the rider');
+const bad = store.act(c1.id, { action: 'discharge_rider', riderRef: 99, user: hod });
+check(!bad.ok, 'discharging a rider that does not exist is refused');
+const dis = store.act(c1.id, { action: 'discharge_rider', riderRef: cc.chain.riders[0].seq, user: hod });
+check(dis.ok && dis.chain.riders[0].recorded === true, 'a discharge hop records the rider', dis.error);
+check(dis.ok && !dis.chain.releaseBlockedBy.some((w) => /rider/.test(w)), 'the gate stops waiting on it');
+const otpBad = store.act(c1.id, { action: 'concur', otp: '000000', user: hod });
+check(!otpBad.ok && /one-time/.test(otpBad.error), 'a wrong one-time password is refused');
+const person = c1.plan.slots[firstIdx].person;
+const other = org.load().find((p) => p.pb !== person.pb);
+check(store.bindingError('PB-40015', person, false) == null, 'a PB outside the directory is not bound');
+check(/signed in as/.test(store.bindingError(other.pb, person, false) ?? ''), 'a directory PB may only act as itself');
+check(store.bindingError(other.pb, person, true) == null, 'admin may act as any position');
+check(store.bindingError(person.pb, person, false) == null, 'the position holder acts as themselves');
+let target = null;
+for (const div of org.divisions()) {
+  const p = chain.buildPlan({ noteId: 'provisioning', division: div, originatorDept: 'FIRE & SEC' });
+  if (p.slots.some((s) => !s.person && !s.external && s.required && s.kind !== 'originator')) { target = div; break; }
+}
+if (target) {
+  const admin = { id: 'U007', role: 'admin', name: 'Administrator' };
+  const c2 = store.createChain({ noteId: 'provisioning', division: target, dept: 'FIRE & SEC', user: admin });
+  const idx = c2.plan.slots.findIndex((s) => !s.person && !s.external && s.required && s.kind !== 'originator');
+  check(c2.releaseBlockedBy.some((w) => /position not named/.test(w)), `an unnamed position (${target}) is reported by the gate`);
+  check(c2.unresolved.some((u) => u.index === idx), 'the chain lists it as unresolved');
+  const someone = org.people({ division: target })[0];
+  const asg = store.assignSlot(c2.id, { slotIndex: idx, pb: someone.pb, user: admin });
+  check(asg.ok && asg.chain.plan.slots[idx].person?.pb === someone.pb, 'naming a person fills the position', asg.error);
+  check(asg.ok && !asg.chain.unresolved.some((u) => u.index === idx), 'it is no longer unresolved');
+  check(asg.ok && asg.chain.hops.at(-1).action === 'assign' && asg.chain.plan.slots[idx].actioned === false,
+    'the assignment is audited as a hop that fills nothing');
+} else {
+  check(true, 'every division resolves every provisioning position (no unnamed slot to test)');
 }
 
 // -- summary -----------------------------------------------------------------

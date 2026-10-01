@@ -65,7 +65,8 @@ const MEMBERS = [
   [9, 'PB-51002', 'Indent Cell', 'indentor@hal.local', 'Indentor', '3 - Deputy Manager', 'indentor', 15, null],
   [10, 'PB-40000', 'Administrator', 'admin@hal.local', 'System Administrator', '6 - Chief Manager', 'admin', 16, 16],
   [11, 'PB-49999', 'QA Test', 'test@hal.local', 'QA / Demo', '2 - Engineer', 'admin', 16, null],
-  [12, 'PB-40010', 'K. Nair (Retd.)', null, 'Former HOD (IMM)', '8 - Additional General Manager', null, null, null]
+  [12, 'PB-40010', 'K. Nair (Retd.)', null, 'Former HOD (IMM)', '8 - Additional General Manager', null, null, null],
+  [13, 'PB-48120', 'CPPC Desk', 'cppc@hal.local', 'CPPC Officer (Payment Release)', '2 - Accounts Officer', 'cppc', 11, null]
 ];
 
 // Append all 1354 dummy employees

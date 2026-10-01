@@ -26,6 +26,14 @@ ensureColumn('contracts', 'encrypted_payload', 'TEXT');
 ensureColumn('contracts', 'encryption_iv', 'TEXT');
 ensureColumn('contracts', 'encryption_tag', 'TEXT');
 ensureColumn('contracts', 'encryption_alg', 'TEXT');
+ensureColumn('contract_formats', 'payload', 'TEXT'); // rendered annex blocks (JSON), snapshotted at generate/patch
+ensureColumn('contracts', 'requisition_id', 'INTEGER');   // cross-module pointers (server/requisitions/links.js)
+ensureColumn('contracts', 'noting_file_pk', 'INTEGER');
+ensureColumn('contracts', 'ai_case_id', 'INTEGER');
+ensureColumn('contracts', 'released_at', 'TEXT');          // e-release of the PO/contract to IFS (recorded, no connector)
+ensureColumn('contracts', 'released_by_name', 'TEXT');
+ensureColumn('contracts', 'released_by_pb', 'TEXT');
+ensureColumn('contracts', 'gem_contract_no', 'TEXT');
 
 export const all = (sql, ...p) => db.prepare(sql).all(...p);
 export const get = (sql, ...p) => db.prepare(sql).get(...p);

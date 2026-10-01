@@ -231,28 +231,37 @@ Six screens; red fields auto-fetched from IFS-ERP, black fields user-entered.
 
 ## 7. The payment module as built (this repo)
 
-A clickable React prototype with mock data — **no real IFS integration, no auth**
-(a role switcher in the top bar stands in for login).
+A clickable React prototype on fixture data — **no real IFS integration**. Every data route
+needs a JWT (`POST /api/auth/login`; accounts in `server/mock/users.json`, password
+`hal@1234`), and the actor of every lifecycle move is taken from that token, never from the
+browser. Admin accounts get a role switcher that previews what a role sees.
 
 ### Stack & run
 - **Client** — React + Vite (`client/`), plain JSX/CSS.
-- **Server** — Node + Express serving mock JSON fixtures (`server/mock/*.json`).
+- **Server** — Node ≥ 22.5 + Express, ESM (`server/`). Payment advices, RVs and claims are
+  an in-memory store seeded from `server/mock/*.json` (reset on restart); the other modules
+  are `node:sqlite` files under `server/data/`.
 - npm workspaces. `npm run dev` → Express on `:3001`, Vite on `:5173` (proxies `/api`).
 - Helpers: currency in ₹ lakh/crore, dates DD/MM/YYYY. **All money math is server-side.**
 
 ### Roles (`client/src/config/roles.js`)
-`indentor`, `purchase_maker` (default), `purchase_officer`, `stores_inspection`,
-`payment_desk`, `hod_imm`, `admin`. Each screen's `visibleTo` drives both the nav and route guards.
+`indentor`, `purchase_maker`, `purchase_officer`, `stores_inspection`, `payment_desk`,
+`hod_imm`, `cppc`, `admin`. Each screen's `visibleTo` drives the nav and the client route
+guard; `server/middleware/requireRoles.js` enforces the same roles on the routes.
 
 ### Screens → routes
 | Screen | Route | Visible to |
 |---|---|---|
-| 1 RV — Payment Status | `/rv-inbox` | purchase_maker, admin |
+| 1 RV — Payment Status | `/rv-inbox` | all roles |
 | 2 Payment Advice | `/payment-advice` | purchase_maker, admin |
-| 3 Forward Payment Advice | `/forward-advice` | purchase_officer, admin |
-| 4 Process Payment | `/process-payment` | payment_desk, admin |
+| 3 Forward Payment Advice | `/forward-advice` | all roles (acting: purchase_officer) |
+| 4 Process Payment | `/process-payment` | payment_desk, cppc, admin |
 | 5 HOD-IMM Approval | `/hod-approval` | hod_imm, admin |
 | 6 Payment Record & History Register | `/payment-register` | all roles |
+| Payment Desk KPIs | `/payment-kpis` | all roles |
+
+Every RV, advice and register row also carries the **linked requisition and contract**,
+joined by PO number at read time (`server/requisitions/links.js`).
 
 ### Lifecycle state machine (`server/stateMachine.js`)
 ```
@@ -262,7 +271,8 @@ rv_pending → pa_created → forwarded_to_officer → at_payment_desk
 | Action | From → To | By | Rule |
 |---|---|---|---|
 | `forward_to_officer` | pa_created → forwarded_to_officer | maker | invoice no + date required |
-| `officer_forward` | forwarded_to_officer → at_payment_desk | officer | — |
+| `officer_forward` | forwarded_to_officer → at_payment_desk | officer | bank mismatch must be resolved |
+| `officer_send_back` | forwarded_to_officer → pa_created | officer | remark required |
 | `desk_send_back` | at_payment_desk → pa_created | desk | remark required |
 | `desk_forward_hod` | at_payment_desk → sent_to_hod | desk | — |
 | `hod_stamp` | sent_to_hod → stamped_by_hod | hod | — |
@@ -270,35 +280,53 @@ rv_pending → pa_created → forwarded_to_officer → at_payment_desk
 | `desk_forward_cppc` | stamped_by_hod → sent_to_cppc | desk | PPR no + date required |
 | `cppc_pay` | sent_to_cppc → paid | cppc | — |
 
-The actor (`by`) is **stamped server-side** from the transition definition — the role
-switcher is not trusted. Each move appends a history entry and syncs `rv.paStatus`.
-The desk↔HOD loop: the desk **forwards to HOD**, HOD **stamps and returns it to the desk**,
-the desk **forwards to CPPC** (capturing the PPR), and **CPPC releases the final payment**.
-Read-only advices render in the two HAL hand-off document formats
-(`client/src/components/paDocuments/`).
+The actor (`by`) is checked against the JWT role and **stamped server-side**. Each move
+appends a history entry and syncs `rv.paStatus`. The desk↔HOD loop: the desk **forwards to
+HOD**, HOD **stamps and returns it to the desk**, the desk **forwards to CPPC** (capturing the
+PPR), and **CPPC releases the final payment** (`cppc@hal.local`). Read-only advices render
+in the two HAL hand-off document formats (`client/src/components/paDocuments/`).
+
+### Credit notes and documents
+An RV whose invoice exceeds the accepted value needs a credit note (or a recorded waiver)
+before an advice can be generated. The credit note and every advice document (RV copy,
+invoice, FTR, warranty, bank change, SD/PBG/EMD/indemnity copies, CA approval, vendor
+request, SSL intimation) are **real multipart uploads** (`server/routes/paFiles.js`,
+multer, SHA-256 per file) kept on the in-memory advice; the maker uploads, anyone on the
+advice can view.
 
 ### LD calculation (`server/ld.js`)
 - **(a) supply delay** — 0.5% of RV value × weeks (or part thereof, `ceil`) late between
   PO delivery-due date and gate-entry date. Auto-computed.
 - **(b) installation & commissioning delay** — manual maker entry (`ldIcAmount`), judged
   against FTR date.
-- **LD total = a + b**, capped at **10% of PO order value** *(base flagged for client
-  confirmation — RV vs PO value)*. **Final payment = RV value − LD total.**
+- **LD total = a + b**, capped at **10% of PO order value**. Whether the ceiling applies to
+  the PO or the RV value is **pending HAL's confirmation** — `server/config/ldPolicy.json`
+  (`capBase`) switches it. The Portal Hub's LD calculator posts to `/ld-calc` and uses the
+  same function. **Final payment = RV value − LD total.**
 
 ### Screen 2 form (`client/src/config/paFormFields.jsx`)
 Sections render straight from config (client feedback edits the config, not components):
 Advice & References · RV & PO Details · Vendor · Invoice (maker entry) · Payment Computation
-(LD) · Securities & Holds · Attachments. Each field is tagged `ifs` (read-only, ERP-fetched),
-`maker` (input), or `computed` (server-computed, read-only).
+(LD) · Securities & Holds · Attachments. Each field is tagged `ifs` (read-only, fixture
+"ERP-fetched"), `maker` (input), or `computed` (server-computed, read-only).
 
-### API (`server/routes/paymentAdvices.js`, `rvs.js`)
+### API (`server/routes/paymentAdvices.js`, `rvs.js`, `paFiles.js`)
+- `GET /api/rvs` — Screen 1 rows with links; `POST /api/rvs/credit-note-decision`.
 - `GET /api/payment-advices` — list; `?state=` (comma-separated lifecycle filter), `?pa=`.
-- `POST /api/payment-advices` — generate a PA from a pending RV (Screen 1).
+- `POST /api/payment-advices` — generate a PA from a pending RV (creator = the signed-in user).
 - `POST /api/payment-advices/update` — save maker fields (locked once past `pa_created`).
 - `POST /api/payment-advices/transition` — all lifecycle moves go through the state machine.
+- `POST /api/payment-advices/credit-note` (JSON or multipart) · `/credit-note-waiver`.
+- `GET|POST /api/payment-advices/attachments` · `GET …/attachments/download?pa=&key=`.
+- `POST /api/payment-advices/ld-calc` — the LD calculator.
 - `GET /api/payment-advices/register` — Screen 6: flattened rows + server-side cycle-times +
   summary cards + filter options (`?fy ?status ?officer ?q`).
 - `GET /api/payment-advices/history` — ordered timeline for one PA.
+- `GET /api/payment-advices/kpis?months=` — the payment-desk analytics (`server/kpis/paymentDesk.js`).
 
 Cycle-time metrics (advised-from-RV, processed-from-forwarding, RV-to-payment,
 gate-entry-to-payment) are derived **server-side** from history dates — never in the UI.
+
+### Beyond payment
+The requisition register (Module G), the formats library, the trackers, claims and the
+sixteen procurement KPIs are described in `README.md` and `USER_GUIDE.md`.

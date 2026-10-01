@@ -69,6 +69,15 @@ export const HOPS = {
   reject: {
     label: 'Reject', advances: true, by: 'cfa',
     help: 'The CFA’s decision — closes the file'
+  },
+  // Housekeeping hops — they never fill a planned position.
+  assign: {
+    label: 'Name the position holder', advances: false, by: 'holder',
+    help: 'Put a person against a position the directory could not fill, so the gate can be met'
+  },
+  discharge_rider: {
+    label: 'Record a rider as discharged', advances: false, by: 'holder',
+    help: 'The condition a concurrence attached has been met — the gate stops waiting on it'
   }
 };
 
@@ -325,7 +334,7 @@ export const todayDMY = () => {
 // Append a hop. Hops are append-only — a query or a send-back ADDS a hop, it never
 // rewrites one, which is how the real note reads (N11 answers N10 in place).
 export function addHop(chain, { person, action, comment = '', slotIndex = null,
-  when = null, twoFactor = false, rider = '' }) {
+  when = null, twoFactor = false, rider = '', riderRef = null }) {
   if (!HOPS[action]) throw new Error(`unknown hop type: ${action}`);
   const seq = chain.hops.length + 1;
   const fallback = action.startsWith('concur') ? CONCUR_DEFAULT : '';
@@ -344,13 +353,22 @@ export function addHop(chain, { person, action, comment = '', slotIndex = null,
     date: when || todayDMY(),
     txnId: txnId(chain.fileId, seq, person?.pb ?? '?'),
     twoFactor: Boolean(twoFactor),
-    rider: rider || ''
+    rider: rider || '',
+    riderRef: riderRef != null ? Number(riderRef) : null
   };
   chain.hops.push(hop);
+  // A rider is a promise about a later stage: it stays unrecorded until a discharge hop
+  // names it, and the gate refuses to release while any rider is outstanding.
   if (rider) {
-    chain.riders.push({ hop: hop.note, by: person?.name ?? '?', condition: rider, recorded: true });
+    chain.riders.push({ hop: hop.note, seq, by: person?.name ?? '?', condition: rider, recorded: false });
   }
-  if (slotIndex != null && chain.plan.slots[slotIndex]) {
+  if (action === 'discharge_rider' && riderRef != null) {
+    const r = chain.riders.find((x) => x.seq === Number(riderRef));
+    if (r) r.recorded = true;
+  }
+  // Only a hop that moves the file fills its planned position; a query, an examine or a
+  // send-back keeps the chain's place.
+  if (HOPS[action].advances && slotIndex != null && chain.plan.slots[slotIndex]) {
     chain.plan.slots[slotIndex].actioned = true;
     chain.plan.slots[slotIndex].action = action;
   }
@@ -375,7 +393,13 @@ export function releaseReady(chain) {
       : `the CFA ${chain.decision}ed — the file is closed, not released`);
   }
   for (const s of chain.plan.slots) {
-    if (!s.required || s.kind === 'originator' || s.kind === 'cfa') continue;
+    if (!s.required || s.kind === 'originator') continue;
+    // A position nobody is named for can never act — including an unnamed CFA.
+    if (!s.person && !s.external) {
+      why.push(`${s.title}: position not named — assign a person before the file can be released`);
+      continue;
+    }
+    if (s.kind === 'cfa') continue;                       // the CFA's decision is checked above
     if (s.external && !s.actioned) {
       why.push(`${s.title} is outside HAL and has not been recorded as obtained`);
     } else if (!s.actioned) {
@@ -431,6 +455,11 @@ export function serialize(chain) {
     gradePath: gradePath(chain),
     monotonic: gradePath(chain).every((g, i, a) => i === 0 || a[i - 1] <= g),
     elapsedDays: elapsedDays(chain),
+    // Positions the directory could not fill — the screen offers to name them.
+    unresolved: chain.plan.slots
+      .map((s, i) => ({ index: i, title: s.title, kind: s.kind, candidates: s.candidates ?? [], person: s.person, external: s.external, required: s.required }))
+      .filter((s) => !s.person && !s.external && s.required && s.kind !== 'originator')
+      .map(({ index, title, kind, candidates }) => ({ index, title, kind, candidates })),
     ...nextActor(chain)
   };
 }

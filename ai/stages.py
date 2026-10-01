@@ -33,7 +33,8 @@ STAGES = {
    "formats":["purchase_order","hal_contract"],"carry":None,"cond":None,"ref":True},
 }
 
-NEEDBASED = ["retender","short_closure","tec_query","due_date_ext","addendum","advance_payment","po_amendment"]
+NEEDBASED = ["retender","short_closure","tec_query","due_date_ext","addendum","advance_payment","po_amendment",
+             "tec_representation","bank_insertion","vendor_creation","vendor_registration","misc"]
 
 # The five need-based notes that the responsibility-cascading sheet actually places
 # in the post-tender-opening cascade (see cascade.NODES). Same shape as STAGES, so
@@ -56,6 +57,27 @@ NEEDBASED_STAGES = {
  "po_amendment": {"seq":14,"phase":"COMMERCIAL","note":"PO Amendment Note","file":None,"resp":"Tendering",
    "new":["po_no","amendment_no","amendment_reason","revised_value","recommended_vendor"],
    "formats":[],"carry":"$last","cond":None,"ref":True},
+ "tec_representation": {"seq":15,"phase":"TECHNICAL","note":"TEC Representation Note","file":None,"resp":"Indenting",
+   "new":["representation_from","representation_summary","tec_reply","representation_disposal"],
+   "formats":[],"carry":None,"cond":None,"ref":False},
+ "bank_insertion": {"seq":16,"phase":"COMMERCIAL","note":"Bank Detail Insertion Note","file":None,"resp":"Tendering",
+   "new":["recommended_vendor","bank_name","account_no","ifsc","po_no"],
+   "formats":[],"carry":None,"cond":None,"ref":False},
+ "vendor_creation": {"seq":17,"phase":"COMMERCIAL","note":"Vendor ID Creation Note","file":None,"resp":"Tendering",
+   "new":["vendor_name","pan","gstin","udyam","vendor_category","vendor_address"],
+   "formats":[],"carry":None,"cond":None,"ref":False},
+ "vendor_registration": {"seq":18,"phase":"PROVISIONING","note":"Vendor Registration Note","file":None,"resp":"Tendering",
+   "new":["vendor_name","registration_category","assessment_summary","registration_validity"],
+   "formats":[],"carry":None,"cond":None,"ref":False},
+ "misc": {"seq":19,"phase":"ANY","note":"Misc / Standalone Note","file":None,"resp":"Indenting",
+   "new":["subject","background","proposal"],
+   "formats":[],"carry":None,"cond":None,"ref":False},
+ "due_date_ext": {"seq":20,"phase":"TENDERING","note":"Tender Due Date Extension Note","file":None,"resp":"Tendering",
+   "new":["tender_no","original_due_date","revised_due_date","extension_reason"],
+   "formats":[],"carry":None,"cond":None,"ref":False},
+ "addendum": {"seq":21,"phase":"TENDERING","note":"Tender Addendum / Corrigendum Note","file":None,"resp":"Tendering",
+   "new":["tender_no","addendum_no","addendum_summary","revised_due_date"],
+   "formats":[],"carry":None,"cond":None,"ref":False},
 }
 
 # Every note the pipeline can execute: the linear ORDER plus the need-based ones.
@@ -67,4 +89,7 @@ REF = {
  "pnc_rec":"PNC_Recc","pp":"Purchase_Proposal","po":"PO_HAL_Contract",
  "retender":"Retender_Note","short_closure":"Short_Closure_Note","tec_query":"TEC_Query_Note",
  "advance_payment":"Advance_Payment_Note","po_amendment":"PO_Amendment_Note",
+ "tec_representation":"TEC_Representation_Note","bank_insertion":"Bank_Detail_Insertion_Note",
+ "vendor_creation":"Vendor_ID_Creation_Note","vendor_registration":"Vendor_Registration_Note",
+ "misc":"Misc_Note","due_date_ext":"Due_Date_Extension_Note","addendum":"Addendum_Note",
 }

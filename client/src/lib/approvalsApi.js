@@ -46,6 +46,7 @@ export const fetchChains = () => getJson('/api/approvals/chains');
 export const fetchChain = (id) => getJson(`/api/approvals/chains/${id}`);
 export const startChain = (payload) => postJson('/api/approvals/chains', payload);
 export const actOnChain = (id, payload) => postJson(`/api/approvals/chains/${id}/hops`, payload);
+export const assignSlot = (id, index, payload) => postJson(`/api/approvals/chains/${id}/slots/${index}/assign`, payload);
 
 // Committees (TEC, PNC)
 export const fetchCommittees = () => getJson('/api/approvals/committees');

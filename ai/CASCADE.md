@@ -8,7 +8,10 @@ sampleData/HAL PURCHASE FORMATS dt 22.06.2026/
 ```
 
 Encoded in `ai/cascade.py`, executed by `ai/interactive.py`, and asserted against the
-spreadsheet cell-by-cell by `ai/cascade_check.py` (**59/59 checks pass**).
+spreadsheet cell-by-cell by `ai/cascade_check.py` (the script prints its own pass count).
+The web app runs the same graph from its Node mirror, `server/ai/cascadeGraph.js`
+(`CASCADE_NODES` + `STAGE_META`), which must be kept in step with `cascade.py` and
+`stages.py`.
 
 The sheet recognises exactly two actors:
 
@@ -150,6 +153,18 @@ than corrected, so the check fails if the encoding silently drifts.
 
 One deviation was found this way and removed: an `ADVANCE PAYMENT NOTE` option had been
 placed at stage 7, but sheet column `L` holds `PO + HAL CONTRACT` and nothing else.
+
+The tender document is **not** a cascade node: block 1 (C13 + D7) says it is prepared from
+the provisioning checklist plus the 72 STC clauses without a note of its own, so the check
+asserts that no node and no option is called `tender_doc` (`stages.py` keeps `tender_doc`
+in `STAGES` but outside `ORDER`). In the web app it is compiled by
+`GET /api/requisitions/:id/tender-doc`.
+
+The sheet has no conditional logic, so nothing in the cascade is hard-blocked by a rule;
+`pnc_required` / `retender_required` only advise. The web port adds one **gate** from the
+other modules — `server/ai/gates.js` `post_pp`: a PO note needs the Purchase Proposal
+approved on the noting side with its approval chain released — and, like the advisories,
+it can be overridden with the override recorded on the note.
 
 ---
 

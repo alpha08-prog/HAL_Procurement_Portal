@@ -1,238 +1,272 @@
-# HAL Procurement Portal — Workflow Guide (post-payment modules)
+# HAL Procurement Portal — Workflow Guide (noting and contracts)
 
-This guide explains everything built **after** the payment module: what each screen and
-button does, where a process starts, and how it flows to the end. It covers three parts:
+This guide explains, screen by screen and button by button, the three modules that sit
+between the requisition and the payment:
 
-1. **AI Documents** (`/ai-documents`) — the read-only viewer for AI-drafted procurement notes
-2. **e-File Noting** (`/noting/*`) — turning those notes into routable, classified e-files,
-   approved stage by stage until the Purchase Order
-3. **Contract Generation** (`/contracts/*`) — turning an approved PO into a full HAL contract
+1. **AI Documents** (`/noting/ai-documents`) — the read-only viewer for the Python CLI's notes
+2. **e-File Noting** (`/noting/*`) — stage files, routing, custody, classification,
+   clarifications, delegation, and the approval-chain and AI-case links
+3. **Contract Generation** (`/contracts/*`) — turning an approved PO into a HAL contract,
+   finalising, releasing and verifying it
 
-The payment module (RV → Payment Advice → HOD → CPPC) is documented separately and is not
-covered here.
+The requisition register, approval chains, AI cases, payment, claims and KPIs are covered
+in `USER_GUIDE.md`, which also walks the integrated storyline.
 
 ---
 
 ## The big picture
 
-The portal follows the real HAL procurement lifecycle. Each module owns one slice of it:
-
 ```mermaid
 flowchart LR
-  A[CAR / Requisition] --> B[AI pipeline drafts the notes\nProvisioning → … → PO]
-  B --> C[e-File Noting\nroute · check · approve\neach note N1…Nn]
-  C -->|PO approved,\nfile closed| D[Contract Generation\nPO → HAL Contract\nfinalised + QR-stamped]
-  D -.->|goods receipt| E[(Payment module\nout of scope here)]
+  G[Requisition register<br/>CAR / MPR / CPR / SPR] --> C[e-File Noting<br/>one stage file per procurement stage<br/>route · check · approve]
+  C <-->|provisioning & PP stages<br/>carry an approval chain| E[Approval chains<br/>release gate]
+  C <-->|Draft & Raise with AI| F[AI case<br/>drafts the note, computes annexures]
+  C -->|PO stage approved| D[Contract Generation<br/>PO → HAL contract<br/>finalise · release · verify]
+  D -.->|goods receipt| A[(Payment module)]
 ```
 
-- The **AI pipeline** (a separate Python program) drafts the standard sequence of
-  procurement notes. The web app only **reads** its output.
-- **e-File Noting** is where people act: any HAL member initiates a file, routes notes
-  member-to-member, raises clarifications, and a competent authority approves or rejects.
-  A file is the whole case; it stays open until the **final stage (Purchase Order)** is
-  approved, or any note is rejected.
-- **Contract Generation** picks up exactly where noting ends: from a PO it assembles the
-  contract — standard clauses auto-selected from the Contract Clauses Matrix, prices and
-  parties from the PO, scope of work from the Provisioning Note — and finalises it with a
-  tamper-evidence hash and QR code.
+- **Noting is where people act**: a proposal is a chain of stage files, each routed
+  member-to-member and decided by its planned authority.
+- **The AI case drafts the text** of a stage when the holder asks for it; the note is stored
+  on the stage file with its annexures as computed attachments.
+- **The approval chain gates** the provisioning and purchase-proposal stages: they cannot be
+  approved until the chain is released.
+- **Contracts pick up at the PO.** The "PP approved" queue lists what is ready; the contract
+  is generated from the PO fixture and the clause matrix, finalised with a hash and QR,
+  released to IFS (recorded, no connector) and verifiable afterwards.
 
 ## Getting started
 
 ```bash
 npm install
-npm run dev        # mock API on :3001, web app on :5173
+npm run dev        # API on :3001, web app on :5173
 ```
 
 Open http://localhost:5173 and sign in. **All accounts share the password `hal@1234`.**
 
-| Account | Who they are | Use them to demo |
+| Account | Noting member | Use them to demo |
 |---|---|---|
-| `admin@hal.local` / `test@hal.local` | Admin | Everything + the role-switcher; clause amendment |
-| `maker@hal.local` | Asha Mhatre, Purchase Maker | Initiating files, generating contracts |
-| `officer@hal.local` | R. Deshpande, Purchase Officer | Routing, Retract demo |
-| `hod@hal.local` | V. Rao, HOD (IMM) | Approvals, Retrieve demo |
+| `admin@hal.local` / `test@hal.local` | Administrator / QA Test | Everything + the role switcher; clause amendment; contract decrypt |
+| `indentor@hal.local` | Indent Cell | Requisitions, provisioning stage files, hand-over to tendering |
+| `maker@hal.local` | Asha Mhatre, Purchase Maker | Tender-stage files, AI drafting, generating contracts |
+| `officer@hal.local` | R. Deshpande, Purchase Officer | Routing, Retract demo, contract release and verify |
+| `hod@hal.local` | V. Rao, HOD (IMM) | Approvals, Retrieve demo, delegation |
 | `gm@hal.local` | A. K. Sharma, GM (AOD) | Division-wide supervision of files |
-| `cm@hal.local` | Gaurav Yadav, CM (Purchase) | Direct-head visibility, top-secret participant |
+| `cm@hal.local` | Gaurav Yadav, CM (Purchase) | Tender initiator; direct-head visibility, top-secret participant |
 | `desk@hal.local` | M. Iyer, Payment Desk | Need-to-know share-link recipient |
-| `stores@hal.local`, `indentor@hal.local` | Stores / Indentor | Ordinary members |
+| `stores@hal.local`, `cppc@hal.local` | Stores / CPPC | Ordinary members |
 
-The top navigation is split into three groups by dividers: the payment screens, **Noting**
-(Noting Home · Initiate · Inbox · Files · Cabinet · Reports · Organisation) and
-**Contracts** (Generate Contract · Contract Register · Clause Library). Admin accounts see
-all of them and get a **role switcher** in the top bar to preview what any role sees.
+The top bar carries a **module switcher** and, under it, the screens of the current module.
+Noting shows Noting Home · Inbox · SentBox · Cabinet · + Create E-File · Drafts & Files ·
+Upcoming · Reports · Organisation · AI Documents; Contracts shows Contract Register ·
+Generate Contract · 72 STC Clause Library. Admin accounts get the role switcher, which
+previews what a role sees and never changes what the server allows.
 
-> Demo data resets: `node server/noting/seed.js` (noting) and
-> `node server/contracts/seed.js` (contracts). Restarting the server resets the payment
-> mock; the noting and contracts stores are SQLite and survive restarts.
+> Demo data resets: `node server/noting/seed.js` (noting) and `node server/contracts/seed.js`
+> (contracts). Restarting the server resets the payment and claims stores; every other store
+> is SQLite and survives restarts.
 
 ---
 
-# Part 1 — AI Documents (`/ai-documents`)
+# Part 1 — AI Documents (`/noting/ai-documents`)
 
-**What it is:** a read-only window into the AI pipeline's output. If the pipeline has been
-run (`python ai/run.py` on the machine), this screen lists every generated note for the
-active case; otherwise it shows *"No AI outputs yet — run the pipeline…"*.
+**What it is:** a read-only window into the Python pipeline's output. If the pipeline has
+been run (`python ai/run.py --auto`), this screen lists every generated note for the active
+case; otherwise it shows *"No AI outputs yet — run the pipeline…"*.
 
-**Screen anatomy:**
-- **Left sidebar** — one button per generated note, numbered in workflow order
-  (01 Provisioning Note, 02 Tender Document, …). Click to select.
-- **"Full note" / "New section"** toggle — every AI note is the full prior document plus
-  one newly written section. *Full note* shows the whole document; *New section* shows only
-  what this stage added. This is the fastest way to explain the pipeline's carry-forward
-  design to a viewer.
-- **"Download PDF"** — prints just the document (browser Save-as-PDF); everything else on
-  screen is excluded from print.
+- **Left sidebar** — one button per generated note, in workflow order.
+- **"Full note" / "New section"** — every AI note is the full prior document plus one newly
+  written section. This toggle is the fastest way to explain carry-forward to a viewer.
+- **"Download PDF"** — prints just the document.
 
-There are no actions here — this screen exists so the drafts can be inspected, and so the
-Noting module's Initiate screen can pull a draft in as a starting note.
+There are no actions here. The live equivalent, where notes are generated in the browser,
+is **AI Cases** (`/ai-cases`) and the **Draft & Raise with AI →** button on a stage file.
 
 ---
 
 # Part 2 — e-File Noting (`/noting/*`)
 
-## The concepts (worth explaining before any screen)
+## The concepts
 
 - **A proposal is a chain of separate stage files.** One procurement case (one MPR/CAR, File
-  ID e.g. `AOD/IMM/2026/0001`) is carried by **stage files**: Provisioning, EMD Stage
-  Acceptance, TEC Request, TEC Report, Price Bid Opening, PNC Request, PNC Recommendation,
-  Purchase Proposal, **Purchase Order + Contract**, plus need-based ones (Retender, TEC Query,
-  Advance Payment, Short Closure, PO Amendment). Each stage file is generated from the result of
-  the one before, has its own routing trail, and runs its own green sheet of minutes **N1…Nx**.
-  Every stage file carries three connected IDs: the **File ID**, a **Reference No**
-  (`<File ID>/S2`), and a globally unique **Transaction ID** (`TXN-2026-000004`).
-- **What may follow a stage** comes from the client's responsibility-cascade sheet: an approved
+  ID e.g. `AOD/IMM/2026/0001`) is carried by stage files: Provisioning, EMD Stage Acceptance,
+  TEC Request, TEC Report, Price Bid Opening, PNC Request, PNC Recommendation, Purchase
+  Proposal, **Purchase Order + Contract**, plus need-based ones — Retender, Short Closure,
+  TEC Query, Advance Payment, PO Amendment, and the off-cascade TEC Representation, Bank
+  Detail Insertion, Vendor ID Creation, Vendor Registration, Tender Due Date Extension,
+  Addendum / Corrigendum and Misc. Each stage file has its own routing trail and its own
+  minutes **N1…Nx**, and three connected IDs: the **File ID**, a **Reference No**
+  (`<File ID>/S2`) and a **Transaction ID** (`TXN-2026-000004`).
+- **A proposal is anchored to a requisition.** Starting from the register (or
+  `/noting/initiate?requisition=`) locks the requisition into the file; a cascade stage other
+  than Provisioning can never start a new file — it is added to its proposal from the cabinet.
+- **What may follow a stage** comes from the responsibility-cascade sheet: an approved
   Provisioning offers EMD, TEC Request or Retender; an approved TEC Report offers Price Bid
   Opening, Retender or Short Closure; and so on. You can also **skip to another stage**.
-  Approving the **PO** closes the proposal; rejecting any stage closes it. **PO Amendment** is
-  offered only on a closed PO proposal (it reopens it; its own approval closes it again).
+  Approving the **PO** closes the proposal; rejecting any stage closes it. **PO Amendment**
+  is offered only on a closed PO proposal.
 - **Hand-over to tendering.** An approved Provisioning rests in its initiator's cabinet. The
-  initiator presses **Send to Tender Initiator** and picks the member who will float the tender.
-  That member gets the proposal in their cabinet, can read every stage of it, and generates EMD
-  or TEC. Tender stages can't be generated before this hand-over.
-- **Custody, not roles.** At any moment exactly one member **holds** the note (the
-  custodian) — only they can act on it. Everyone who ever held or routed it is a
-  **participant** and can always read it. There are no fixed approval chains: the holder
-  chooses the next member freely ("dynamic routing").
-- **Classification is graded per note:** Normal (any signed-in member can read) →
-  Confidential (participants + any supervising head) → Secret (participants + the direct
-  unit/dept head only) → Top Secret (participants + explicit grant only). A bare link or
-  transaction ID reveals nothing — access is checked on every read. A proposal's initiator and
-  its tender initiator can always read every stage file of that proposal.
-- **The cabinet** is each member's personal shelf: once a stage file is decided it closes and
-  rests — for good — in the cabinets of its initiator, routing members, the deciding authority
-  and the proposal's initiator / tender initiator. Each row shows the proposal's progress
-  (S1 → S2 → …), its current stage and who holds it, and the next action.
+  initiator presses **Send to Tender Initiator** and picks the member who will float the
+  tender. Tender stages cannot be generated before this hand-over.
+- **Custody, not roles.** Exactly one member **holds** a note — the custodian — and only they
+  can act on it, or a member holding an **active delegation** from them (the hop is stamped
+  *on behalf of*). Everyone who ever held or routed it is a **participant** and can always
+  read it.
+- **Planned routing.** The initiator sets the routing plan and the approving authority when
+  the file is created. Each **Forward** is checked against the plan; the holder may deviate,
+  but only with a reason, which is written into the minutes.
+- **Authority.** Only the planned approver (or their delegate) decides a stage. A draft can
+  never be decided. Provisioning and Purchase Proposal stages also carry an **approval chain**
+  (Module E, `server/noting/approvalPolicy.json`): approving the stage is refused with 409
+  until that chain is released.
+- **Classification is graded per note:** normal (any signed-in member can read) →
+  restricted / confidential / secret / top secret (participants, the proposal's owners and
+  explicit grantees only — there is no head bypass above normal). A bare link or transaction
+  ID reveals nothing; access is checked on every read.
+- **The cabinet** is each member's shelf of decided stage files, each row carrying the
+  proposal's progress (S1 → S2 → …), its current stage and holder, and the next action.
 
 ## Where to start: Initiate (`/noting/initiate`)
 
-Creates a new file plus its first note (N1). Any HAL member can do this.
+A four-step wizard. Three entry points share it: plain `/noting/initiate` (a new proposal),
+`?requisition=<id>` from the register (the requisition is locked in), and `?stage=<id>` from
+the Portal Hub's note items (a cascade stage is added to the proposal you pick; an
+off-cascade need-based note may open a file of its own).
 
-1. **Source** — two buttons: **"AI-drafted"** (pick one of the pipeline's generated notes
-   from a dropdown; its text is pulled into the draft) or **"Standalone / manual"** (an
-   administrative note with no requisition, typed by hand).
-2. **File block** — *File title* (required), *Reference type* (MPR / CAR / SPR / CPR /
-   Standalone) + reference number, *Classification*, and optionally **"Line-wise child
-   of"**: pick an existing parent file plus a *Line / L1 label* to spawn a child Purchase
-   Proposal per line item (this builds the parent–child tree shown in Reports).
-3. **Note (N1)** — title and body (pipe-delimited rows render as tables in the document view).
-4. **"Create & open"** — generates the connected File ID / Reference / Transaction ID, adds
-   the Purchase Manual reference attachment automatically, and opens the new note. The note
-   starts as a **draft held by you**.
+1. **Source & file** — **AI-drafted (Pipeline)** (pick the NVB or the fabricated LED case;
+   the pipeline's provisioning note seeds N1) or **Standalone / manual**. File title,
+   reference kind and number, classification, priority, optionally **Line-wise child of** a
+   parent file. **Next: Routing →**
+2. **Routing** — **+ Add Member to Routing** builds the planned trail; the last member is the
+   approving authority. **Next: Notesheet →**
+3. **Notesheet** — the N1 body in the rich-text editor (pipe-delimited rows render as tables).
+   **Next: Cover Page →**
+4. **Cover page** — **+ Select DOP Matrix** (a row from `ai/dop2025.json`, filed as a DoP
+   attachment), **+ Configure Stamping** (stamping setup plus its PDF), files to attach.
+   **Review & Submit E-File →** opens the final review, which asks for the **6-digit
+   one-time password** (**Get demo code** fetches it) — **SUBMIT E-FILE**.
+
+Everything collected is posted: the plan, approver, priority, OTP (verified server-side and
+stamped on the note), DoP row, stamping PDF and files as typed attachments. The note starts
+as a **draft held by you**; for a provisioning stage its approval chain is created at once.
 
 ## The workhorse: Note Detail (`/noting/note/<txn-id>`)
 
-Every file link in the app lands here. Top of the screen: the three IDs, classification and
-status badges, and **"Currently with …"** — who holds it now. Below that, the action row.
-**Which buttons you see depends on whether you hold the note and its status** — this is
-the positional access model in action:
+Top of the screen: the three IDs, classification and status badges, **"Currently with …"**,
+the current-stage / tender-initiator strip, and for chained stages an **Approval chain #n**
+banner (hops recorded, released or what blocks it, positions still to be named) linking to
+the chain. Below that, the action row. **Which buttons you see depends on whether you hold
+the note and its status:**
 
 | Button | Appears when | What it does |
 |---|---|---|
-| **Edit draft** | you hold it, status Draft | edit title / classification / body, **Save draft** |
-| **Send for check** | you hold it, status Draft | route it to a checker before formal routing |
-| **Forward** | you hold it (draft or routed) | pick any member (grouped Dept › Section — including yourself, or someone twice) + comment. An empty or symbols-only comment becomes **"Concurred & Forwarded"** automatically |
-| **Send back** | you hold a routed note | return it — the picker lists **only** the initiator and prior holders |
-| **Approve / Reject** | you hold a routed note | record the decision + optional remark: **"Approve & file"** / **"Reject & file"**. A draft can never be decided (no self-approval of an unrouted note) |
-| **Retract** | you sent the last hop and the recipient **has not opened it yet** | pulls the note back instantly; opening locks it |
-| **Retrieve from cabinet** | note is decided and **you** decided it | reopens the decision (undo for the decider) |
-| **Share (need-to-know)** | note is classified above Normal | issue a personal access link for one member — see below |
-| **Summary** | always | a generated condensed summary of the proposal |
-| **Download PDF** | always | prints the note document only |
+| **Edit** / **Save Draft** | you hold it, status Draft | edit title / classification / body |
+| **Send for Check** | you hold it, status Draft | route it to a checker before formal routing |
+| **Forward to Officer →** | you hold it | pick the next member (the plan's next hop is proposed; deviating needs a reason) + comment. An empty or symbols-only comment becomes **"Concurred & Forwarded"** |
+| **← Send Back** | you hold a routed note | return it — the picker lists **only** the initiator and prior holders |
+| **Approve & File** / **Reject & Close** | you are the planned authority and hold it | records the decision; refused for a draft, and with 409 while the stage's approval chain is not released. Rejecting an AI-sourced stage rolls the AI case back |
+| **Retract Hop** | you sent the last hop and the recipient has not opened it | pulls the note back; opening locks it |
+| **Retrieve from Cabinet** | note is decided and **you** decided it | reopens the decision |
+| **Share (Need-to-Know)** | note is classified above normal | issue a personal access link for one member |
+| **+ Add Noting Minute (N n)** | you hold it | append the next minute |
+| **Draft & Raise with AI →** | you hold a decided stage whose next notes the cascade allows | see *AI link* below |
+| **Link AI case** / **Move to Agency** | file has no case / the case's custody must move | link a Module F case; hand it across |
+| **Formats on File (n)** | always | the standard formats attached to this proposal |
+| **Proposal Summary** / **Download PDF** | always | a deterministic condensed summary; print the note only |
 
-Below the actions: **Attachments** (typed — anyone routed can add a *Reference/document*;
-only the initiator may add a *Stamping document* or *DoP reference*; the *PM reference* is
-attached automatically and can't be added by hand), the **Routing trail** (every hop with
-who → whom, comment, date, and flags like *"Awaiting — not yet opened"*), and
-**Clarifications** (below).
+Below the actions, four accordions: **AI Cascade: Next Notes**, **Routing Trail** (every hop
+with who → whom, comment, date, *on behalf of*, and *"Awaiting — not yet opened"*),
+**Attachments** and **Clarifications**, plus **Need-to-Know Grants** on classified notes.
+
+**Attachments** are typed: anyone routed may add a *Reference / Document* (a real upload);
+only the initiator a *Stamping document* or *DoP reference*; the *PM reference* is attached
+automatically. Two kinds carry no file: **AI Annexure** (computed by the pipeline, viewed as
+a field table) and **Standard Format** — pick one from the library, **Render & attach**, and
+the server renders it from the linked requisition and files it as blocks (**View**, print).
+
+**AI link.** The first AI-sourced minute renders as a document (pipe rows become tables).
+**Draft & Raise with AI →** opens the note's pre-filled form; **Raise Anyway (Record
+Advisory Override)** appears when a rule advises against the choice. The next stage file is
+created on the noting side and the case advances together; if the case fails, nothing is
+created.
 
 ### The normal life of a note, end to end
 
-1. Maker **initiates** N1 (draft, held by maker).
-2. Maker **sends for check** or **forwards** to the officer — the note appears in the
-   officer's **Inbox** tagged *"To check"* / *"To act"*.
-3. The officer opens it (this locks retraction), reads, maybe raises a **clarification**,
-   attaches documents, then **forwards** to the HOD — or **sends back** for rework.
-4. The HOD **approves**. The stage file closes and rests in the **cabinet** of everyone
-   involved.
-5. For a **Provisioning** stage, the initiator presses **Send to Tender Initiator** (in the
-   cabinet or on the closed note) and picks e.g. Gaurav Yadav (`cm@`). The proposal lands in
-   that member's cabinet.
-6. The tender initiator's cabinet row offers **Generate EMD Stage Acceptance Note**, **Generate
-   TEC Request Note** and **Generate Retender Note**, plus **Skip to another stage…**. Generating
-   one opens a fresh stage file (S2) at N1 with its own routing trail, and the cycle repeats.
-7. Approving the **Purchase Order** stage closes the proposal. The cabinet then offers only
-   **Generate PO Amendment** (reopens the proposal until the amendment is itself approved). A
-   rejected stage closes the proposal and offers nothing.
+1. Indentor **initiates** the Provisioning stage from the requisition (draft, held by them);
+   its approval chain is planned.
+2. **Forward to Officer →** — the note appears in the officer's **Inbox** with days waiting,
+   priority and *To check* / *To act*. Opening it locks retraction.
+3. The officer reads, maybe raises a **clarification**, attaches documents, then forwards to
+   the HOD per the plan — or **← Send Back** for rework.
+4. The chain runs in Approvals; once released the HOD's **Approve & File** succeeds. The
+   stage closes and rests in the **cabinet** of everyone involved.
+5. The initiator presses **Send to Tender Initiator** and picks Gaurav Yadav (`cm@`).
+6. The tender initiator's cabinet row offers **Generate EMD Stage Acceptance Note**,
+   **Generate TEC Request Note**, **Generate Retender Note** and **Skip to another stage…**.
+   Generating one opens a fresh stage file (S2) at N1 with its own routing trail; **Draft &
+   Raise with AI →** drafts its text.
+7. The Purchase Proposal stage carries its own chain; approving it makes the requisition
+   **PP approved** and puts it on the contracts queue.
+8. Approving the **Purchase Order** stage closes the proposal. The cabinet then offers only
+   **Generate PO Amendment**. A rejected stage closes the proposal and offers nothing.
+
+### Delegation
+
+Inbox → **Delegate Authority**: from/to dates, the officiating member, reasons, **Delegate**.
+While active, the delegate sees the delegator's notes in **DELEGATED INBOX** and may act on
+them; every such hop is stamped *on behalf of*. Delegations you gave and hold are listed with
+**Cancel**.
 
 ### Clarifications — the private side-channel
 
 On any note, a participant can **Raise** a question to another participant. The thread is
-strictly two-party: only the asker, the person asked (and the note's initiator) see it —
-other members routed on the same note do not. Replies via the **Send** button; the thread
-shows **Open**/**Answered** status. Use this to demo "query without routing the file back".
+strictly two-party: only the asker and the person asked see it. Replies via **Send**; the
+thread shows **Open** / **Answered**. The Inbox column counts *open / total* per note.
 
 ### Classification & need-to-know sharing
 
-On a Confidential/Secret/Top-Secret note, the holder can **Share (need-to-know)**: pick a
-member, **Issue link**, and give them the generated URL — access is bound to *that member*,
-not the link. If the recipient forwards the link and someone else opens it, the grant is
-**revoked for both** and the custodian sees a ⚠ **leak alert** on the note. This is the
-anti-leak story: a link or transaction ID alone grants nothing, anywhere — including in
-the Files list and all reports, which show each person only what they may see.
+On a note above normal, the holder can **Share (Need-to-Know)**: pick a member, issue the
+link, give it to them — access is bound to *that member*. If the recipient forwards the link
+and someone else opens it, the grant is **revoked for both** and the custodian sees a ⚠
+**leak alert**. Files, cabinets and reports show each person only what they may see.
 
 ## The other noting screens
 
-- **Inbox** (`/noting/inbox`) — notes currently waiting **with you**, each tagged with why:
-  *To check*, *To act*, or *To decide*. Click the reference to open and act.
-- **Files** (`/noting/files`) — the file browser (+ an **"+ Initiate Note"** shortcut). You
-  only see files with at least one note you're allowed to read; the current stage, status,
-  holder and classification shown are of the latest stage *visible to you*, alongside the
-  tender initiator.
-- **Cabinet** (`/noting/cabinet`) — your closed stage files with your role in each
-  (Initiator / Router / Approver / Tender initiator), the proposal's progress, and the
-  **Send to Tender Initiator** / **Generate …** next actions described above.
-- **Reports** (`/noting/reports`) — four tabs, each scoped to what you may see (own files,
-  plus your subtree if you head a unit): **Lifecycle summary** (stage, status, note and
-  PO-amendment counts, elapsed days), **Stage & time** (per-note durations), **Parent–child
-  tree** (case → line-wise child PPs), **Live status** (current stage, who holds it, tender
-  initiator, days since provisioning/tendering started). Heads' visibility is **tenure-aware**: a sitting head sees their whole subtree's
-  history; a former head only files from their own tenure window.
-- **Organisation** (`/noting/org`) — the seeded HAL tree (Corporate › Complex › Division ›
-  Department › Section) and the member directory. Useful to explain *positional* access.
+- **Noting Home** — your workload over the last six months, rate of clearance and the e-file
+  trend, computed from the store.
+- **Inbox** — what waits with you: days waiting, reference, sender, subject, department,
+  received date, priority, action, status, class, clarifications, file id; the DELEGATED tab
+  and the delegation panel.
+- **SentBox** / **Upcoming** — what you sent and where it is; files whose plan reaches you
+  later.
+- **Drafts & Files** — the file browser (+ **Initiate**). You see a file if at least one of
+  its notes is visible to you; the stage, status, holder and classification shown are of the
+  latest stage *visible to you*.
+- **Cabinet** — your decided stage files with your role in each, the proposal's progress, the
+  filters (All / Proposal Open / Proposal Closed, Approved / Rejected), **📜 History
+  (N1..Nx)**, and the **Send to Tender Initiator** / **Generate …** / **Skip to another
+  stage…** actions.
+- **Reports** — Lifecycle summary, Stage & time, Parent–child tree, Live status; each scoped
+  to what you may see. Heads' visibility is **tenure-aware**.
+- **Organisation** — the seeded HAL tree and member directory.
 
-## Seeded noting demos — what to show with which login
+## Seeded noting demos
 
 | Demo | How |
 |---|---|
-| Hand-over to tendering | `indentor@` → Cabinet → "Procurement of hydraulic test rig spares" → **Send to Tender Initiator** → pick Gaurav Yadav; then `cm@` → Cabinet → **Generate EMD / TEC Request / Retender** |
-| Next stage from the cascade | `cm@` or `maker@` → Cabinet → NVB **S2 EMD** row shows **Generate TEC Request Note / Retender Note / Short Closure Note** |
-| PO Amendment on a closed file | `maker@` → Cabinet → "Procurement of hydraulic seals" shows **"Generate PO Amendment"** |
-| Retract an unopened hop | `officer@` → open the office-furniture note → **Retract** |
-| Retrieve after decision | `hod@` → open the rejected tool-kits note → **Retrieve from cabinet** |
-| Confidential + share link | `desk@` → open the secure-comms note with `?grant=demo-grant-active-desk`; `officer@` sees the revoked re-share **leak alert** on the same note |
-| Top Secret isolation | `hod@` cannot see the special-project file at all; `maker@`/`cm@` can |
+| Requisition → file | `indentor@` → Provisioning → a requisition without a file → **Initiate note** |
+| Chain gate | `hod@` → Inbox → a provisioning stage → **Approve & File** while its chain is open → 409 naming the chain |
+| Hand-over to tendering | `indentor@` → Cabinet → "Procurement of hydraulic test rig spares" → **Send to Tender Initiator** → Gaurav Yadav; then `cm@` → Cabinet → **Generate EMD / TEC Request / Retender** |
+| Next stage from the cascade | `cm@` or `maker@` → Cabinet → NVB **S2 EMD** row → **Generate TEC Request Note / Retender Note / Short Closure Note** |
+| PO Amendment on a closed file | `maker@` → Cabinet → "Procurement of hydraulic seals" → **Generate PO Amendment** |
+| Retract an unopened hop | `officer@` → the office-furniture note → **Retract Hop** |
+| Retrieve after decision | `hod@` → the rejected tool-kits note → **Retrieve from Cabinet** |
+| Delegation | `hod@` → Inbox → **Delegate Authority** → `cm@`; sign in as `cm@` → DELEGATED INBOX |
+| Confidential + share link | `desk@` opens the secure-comms note with `?grant=demo-grant-active-desk`; `officer@` sees the revoked re-share **leak alert** |
+| Top Secret isolation | `hod@` cannot see the special-project file; `maker@` / `cm@` can |
 | Tenure supervision | `gm@` sees every IMM file incl. the 2023 predecessor-era case |
 | Clarifications | NVB child PP (Line 1) has an answered and an open thread |
+| Formats on file | any holder → Attachments → pick a format → **Render & attach** → **View** |
 
 ---
 
@@ -240,141 +274,106 @@ the Files list and all reports, which show each person only what they may see.
 
 ## The concepts
 
-- **The STC library**: the 72 **Standard Contract Terms & Conditions** clauses (from the
-  legal cell's clause documents) live in the portal, versioned. General users can read them;
-  **only an admin can amend them**, and every amendment records the superseded text, who
-  changed it, a change note, and the legal-vetting **reference doc**.
-- **The Contract Clauses Matrix** maps all 71 matrix clauses × 8 contract types (four
-  Supply categories, Transfer of Technology, Services/MRO, Long-Term Business Agreements,
-  Licence Agreements). Each cell is *Y* (auto-include), *N* (excluded), *TBD*, or a
-  condition ("Need to include on case-to-case basis…"). Choosing the type of contract
-  **auto-crawls** the clause set from this matrix.
-- **Snapshots**: when a contract is generated, the clause texts and the PO's item prices
-  are frozen into it. Amending the library later never changes an existing contract.
-- **Classification** (contract-level, five grades): Normal, Restricted, Confidential,
-  Secret, Top Secret — shown as a badge in the register and as the **watermark** on the
-  printed document.
-- All money (GST per line, tax totals, final landed value) is computed by the server from
-  the PO's raw item lines — the screen never calculates anything.
+- **The STC library**: the 72 **Standard Contract Terms & Conditions** clauses live in the
+  portal, versioned. Anyone can read them; **only an admin account can amend them**, and
+  every amendment records the superseded text, the person, a change note and the
+  legal-vetting **reference doc**.
+- **The Contract Clauses Matrix** maps 71 matrix clauses × 8 contract types. Each cell is
+  *Y* (auto), *N* (excluded, still tickable), *TBD* or a condition (offered). Choosing the
+  contract type **auto-crawls** the clause set.
+- **Snapshots**: clause texts, the PO's item prices and the rendered annexed formats are
+  frozen into the contract at generation. Amending the library later never changes it.
+- **Status**: `draft → finalised → released`. Every edit, finalisation, release and
+  verification is written to the contract's **audit trail**.
+- **Classification** (five grades) is a badge and the print **watermark**; it does not gate
+  access on contracts.
+- All money (GST per line, totals, landed value) is computed by the server.
 
-## Where to start: Generate Contract (`/contracts/generate`)
+## Where to start: PP approved list and Generate Contract
 
-One progressive form, top to bottom — later sections appear as earlier ones are filled:
+**CON-01 — PP approved list** (`/contracts/register?filter=approved_pp`) lists the
+requisitions whose Purchase Proposal is approved with a released chain and no contract yet.
+Each row opens **Generate Contract** with the tender, PO and requisition pre-filled.
 
-1. **Tender & Purchase Order.** Type the **Requisition / HAL IFS tender no** (suggestions
-   appear as you type — try `GEM/2025/B/6638737`). The app resolves the tender and shows its
-   CAR, mode of tendering and CFA/DOP reference — then **prompts for which PO** to generate
-   from in a dropdown. (`GEM/2025/B/7104412` has **two** POs under it — the moment to show
-   that one tender can yield several contracts.)
-2. **Fetched from HAL PO (read-only).** The supplier card (name, address, GSTIN, contact),
-   the PO header, the full **item table** — part no, HSN, qty, UOM, unit price, GST — with
-   server-computed tax and landed value, and the **scope of work from the Provisioning
-   Note** (expandable).
-3. **Type of purchase/contract & standard clauses.** Pick one of the 8 types (pre-filled
-   with a suggestion). The clause plan appears instantly: **Auto-selected (per Matrix)** —
-   checked and locked; **Offered — include on requirement** — tickable, each showing the
-   matrix's own condition text verbatim; and a collapsed list of clauses marked *N* for
-   this type (still tickable — the user may add any extra STC beyond the matrix).
-4. **Contract particulars.** Classification, description (pre-filled from the PO), period
-   from/to, validity.
-5. **Additional clauses (user-written).** **"+ Add additional clause"** → title + text
-   rows. These print under a separate **"Additional Clauses"** heading, numbered AC-1, AC-2…
-6. **Standard proformas to annex.** Tick any of the ~12 HAL standard formats (PBG bank
-   guarantee, Integrity Pact, NDA, MII declaration, …) — each becomes a named annexure.
+**Generate Contract** (`/contracts/generate`), top to bottom:
 
-**"Generate Contract"** creates the contract as a **draft** and opens it. The contract
-number is generated automatically and references the PO: `HAL/AOD/CTR/<FY>/<PO-serial>/<NN>`.
-The generator's name, PB no, designation, department and division are stamped from the
-signed-in user — never typed in.
+1. **Tender & Purchase Order.** Type the tender no (try `GEM/2025/B/6638737`); the app
+   resolves the tender and prompts for the PO. `GEM/2025/B/7104412` has **two** POs.
+2. **Fetched from HAL PO (read-only)** — supplier card, PO header, item table with
+   server-computed tax and landed value, the scope of work.
+3. **Type of contract & standard clauses** — auto-selected (locked), offered (tickable, with
+   the matrix's condition verbatim) and the collapsed *clauses marked N for this type*.
+4. **Contract particulars** — classification, description, period, validity.
+5. **Additional clauses** — **+ Add additional clause**, printed as AC-1, AC-2…
+6. **Standard formats to annex** — tick any library format (PBG, SD, NDA, integrity pact…);
+   each is rendered from the PO and frozen as a named annexure.
+
+**Generate Contract** creates a **draft** numbered `HAL/AOD/CTR/<FY>/<PO-serial>/<NN>`. The
+generator's identity is stamped from the signed-in user.
 
 ## The contract view (`/contracts/view/<id>`)
 
-The printed document plus an action bar. The document always shows:
+The document (cover page, index, clauses, additional clauses, Annexure A price schedule with
+amount in words, Annexure B scope, one annexure per format, signature block and QR) plus the
+action bar and the audit trail.
 
-- **Cover page** — contract no, date, description, both parties (HAL AOD Nashik ↔ the
-  supplier with address/GSTIN/contact), value in figures **and words**, period, validity,
-  type, and the PO / tender / CAR / CFA-DOP references.
-- **Table of Contents / Index** — every clause and annexure in order.
-- The numbered **standard clauses**, then **Additional Clauses**.
-- **Annexure A — Schedule of Items & Prices**: the PO's line items with HSN, qty, UOM, unit
-  price, tax % (CGST/SGST shown as the half-split, IGST as one levy), tax amount, line
-  total — and Total Basic / Total Tax / **Final Landed Value** with amount in words.
-- **Annexure B — Scope of Work & Technical Specifications** (Provisioning Note + tender doc).
-- One annexure per ticked proforma, then the **signature block** and the QR panel.
-
-**While a draft:**
-- **"Edit selections"** — change classification, description, period/validity, ticked
-  extra clauses, additional clauses, annexed proformas, and the **"Encrypt for Smart
-  Contract"** toggle. The auto clause set and the PO's items are deliberately not editable.
-- **"Finalise & stamp"** — the point of no return (a confirmation explains this). The
-  server locks the content, computes its **SHA-256 integrity hash**, and stamps date-time +
-  signer credentials into a **scannable QR code** on the document. If the smart-contract
-  toggle was on, the hash is anchored to a **clearly-labelled simulated blockchain** (demo
-  stub — say so when presenting).
+**While a draft:** **Edit selections** (classification, description, period, ticked extras,
+additional clauses, annexed formats, the **Encrypt for Smart Contract** toggle; the auto set
+and the items are not editable) and **Finalise & stamp** — the point of no return. The server
+computes the **SHA-256 integrity hash**, stamps the QR payload, and with the toggle on
+anchors the hash to a **clearly labelled simulated ledger** and encrypts the canonical
+payload — with the built-in **demo key** unless `CONTRACT_ENCRYPTION_KEY` is set.
 
 **Once finalised:**
-- **"Verify integrity"** — recomputes the hash from what is stored and compares: green
-  banner if untouched, red **INTEGRITY FAILURE** if anything was altered after
-  finalisation. (Scanning the QR with a phone shows the same contract no + hash + stamp +
-  signer.)
-- **"Download PDF"** — browser print of the document alone. The printout carries the
-  classification **watermark** on every page and a running footer with the contract no and
-  hash prefix. Turn on *"Headers and footers"* in the print dialog for page numbers —
-  per-clause TOC page numbers are a browser-print limitation, flagged to the client.
-- Editing is refused from here on — drafts only.
+
+- **Release to IFS** (purchase chain) — records the release, optionally with the GeM
+  contract number; status `released`. There is no connector in the prototype.
+- **Verify integrity** — recomputes the hash and the simulated anchor: green if untouched,
+  red **INTEGRITY FAILURE** or **SIMULATED ANCHOR MISMATCH** otherwise, and it names the key
+  source (*CONTRACT_ENCRYPTION_KEY* or *built-in DEMO key*).
+- **Decrypt (admin, demo)** — decrypts the stored payload and confirms its hash matches.
+- **Download PDF** — browser print with the watermark and running footer. Per-clause TOC
+  page numbers are a browser-print limitation.
 
 ## Contract Register (`/contracts/register`)
 
-Every contract ever generated, filterable **All / Draft / Finalised**, with number,
-generation date, description, supplier, type, value, validity, PO, tender, CAR,
-classification, status and *who generated it*. **"Export CSV"** downloads the full field
-list the client specified — including CFA & DOP reference, mode of tendering, party
-addresses/contacts, and the generator's PB/designation/dept/division. Click a contract no
-to open it.
+Filters **All contracts / PP approved — awaiting contract / Draft / Finalised / Released**;
+columns include the CAR (linking to the requisition), PO, tender, value, classification,
+status and generator. **Export CSV** downloads the full field list. Click a contract no to
+open it.
 
 ## Clause Library (`/contracts/library`)
 
-Two tabs:
-
-- **Clauses** — all 72 STC with clause no, boilerplate flag, current version and last-amended
-  date. Click a title to open the drawer: the full legal text, the guideline/circular
-  reference from the matrix, and the **amendment history** (superseded version, date,
-  person, change note, reference doc). Non-admins see a lock notice — read-only.
-- **Matrix** — the full 71 × 8 grid, colour-coded: green **Y**, red **N**, amber **TBD**,
-  blue **Cond.** (hover for the full condition text). This is the artefact that drives the
-  auto-crawl on the Generate screen.
-
-**Amending a clause (admin only):** open a clause → **"Amend clause"** → edit the text and
-fill the **change note** and **reference doc for change** (both mandatory — the "after due
-legal vetting" rule) → **"Save amendment"**. The version bumps, the old text goes into
-history — and any already-generated contract keeps its original snapshot (open one to
-prove it). A non-admin pressing the same button gets a server refusal — the check is on the
-real signed-in account, so even the admin role-switcher preview can't bypass it.
+**Clauses** — all 72 STC with version and history drawer. **Matrix** — the 71 × 8 grid,
+colour-coded. **Amend Clause** is enabled only for admin accounts (the tooltip says so for
+everyone else, and the server checks the real account, not the role-switcher preview):
+edit the text, fill the **change note** and **reference doc** (both mandatory) → **Save
+amendment**. The version bumps, the old text goes into history, and existing contracts keep
+their snapshot.
 
 ## Seeded contract demos
 
 | Demo | How |
 |---|---|
-| Finalised contract with QR + smart-sim | Register → `HAL/AOD/CTR/…/0533/01` (NVB, **Restricted** watermark, simulated blockchain banner) — scan the QR, press **Verify integrity** |
-| Draft → finalise flow | Register → the seating draft (`…/0457/01`) → **Edit selections** → **Finalise & stamp** |
+| Finalised NVB contract | Register → `HAL/AOD/CTR/…/0533/01` (**Restricted** watermark, simulated ledger banner, linked to `CAR/25/229`) → **Verify integrity** → `officer@` **Release to IFS** |
+| Draft → finalise | Register → the seating draft (`…/0457/01`) → **Edit selections** → **Finalise & stamp** |
+| PP approved queue | Register → **PP approved — awaiting contract** |
 | PO dropdown moment | Generate → tender `GEM/2025/B/7104412` (two POs) |
-| Non-GeM IFS tender | Generate → `IFS/AOD/25-26/RM-044` (raw material, 3 line items) |
-| Versioned clause history | Library → *Liquidated Damages* — already at v2 with the legal-vetting reference |
-| Admin-only amendment | Amend any clause as `admin@`; retry as `maker@` to show the refusal |
+| Non-GeM IFS tender | Generate → `IFS/AOD/25-26/RM-044` |
+| Versioned clause history | Library → *Liquidated Damages* — at v2 with the legal-vetting reference |
+| Admin-only amendment | Amend as `admin@`; as `maker@` the button is disabled and the server refuses |
+| Decrypt round trip | `admin@` → the NVB contract → **Decrypt (admin, demo)** |
 
 ---
 
 ## Suggested 15-minute demo order
 
-1. **Login as `maker@`** → AI Documents: show a generated note, Full vs New section. (2 min)
-2. **Noting**: Initiate an AI-drafted N1 → Forward to `officer@` → switch login → Inbox →
-   open (mention retraction just got locked) → Forward to `hod@` → switch → **Approve &
-   file** → back as `maker@` → Cabinet → **Send to Tender Initiator** (Gaurav Yadav) → switch
-   to `cm@` → Cabinet → **Generate** EMD or TEC Request. (5 min)
-3. **Classification**: as `desk@`, open the confidential note via its grant link; as
-   `officer@`, show the leak alert. (2 min)
-4. **Contracts**: as `maker@`, Generate with `GEM/2025/B/7104412` → pick a PO → walk the
-   auto/offered clauses → add a custom clause → Generate → **Finalise & stamp** → scan the
-   QR → **Verify integrity** → print with the watermark. (5 min)
-5. **Clause Library** as `admin@`: amend a clause with a reference doc, reopen the old
-   contract — unchanged. (1 min)
+1. **`indentor@`** — Provisioning → `CAR/25/229` → its file; Approvals → the chain. (2 min)
+2. **Noting** — `hod@` tries **Approve & File** on an open chain (409); release the chain;
+   approve; `indentor@` **Send to Tender Initiator**; `cm@` **Generate EMD** → **Draft &
+   Raise with AI →**. (5 min)
+3. **Classification** — `desk@` opens the confidential note via its grant link; `officer@`
+   shows the leak alert. (2 min)
+4. **Contracts** — `maker@` → PP approved list → Generate → **Finalise & stamp**; `officer@`
+   → **Release to IFS** → **Verify integrity**; print with the watermark. (5 min)
+5. **Clause Library** as `admin@` — amend a clause; reopen the contract, unchanged. (1 min)

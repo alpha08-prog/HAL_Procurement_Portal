@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useRole } from '../context/RoleContext.jsx';
 
 /**
  * ThreeWayBankVerification
@@ -49,6 +50,11 @@ export default function ThreeWayBankVerification({
           branch: 'HAL Old Airport Road, Bengaluru'
         }
   );
+
+  // The mismatch toggle and the instant-upload shortcuts exist to rehearse the flow; they
+  // are shown only to an admin account in a dev build, never in a client demo.
+  const { accountRole } = useRole();
+  const showDemoTools = editable && accountRole === 'admin' && import.meta.env.DEV;
 
   const caApprovalUploaded = Boolean(draft?.caApprovalUploaded ?? pa?.caApprovalUploaded);
   const vendorRequestUploaded = Boolean(draft?.vendorRequestUploaded ?? pa?.vendorRequestUploaded);
@@ -198,7 +204,7 @@ export default function ThreeWayBankVerification({
           </div>
         </div>
 
-        {editable && (
+        {showDemoTools && (
           <button
             type="button"
             className="btn btn-secondary btn-sm"
@@ -385,17 +391,19 @@ export default function ThreeWayBankVerification({
                         style={{ display: 'none' }}
                       />
                     </label>
-                    <button
-                      type="button"
-                      className="link-btn"
-                      style={{ fontSize: '0.8rem' }}
-                      onClick={() => {
-                        const newTarget = selectedPaymentBank || 'invoice';
-                        updateResolutionState(!caApprovalUploaded, vendorRequestUploaded, newTarget);
-                      }}
-                    >
-                      {caApprovalUploaded ? 'Remove Upload' : 'Simulate Instant Upload'}
-                    </button>
+                    {showDemoTools && (
+                      <button
+                        type="button"
+                        className="link-btn"
+                        style={{ fontSize: '0.8rem' }}
+                        onClick={() => {
+                          const newTarget = selectedPaymentBank || 'invoice';
+                          updateResolutionState(!caApprovalUploaded, vendorRequestUploaded, newTarget);
+                        }}
+                      >
+                        {caApprovalUploaded ? 'Remove Upload' : 'Simulate Instant Upload'}
+                      </button>
+                    )}
                   </div>
                   {caApprovalUploaded && (
                     <div style={{ fontSize: '0.78rem', color: '#15803d', background: '#f0fdf4', padding: '6px 8px', borderRadius: '4px' }}>
@@ -453,17 +461,19 @@ export default function ThreeWayBankVerification({
                         style={{ display: 'none' }}
                       />
                     </label>
-                    <button
-                      type="button"
-                      className="link-btn"
-                      style={{ fontSize: '0.8rem' }}
-                      onClick={() => {
-                        const newTarget = selectedPaymentBank || 'po_ifs';
-                        updateResolutionState(caApprovalUploaded, !vendorRequestUploaded, newTarget);
-                      }}
-                    >
-                      {vendorRequestUploaded ? 'Remove Upload' : 'Simulate Instant Upload'}
-                    </button>
+                    {showDemoTools && (
+                      <button
+                        type="button"
+                        className="link-btn"
+                        style={{ fontSize: '0.8rem' }}
+                        onClick={() => {
+                          const newTarget = selectedPaymentBank || 'po_ifs';
+                          updateResolutionState(caApprovalUploaded, !vendorRequestUploaded, newTarget);
+                        }}
+                      >
+                        {vendorRequestUploaded ? 'Remove Upload' : 'Simulate Instant Upload'}
+                      </button>
+                    )}
                   </div>
                   {vendorRequestUploaded && (
                     <div style={{ fontSize: '0.78rem', color: '#15803d', background: '#f0fdf4', padding: '6px 8px', borderRadius: '4px' }}>

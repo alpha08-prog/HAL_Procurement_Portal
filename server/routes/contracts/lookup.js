@@ -7,6 +7,7 @@ import { computeItems } from '../../contracts/money.js';
 import { clausesForType } from '../../contracts/matrix.js';
 import { get } from '../../contracts/db.js';
 import { getFormats } from '../../contracts/generate.js';
+import { ppApprovedForContract } from '../../requisitions/register.js';
 import { requireRoles } from '../../middleware/requireRoles.js';
 
 const router = Router();
@@ -47,5 +48,9 @@ router.get('/clause-plan', contractWorkflowRole, (req, res) => {
 });
 
 router.get('/formats', contractWorkflowRole, (_req, res) => res.json({ formats: getFormats() }));
+
+// CON-01: requisitions whose Purchase Proposal is approved (or PO placed) and that have no
+// contract yet — the queue the Contract Generator works from.
+router.get('/pp-approved', (_req, res) => res.json({ requisitions: ppApprovedForContract(), source: 'requisitions.db status (derived) — no contract linked' }));
 
 export default router;

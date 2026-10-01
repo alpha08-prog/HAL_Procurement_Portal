@@ -13,7 +13,10 @@ import { requireNoteAccess } from './access.js';
 import { upload, computeFileHash } from '../../storage.js';
 
 const router = Router();
-const KINDS = ['doc', 'stamping', 'dop', 'pm'];
+// annexure = an AI-computed format (JSON payload, added automatically when the note is
+// raised); format = a rendered HAL standard format attached from the Formats library.
+const KINDS = ['doc', 'stamping', 'dop', 'pm', 'annexure', 'format'];
+const AUTOMATIC = new Set(['pm', 'annexure']);
 
 // List attachments for a note
 router.get('/notes/:txnId/attachments', (req, res) => {
@@ -21,12 +24,16 @@ router.get('/notes/:txnId/attachments', (req, res) => {
   if (!note) return res.status(404).json({ error: 'Note not found' });
   if (!requireNoteAccess(req, res, note)) return;
   const attachments = all(
-    `SELECT a.id, a.kind, a.name, a.ref, a.file_size_bytes, a.mime_type, a.created_at, m.name AS uploaded_by,
+    `SELECT a.id, a.kind, a.name, a.ref, a.payload, a.file_size_bytes, a.mime_type, a.created_at, m.name AS uploaded_by,
             CASE WHEN a.storage_path IS NOT NULL THEN 1 ELSE 0 END AS has_file
      FROM attachments a LEFT JOIN members m ON m.id = a.uploaded_by_id
      WHERE a.note_id = ? ORDER BY a.id ASC`,
     note.id
-  );
+  ).map((a) => {
+    let payload = null;
+    try { payload = a.payload ? JSON.parse(a.payload) : null; } catch { payload = null; }
+    return { ...a, payload };
+  });
   res.json({ attachments });
 });
 
@@ -42,13 +49,27 @@ router.post('/notes/:txnId/attachments', upload.single('file'), async (req, res)
 
     const { kind, name, ref } = req.body || {};
     if (!KINDS.includes(kind)) return res.status(422).json({ error: `kind must be one of ${KINDS.join(', ')}` });
-    if (kind === 'pm') return res.status(403).json({ error: 'PM reference is added automatically' });
+    if (AUTOMATIC.has(kind)) return res.status(403).json({ error: `${kind === 'pm' ? 'The PM reference' : 'An AI annexure'} is added automatically` });
     if ((kind === 'stamping' || kind === 'dop') && me.id !== note.initiator_id) {
       return res.status(403).json({ error: `Only the initiator can add ${kind === 'dop' ? 'a DoP reference' : 'stamping documents'}` });
     }
 
+    // A rendered library format (POST /api/formats/:id/render output) is attached as JSON
+    // blocks, not as a file, so NoteDetail can draw it with FormatDocument and print it.
+    let payload = null;
+    if (kind === 'format') {
+      try {
+        const raw = req.body?.payload;
+        const obj = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (!obj || !Array.isArray(obj.blocks) || !obj.id) throw new Error('shape');
+        payload = JSON.stringify(obj);
+      } catch {
+        return res.status(422).json({ error: 'kind=format needs a rendered format payload ({id, blocks, ...})' });
+      }
+    }
+
     const file = req.file;
-    const displayName = (name && String(name).trim()) || (file ? file.originalname : '');
+    const displayName = (name && String(name).trim()) || (file ? file.originalname : '') || (payload ? JSON.parse(payload).title : '');
     if (!displayName) return res.status(422).json({ error: 'A name or file is required' });
 
     let storagePath = null;
@@ -64,12 +85,13 @@ router.post('/notes/:txnId/attachments', upload.single('file'), async (req, res)
     }
 
     run(
-      `INSERT INTO attachments(note_id, kind, name, ref, storage_path, file_size_bytes, mime_type, sha256_hash, uploaded_by_id, created_at)
-       VALUES(?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO attachments(note_id, kind, name, ref, payload, storage_path, file_size_bytes, mime_type, sha256_hash, uploaded_by_id, created_at)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
       note.id,
       kind,
       displayName,
       (ref || '').trim() || null,
+      payload,
       storagePath,
       fileSizeBytes,
       mimeType,

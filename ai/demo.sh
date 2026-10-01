@@ -11,7 +11,7 @@
 #   ai/demo.sh                  the whole story, straight through
 #   ai/demo.sh --pause          stop after each act so you can read it
 #   ai/demo.sh --quick          skip the note drafting (no Ollama needed)
-#   ai/demo.sh --act 4          jump to one act (0-9)
+#   ai/demo.sh --act 4          jump to one act (0-10)
 #   ai/demo.sh --log run.txt    tee everything to a file
 #   ai/demo.sh --no-color
 #
@@ -30,7 +30,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --quick)    QUICK=1; shift ;;
     --pause)    PAUSE=1; shift ;;
-    --act)      ONLY_ACT="${2:?--act needs a number 0-9}"; shift 2 ;;
+    --act)      ONLY_ACT="${2:?--act needs a number 0-10}"; shift 2 ;;
     --no-color) USE_COLOR=0; shift ;;
     --log)      LOGFILE="${2:-demo.log}"; shift 2 ;;
     -h|--help)  sed -n '2,22p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
@@ -337,7 +337,7 @@ pause
 
 # ============================================================== ledger
 if [[ -z "$ONLY_ACT" ]]; then
-act 9 "THE LEDGER" "who decided what, in one place"
+act 10 "THE LEDGER" "who decided what, in one place"
 step "consolidated decisions" py - <<'PY'
 import json
 from pathlib import Path

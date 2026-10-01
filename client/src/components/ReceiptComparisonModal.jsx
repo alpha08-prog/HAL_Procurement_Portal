@@ -31,9 +31,10 @@ export default function ReceiptComparisonModal({ row, onClose, onWaiverSuccess, 
 
   // CN Upload fields
   const defaultCnNo = row.creditNoteNo || `CN/${(row.rvNo || 'RV').replaceAll('/', '-')}`;
-  const defaultFile = row.creditNoteFileName || `CreditNote_${(row.rvNo || 'RV').replaceAll('/', '_')}.pdf`;
+  const defaultFile = row.creditNoteFileName || '';
   const [creditNoteNo, setCreditNoteNo] = useState(defaultCnNo);
   const [fileName, setFileName] = useState(defaultFile);
+  const [file, setFile] = useState(null);
   const [cnRemarks, setCnRemarks] = useState(row.creditNoteRemarks || 'Credit note for price/qty difference issued by vendor.');
 
   const [busy, setBusy] = useState(false);
@@ -87,20 +88,27 @@ export default function ReceiptComparisonModal({ row, onClose, onWaiverSuccess, 
       setError('Please enter a valid Credit Note number.');
       return;
     }
+    if (!file && !row.creditNoteUploaded) {
+      setError('Attach the credit note document.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      const res = await apiFetch('/api/payment-advices/credit-note', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rvNo: row.rvNo,
-          paNo: row.paNo,
-          creditNoteNo: creditNoteNo.trim(),
-          fileName: fileName.trim(),
-          remarks: cnRemarks.trim()
-        })
-      });
+      const fields = { rvNo: row.rvNo, paNo: row.paNo, creditNoteNo: creditNoteNo.trim(), remarks: cnRemarks.trim() };
+      let res;
+      if (file) {
+        const fd = new FormData();
+        for (const [k, v] of Object.entries(fields)) if (v != null) fd.append(k, v);
+        fd.append('file', file);
+        res = await apiFetch('/api/payment-advices/credit-note', { method: 'POST', body: fd });
+      } else {
+        res = await apiFetch('/api/payment-advices/credit-note', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(fields)
+        });
+      }
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `API error ${res.status}`);
       onCnSuccess?.(data);
@@ -114,6 +122,7 @@ export default function ReceiptComparisonModal({ row, onClose, onWaiverSuccess, 
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
       setFileName(e.target.files[0].name);
     }
   };
@@ -572,7 +581,7 @@ export default function ReceiptComparisonModal({ row, onClose, onWaiverSuccess, 
                       Browse PDF
                     </label>
                     <span style={{ fontSize: '0.8125rem', color: '#475569', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                      {fileName}
+                      {fileName || 'No file chosen'}
                     </span>
                   </div>
                 </div>

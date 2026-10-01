@@ -1,10 +1,24 @@
 import { useState } from 'react';
+import { fetchDemoOtp } from '../../lib/otp.js';
 
+// The last step of Initiate. The one-time password is optional; when given it is verified
+// by the server (server/auth/otp.js) and stamped on the note — there is no client-side check.
 export default function FinalReviewModal({ isOpen, onClose, formData, onSubmit, busy }) {
   const [totp, setTotp] = useState('');
   const [useTotp, setUseTotp] = useState(false);
+  const [otpNote, setOtpNote] = useState(null);
 
   if (!isOpen) return null;
+
+  const getDemoCode = async () => {
+    try {
+      const d = await fetchDemoOtp();
+      setTotp(d.code);
+      setOtpNote(`Demo code for ${d.pb}, valid ${d.expiresIn}s (in production this comes from your authenticator app).`);
+    } catch (e) {
+      setOtpNote(e.message);
+    }
+  };
 
   return (
     <div className="ef-modal-overlay" onClick={onClose}>
@@ -50,21 +64,27 @@ export default function FinalReviewModal({ isOpen, onClose, formData, onSubmit, 
                   checked={useTotp}
                   onChange={(e) => setUseTotp(e.target.checked)}
                 />
-                <span>I opt for higher security verification (TOTP / Mobile PIN)</span>
+                <span>Verify this submission with a one-time password</span>
               </label>
             </div>
 
             {useTotp && (
               <div style={{ marginTop: 8 }}>
-                <span className="field-label">Enter 6-digit TOTP / Mobile PIN</span>
-                <input
-                  className="field-input"
-                  maxLength={6}
-                  style={{ width: 160, letterSpacing: 4, fontWeight: 700 }}
-                  value={totp}
-                  onChange={(e) => setTotp(e.target.value)}
-                  placeholder="123456"
-                />
+                <span className="field-label">6-digit one-time password</span>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    className="field-input"
+                    maxLength={6}
+                    style={{ width: 160, letterSpacing: 4, fontWeight: 700 }}
+                    value={totp}
+                    onChange={(e) => setTotp(e.target.value.replace(/\D/g, ''))}
+                    placeholder="123456"
+                  />
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={getDemoCode}>
+                    Get demo code
+                  </button>
+                </div>
+                {otpNote && <div className="field-hint">{otpNote}</div>}
               </div>
             )}
           </div>

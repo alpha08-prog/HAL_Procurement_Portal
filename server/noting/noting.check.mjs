@@ -6,7 +6,9 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-process.env.NOTING_DB = join(mkdtempSync(join(tmpdir(), 'noting-')), 'test.db');
+// Every store the noting routes reach through the cross-module links goes to the temp dir.
+const tmpDir = mkdtempSync(join(tmpdir(), 'noting-'));
+for (const k of ['NOTING_DB', 'APPROVALS_DB', 'REQUISITIONS_DB', 'CONTRACTS_DB', 'AI_CASES_DB']) process.env[k] = join(tmpDir, `${k.toLowerCase()}.db`);
 
 // Importing the router tree first proves every noting route module loads (import/syntax check).
 await import('../routes/noting/index.js');
@@ -159,5 +161,99 @@ forward(n(amd.id), m(5), 2, '');
 decide(n(amd.id), m(2), 'approve'); // po_amendment has no next stage
 assert.equal(f(10).status, 'closed', 'approving the amendment closes the file again');
 assert.ok(cabinetOf(10).has(6), 'final cabinet still includes the S1/S2-only router');
+
+// --- Phase 2: computed dashboard / upcoming, delegation, planned routing & authority, OTP ---
+const { dashboardFor, upcomingFor } = await import('./dashboard.js');
+const { activeDelegatorsOf, cancelDelegation, createDelegation } = await import('./delegation.js');
+const { summarize } = await import('./summarize.js');
+const { nowISO } = await import('./db.js');
+const { code: otpCode } = await import('../auth/otp.js');
+const today = nowISO();
+
+// Dashboard: six months, totals from the tables, nothing literal.
+const dash = dashboardFor(m(2));
+assert.equal(dash.workload.length, 6, 'dashboard covers six months');
+assert.equal(dash.totalFiles, get('SELECT COUNT(*) AS c FROM files').c, 'dashboard total is the files table');
+assert.equal(dash.trend.at(-1).files, dash.totalFiles, 'the trend ends at the current total');
+const firstMonth = new Date(today); firstMonth.setDate(1); firstMonth.setMonth(firstMonth.getMonth() - 5);
+const nextMonth = new Date(today); nextMonth.setDate(1); nextMonth.setMonth(nextMonth.getMonth() + 1);
+const from = firstMonth.toISOString().slice(0, 10);
+const until = nextMonth.toISOString().slice(0, 10);
+const expectReceived = get(`SELECT COUNT(*) AS c FROM routing_steps WHERE to_member_id = 2 AND sent_at >= ? AND sent_at < ?`, from, until).c;
+assert.equal(dash.workload.reduce((a, r) => a + r.received, 0), expectReceived, 'received = steps sent to the member in the window');
+assert.equal(dash.last30Opened, get(`SELECT COUNT(*) AS c FROM files WHERE created_at >= ?`, new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)).c, 'opened-in-30-days is computed');
+
+// Upcoming: the HOD is still due on the NVB line-1 PP; its holder is not "upcoming" on it.
+const up = upcomingFor(m(2));
+const pp1 = up.find((r) => r.txn_id === 'TXN-2026-000006');
+assert.ok(pp1, 'HOD is due later on the NVB line-1 PP');
+assert.equal(pp1.current_step, 2, 'the holder is step 2 of the plan');
+assert.equal(pp1.your_step, 3, 'the HOD is step 3');
+assert.ok(!upcomingFor(m(6)).some((r) => r.txn_id === 'TXN-2026-000006'), 'the current holder is not upcoming on his own note');
+
+// Delegation: the furniture note is held by the CM (4) with plan [6,7,4,2], so the HOD (2)
+// is its approving authority. A non-holder cannot decide; the holder cannot without the
+// authority; with the HOD's delegation the CM can, stamped on behalf of the HOD.
+assert.throws(() => decide(n(3), m(6), 'approve'), /current holder/, 'a non-holder cannot decide');
+assert.throws(() => decide(n(3), m(4), 'approve'), /approving authority/, 'the holder is not the approving authority');
+const del = createDelegation(m(2), { toMemberId: 4, fromDate: today, toDate: today, reason: 'HOD on tour' });
+assert.ok(activeDelegatorsOf(4).has(2), 'the delegate acts for the HOD today');
+assert.throws(() => createDelegation(m(2), { toMemberId: 6, fromDate: today, toDate: today }), /already/, 'one active delegation at a time');
+decide(n(3), m(4), 'approve');
+assert.equal(n(3).status, 'approved', 'the delegate decided the note');
+assert.equal(n(3).decided_by, 4, 'the hop is recorded against the delegate…');
+assert.equal(get('SELECT on_behalf_of_id FROM routing_steps WHERE note_id = 3 ORDER BY seq DESC LIMIT 1').on_behalf_of_id, 2, '…and stamped on behalf of the HOD');
+cancelDelegation(m(2), del.id);
+assert.equal(activeDelegatorsOf(4).size, 0, 'cancelling ends the delegation');
+assert.throws(() => cancelDelegation(m(4), del.id), /delegating member/, 'only the delegator cancels');
+
+// Planned routing is enforced; deviations need a reason and are minuted; only the planned
+// approving authority decides; a one-time password is verified server-side.
+assert.throws(() => forward(n(4), m(6), 4, ''), /Planned routing/, 'the plan is enforced');
+assert.throws(() => forward(n(4), m(6), 4, '', { deviate: true }), /reason/, 'a deviation needs a reason');
+forward(n(4), m(6), 4, 'Please vet the L1 offer', { deviate: true, reason: 'HOD on tour; CM to vet first' });
+assert.equal(n(4).custodian_id, 4, 'the deviation moved the note');
+assert.ok(get('SELECT remark FROM noting_entries WHERE note_id = 4 ORDER BY seq DESC LIMIT 1').remark.includes('deviation'), 'the deviation is minuted');
+assert.throws(() => decide(n(4), m(4), 'approve'), /approving authority/, 'only the planned approver decides');
+forward(n(4), m(4), 2, ''); // resumes the plan: after the officer (6) comes the HOD (2)
+assert.throws(() => decide(n(4), m(2), 'approve', '', { otp: '000000' }), /one-time password/, 'a wrong OTP is refused');
+decide(n(4), m(2), 'approve', 'Approved', { otp: otpCode(m(2).pb) });
+assert.equal(n(4).status, 'approved', 'the approving authority decided it');
+assert.ok(n(4).otp_verified_at, 'the OTP verification is stamped on the note');
+
+// Summary strips HTML and labels every classification.
+const sum = summarize({ body: '<p>Estimated value ₹15,94,065 for 5 units.</p><p>SD 5% applies.</p>', classification: 'restricted', title: 'T', ref_no: 'R' }, { file_id: 'F' }, { name: 'X' });
+assert.ok(!sum.lead.includes('<p>'), 'the summary strips HTML');
+assert.ok(sum.meta.some(([k, v]) => k === 'Classification' && v === 'Restricted'), 'restricted is labelled');
+assert.equal(sum.facts.length, 2, 'both money lines are facts');
+
+// --- E → C: stages in approvalPolicy.json autoChain get a Module E chain; approval waits for release ---
+{
+  const { run: runSql } = await import('./db.js');
+  const { AUTO_CHAIN, chainSummary } = await import('./approvalLink.js');
+  const approvals = await import('../approvals/store.js');
+  assert.ok(AUTO_CHAIN.has('provisioning') && AUTO_CHAIN.has('pp'), 'provisioning and PP carry internal approval chains');
+  runSql(
+    `INSERT INTO files(id,file_id,title,kind,car_no,standalone,initiator_id,initiator_unit_id,status,provisioning_start,created_at)
+     VALUES(90,'AOD/IMM/2026/0090','Chain-gated proposal','CAR','CAR/26/090',0,4,9,'open','2026-09-30','2026-09-30')`
+  );
+  const gated = addNote(f(90), m(4), { stageId: 'provisioning', routingList: [2], approverId: 2 });
+  assert.ok(gated.approval_chain_id, 'a provisioning stage file opens with an approval chain planned');
+  const cs = chainSummary(gated);
+  assert.equal(cs.released, false, 'a fresh chain is not released');
+  assert.ok(cs.releaseBlockedBy.length > 0, 'the gate says why');
+  const chainRow = approvals.loadChain(gated.approval_chain_id);
+  assert.equal(chainRow.notingNoteId, gated.id, 'the chain points back at the stage file');
+  forward(n(gated.id), m(4), 2, 'for approval');
+  assert.throws(() => decide(n(gated.id), m(2), 'approve'), /not released/, 'the noting approval waits for the chain');
+  const rej = decide(n(gated.id), m(2), 'reject', 'not now');
+  assert.equal(rej.status, 'rejected', 'rejection is never blocked by the chain');
+  runSql(
+    `INSERT INTO files(id,file_id,title,kind,car_no,standalone,initiator_id,initiator_unit_id,status,provisioning_start,created_at)
+     VALUES(91,'AOD/IMM/2026/0091','Query-only file','CAR','CAR/26/091',0,4,9,'open','2026-09-30','2026-09-30')`
+  );
+  const plain = addNote(f(91), m(4), { stageId: 'tec_query' });
+  assert.equal(plain.approval_chain_id ?? null, null, 'stages outside autoChain carry no chain');
+}
 
 console.log('noting.check: all assertions passed ✓');

@@ -85,7 +85,11 @@ export default function CaseView() {
 
   return (
     <section className="screen">
-      <Link className="back-link" to="/ai-cases">← All cases</Link>
+      <div className="no-print">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <Link className="back-link" to="/ai-cases">← All cases</Link>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => window.print()}>Download PDF</button>
+      </div>
       <h1 className="screen-title">{kase.caseRef} — {kase.title}</h1>
       <p className="screen-sub">{kase.node?.title}</p>
 
@@ -269,8 +273,11 @@ export default function CaseView() {
         </div>
       )}
 
-      {/* ---- the file ---- */}
-      <h2 className="section-heading">The file as it stands ({kase.notes.length} note{kase.notes.length === 1 ? '' : 's'})</h2>
+      </div>
+
+      {/* ---- the file (the printable part) ---- */}
+      <div className="note-print-area">
+      <h2 className="section-heading">{kase.caseRef} — {kase.title}: the file as it stands ({kase.notes.length} note{kase.notes.length === 1 ? '' : 's'})</h2>
       {!kase.notes.length ? (
         <div className="grid-empty">Nothing raised yet.</div>
       ) : (
@@ -320,6 +327,9 @@ export default function CaseView() {
         </div>
       )}
 
+      </div>
+
+      <div className="no-print">
       {/* ---- formats and trail ---- */}
       {kase.formatsOnFile.length > 0 && (
         <>
@@ -387,6 +397,7 @@ export default function CaseView() {
           ))}
         </>
       )}
+      </div>
     </section>
   );
 }

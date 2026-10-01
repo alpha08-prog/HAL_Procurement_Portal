@@ -1,0 +1,8 @@
+{
+  "_status": "pending_client_confirmation",
+  "_note": "server/ld.js computes LD at 0.5% of the RV value per week or part thereof and caps the total at 10% of the PO ORDER value (capBase 'po'). HAL has not yet confirmed whether the 10% ceiling applies to the PO value or to the RV value; set capBase to 'rv' to switch the calculator and the payment advice once confirmed. The rate and the ceiling percentage live in ld.js (re-run node server/ld.check.mjs after any change there).",
+  "capBase": "po",
+  "ratePerWeek": 0.005,
+  "capPct": 0.1,
+  "reference": "Indentor checklist clause 18 (sampleData/Checklist for Indentor - STANDARD TERMS AND CONDITIONS-f.xlsx)"
+}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import DataGrid from '../../components/DataGrid.jsx';
 import { CONTRACT_CLASSIFICATIONS, ITEM_COLUMNS } from '../../config/contractColumns.jsx';
 import { formatINR } from '../../lib/currency.js';
@@ -11,18 +11,12 @@ import {
 // no; the app prompts for the PO under it, crawls the STC from the Contract Clauses
 // Matrix for the chosen type, and pulls value/party details from the HAL PO and the
 // scope of work from the Provisioning Note. Everything shown here is read-only IFS
-// context — the server recomputes all money and snapshots all clauses on generation.
-const ALLOWED_PROFORMA_IDS = new Set([
-  'pbg_bg',
-  'sd_bg',
-  'adv_bg',
-  'indemnity_bond',
-  'warranty_cert',
-  'service_level'
-]);
+// context — the server recomputes all money and snapshots all clauses (and the chosen
+// proformas' text, from the formats library) on generation.
 
 export default function Generate() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const [tenders, setTenders] = useState([]);
   const [formats, setFormats] = useState([]);
   const [tenderNo, setTenderNo] = useState('');
@@ -43,11 +37,36 @@ export default function Generate() {
 
   useEffect(() => {
     fetchTenders().then((d) => setTenders(d.tenders)).catch(() => setTenders([]));
-    fetchFormats().then((d) => setFormats((d.formats || []).filter((f) => ALLOWED_PROFORMA_IDS.has(f.id)))).catch(() => setFormats([]));
+    fetchFormats().then((d) => setFormats(d.formats || [])).catch(() => setFormats([]));
     fetchLibrary().then((d) => setTypes(d.contractTypes)).catch(() => setTypes([]));
   }, []);
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+
+  // Deep link from the CON-01 queue / a requisition: ?tender=&po=&requisition= prefill steps 1–3.
+  useEffect(() => {
+    const t = params.get('tender');
+    const p = params.get('po');
+    if (!t) return;
+    (async () => {
+      setTenderNo(t);
+      setTender(null);
+      setTenderError(null);
+      try {
+        setTender(await lookupTender(t));
+        if (p) {
+          setPoNo(p);
+          const pv = await lookupPo(t, p);
+          setPreview(pv);
+          set({ description: pv.po.description });
+          if (pv.po.suggestedType) await pickType(pv.po.suggestedType);
+        }
+      } catch (e) {
+        setError(e.message);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Step 1 → 2: resolve the tender, offer its POs in a dropdown.
   const resolveTender = async (value) => {
@@ -115,6 +134,7 @@ export default function Generate() {
       const res = await generateContract({
         tenderNo,
         poNo,
+        requisitionId: params.get('requisition') || undefined,
         contractTypeId: typeId,
         classification: form.classification,
         description: form.description,
@@ -359,7 +379,10 @@ export default function Generate() {
               {formats.map((f) => (
                 <label key={f.id} className="clause-tick">
                   <input type="checkbox" checked={pickedFormats.has(f.id)} onChange={() => toggleFormat(f.id)} />
-                  <span>{f.label}</span>
+                  <span>
+                    {f.label} <span className="fmt-code-cell">{f.code}</span>
+                    {f.verified === false && <span className="tag tag-fmt-pending">pending from HAL</span>}
+                  </span>
                 </label>
               ))}
             </div>

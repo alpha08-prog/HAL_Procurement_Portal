@@ -37,20 +37,31 @@ export const STAGE_META = {
   short_closure: { seq: 11, phase: 'ANY', agency: 'Tendering', title: 'Short Closure Note', ref: 'Short_Closure_Note', formats: [], needBased: true, terminal: true },
   tec_query: { seq: 12, phase: 'TECHNICAL', agency: 'Indenting', title: 'TEC Query Note', ref: 'TEC_Query_Note', formats: [], needBased: true },
   advance_payment: { seq: 13, phase: 'COMMERCIAL', agency: 'Tendering', title: 'Advance Payment Note', ref: 'Advance_Payment_Note', formats: ['advance_payment'], needBased: true },
-  po_amendment: { seq: 14, phase: 'COMMERCIAL', agency: 'Tendering', title: 'PO Amendment Note', ref: 'PO_Amendment_Note', formats: [], needBased: true }
+  po_amendment: { seq: 14, phase: 'COMMERCIAL', agency: 'Tendering', title: 'PO Amendment Note', ref: 'PO_Amendment_Note', formats: [], needBased: true },
+  // Off-cascade need-based notes: raised manually from the noting cabinet / Initiate deep links,
+  // never by the cascade walker (no CASCADE_NODES option leads to them). Mirrors ai/stages.py.
+  tec_representation: { seq: 15, phase: 'TECHNICAL', agency: 'Indenting', title: 'TEC Representation Note', ref: 'TEC_Representation_Note', formats: [], needBased: true, offCascade: true },
+  bank_insertion: { seq: 16, phase: 'COMMERCIAL', agency: 'Tendering', title: 'Bank Detail Insertion Note', ref: 'Bank_Detail_Insertion_Note', formats: [], needBased: true, offCascade: true },
+  vendor_creation: { seq: 17, phase: 'COMMERCIAL', agency: 'Tendering', title: 'Vendor ID Creation Note', ref: 'Vendor_ID_Creation_Note', formats: [], needBased: true, offCascade: true },
+  vendor_registration: { seq: 18, phase: 'PROVISIONING', agency: 'Tendering', title: 'Vendor Registration Note', ref: 'Vendor_Registration_Note', formats: [], needBased: true, offCascade: true },
+  misc: { seq: 19, phase: 'ANY', agency: 'Indenting', title: 'Misc / Standalone Note', ref: 'Misc_Note', formats: [], needBased: true, offCascade: true },
+  due_date_ext: { seq: 20, phase: 'TENDERING', agency: 'Tendering', title: 'Tender Due Date Extension Note', ref: 'Due_Date_Extension_Note', formats: [], needBased: true, offCascade: true },
+  addendum: { seq: 21, phase: 'TENDERING', agency: 'Tendering', title: 'Tender Addendum / Corrigendum Note', ref: 'Addendum_Note', formats: [], needBased: true, offCascade: true }
 };
 
 // One node per decision point. `owner` is the sheet's row-23 agency; `next: null` is
 // terminal (the file is closed). `recommend` names a rules.js predicate: when it comes out
 // true the option is marked "advised", and choosing anything else needs a confirmation.
+// `stageNo` is the sheet's stage column (1-8 after tender opening; provisioning is pre-tender,
+// so null) — the same numbering as ai/cascade.py NODES.
 export const CASCADE_NODES = {
   provisioning: {
-    stageNo: 1, owner: 'Indenting', checklist: true, title: 'Provisioning — raise the indent (N1)',
+    stageNo: null, owner: 'Indenting', checklist: true, title: 'Provisioning — raise the indent (N1)',
     description: 'The Tender Document is prepared directly from the Provisioning Checklist and the Standard Terms & Conditions (72 STC clauses), without a separate note.',
     options: [{ noteId: 'provisioning', label: 'PROVISIONING NOTE (N1)', next: 'tender_opened' }]
   },
   tender_opened: {
-    stageNo: 2, owner: 'Tendering', title: 'Tender floated & opened — post tender opening scenario (N2)',
+    stageNo: 1, owner: 'Tendering', title: 'Tender floated & opened — post tender opening scenario (N2)',
     options: [
       { noteId: 'emd', label: 'EMD STAGE ACCEPTANCE NOTE (N2)', next: 'post_emd' },
       { noteId: 'tec_req', label: 'TEC REQ NOTE (N2)', next: 'tec_stage' },
@@ -58,7 +69,7 @@ export const CASCADE_NODES = {
     ]
   },
   post_emd: {
-    stageNo: 3, owner: 'Tendering', title: 'After EMD stage acceptance',
+    stageNo: 2, owner: 'Tendering', title: 'After EMD stage acceptance',
     options: [
       { noteId: 'tec_req', label: 'TEC REQ NOTE', next: 'tec_stage' },
       { noteId: 'retender', label: 'RETENDER NOTE', next: 'post_retender', recommend: 'retender_required' },

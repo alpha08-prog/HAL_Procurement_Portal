@@ -183,7 +183,8 @@ export const deskQueueConfig = {
       label: 'Record payment released',
       transition: 'cppc_pay',
       primary: true,
-      allowedRoles: ['payment_desk'],
+      // The state machine's `by: 'cppc'` — the CPPC login releases the payment (admin always may).
+      allowedRoles: ['cppc'],
       when: (row) => row.status === 'sent_to_cppc'
     }
   ]

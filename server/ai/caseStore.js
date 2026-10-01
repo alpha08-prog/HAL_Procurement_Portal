@@ -2,10 +2,15 @@
 //
 // The case object is stored as JSON and rehydrated on every read, so the notes table and
 // the accumulated prose can never disagree: the notes rows are the audit trail, the JSON
-// is the working document, and both are written in the same call.
+// is the working document, and both are written in the same call. Each note row also keeps
+// the case object as it stood BEFORE the note, so a note rejected in noting can be rolled
+// back and the cascade returns to where it was.
 
+import { findPoByNo } from '../contracts/poSource.js';
 import * as access from './access.js';
 import * as graph from './cascadeGraph.js';
+import { GATES } from './gates.js';
+import { link as linkRequisition } from '../requisitions/links.js';
 import { all, get, nowStamp, run } from './db.js';
 import * as loadInputs from './loadInputs.js';
 import * as pipeline from './pipeline.js';
@@ -16,7 +21,7 @@ const J = (v) => JSON.stringify(v ?? null);
 const P = (v, f = null) => { try { return v == null ? f : JSON.parse(v); } catch { return f; } };
 
 // -- creating -----------------------------------------------------------------
-export function createCase({ caseRef, title, sourceCase = 'nvb', user }) {
+export function createCase({ caseRef, title, sourceCase = 'nvb', user, notingFilePk = null, requisitionId = null }) {
   const facts = loadInputs.loadCase(sourceCase);
   const kase = pipeline.newCase();
   const stamp = nowStamp();
@@ -24,13 +29,13 @@ export function createCase({ caseRef, title, sourceCase = 'nvb', user }) {
   const r = run(
     `INSERT INTO ai_cases
        (case_ref, title, source_case, is_fixture, node_id, holding_agency, status,
-        case_object, handovers, created_by, created_by_name, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, 'open', ?, 0, ?, ?, ?, ?)`,
+        case_object, handovers, noting_file_pk, requisition_id, created_by, created_by_name, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'open', ?, 0, ?, ?, ?, ?, ?, ?)`,
     caseRef ?? facts.requisition?.car_no ?? '(no ref)',
     title ?? facts.requisition?.item_description ?? 'Procurement case',
-    sourceCase, facts._fixture ? 1 : 0,
+    facts._caseId, facts._fixture ? 1 : 0,
     graph.START, graph.CASCADE_NODES[graph.START].owner,
-    J(kase), user?.id ?? null, user?.name ?? null, stamp, stamp
+    J(kase), notingFilePk, requisitionId, user?.id ?? null, user?.name ?? null, stamp, stamp
   );
   const id = Number(r.lastInsertRowid);
   event(id, 'created', {
@@ -38,6 +43,21 @@ export function createCase({ caseRef, title, sourceCase = 'nvb', user }) {
     toAgency: graph.CASCADE_NODES[graph.START].owner, user
   });
   return loadCase(id, user);
+}
+
+// Remove a case that never got off the ground (its first note was refused). Only for
+// cases with no live notes.
+export function deleteCase(id) {
+  const live = get('SELECT COUNT(*) AS c FROM ai_case_notes WHERE case_id = ? AND voided_at IS NULL', id)?.c ?? 0;
+  if (live) return { ok: false, error: 'A case with notes on file is closed, not deleted' };
+  run('DELETE FROM ai_case_events WHERE case_id = ?', id);
+  run('DELETE FROM ai_case_notes WHERE case_id = ?', id);
+  run('DELETE FROM ai_cases WHERE id = ?', id);
+  return { ok: true };
+}
+
+export function linkNoting(id, notingFilePk) {
+  run('UPDATE ai_cases SET noting_file_pk = ?, updated_at = ? WHERE id = ?', notingFilePk, nowStamp(), id);
 }
 
 function event(caseId, kind, { fromAgency = null, toAgency = null, detail = '', user = null } = {}) {
@@ -103,7 +123,7 @@ export function loadCase(id, user = null) {
   if (!row) return null;
 
   const kase = P(row.case_object, pipeline.newCase());
-  const notes = all('SELECT * FROM ai_case_notes WHERE case_id = ? ORDER BY seq', id).map((n) => ({
+  const notes = all('SELECT * FROM ai_case_notes WHERE case_id = ? AND voided_at IS NULL ORDER BY seq', id).map((n) => ({
     seq: n.seq, stageId: n.stage_id, title: n.note_title, nodeId: n.node_id,
     agency: n.agency, raisedByName: n.raised_by_name, raisedByRole: n.raised_by_role,
     newSection: n.new_section, carryFrom: n.carry_from, carryChars: n.carry_chars,
@@ -123,6 +143,8 @@ export function loadCase(id, user = null) {
     title: row.title,
     sourceCase: row.source_case,
     isFixture: Boolean(row.is_fixture),
+    notingFilePk: row.noting_file_pk ?? null,
+    requisitionId: row.requisition_id ?? null,
     nodeId: row.node_id,
     node: node && {
       id: row.node_id, stageNo: node.stageNo, owner: node.owner, title: node.title,
@@ -157,9 +179,9 @@ export function loadCase(id, user = null) {
 export function listCases(user = null) {
   const rows = all(
     `SELECT c.id, c.case_ref, c.title, c.node_id, c.holding_agency, c.status,
-            c.is_fixture, c.handovers, c.created_by_name, c.created_at, c.updated_at,
-            (SELECT COUNT(*) FROM ai_case_notes n WHERE n.case_id = c.id) AS notes,
-            (SELECT stage_id FROM ai_case_notes n WHERE n.case_id = c.id ORDER BY seq DESC LIMIT 1) AS last_stage
+            c.is_fixture, c.handovers, c.noting_file_pk, c.requisition_id, c.created_by_name, c.created_at, c.updated_at,
+            (SELECT COUNT(*) FROM ai_case_notes n WHERE n.case_id = c.id AND n.voided_at IS NULL) AS notes,
+            (SELECT stage_id FROM ai_case_notes n WHERE n.case_id = c.id AND n.voided_at IS NULL ORDER BY seq DESC LIMIT 1) AS last_stage
      FROM ai_cases c ORDER BY c.id DESC`
   );
   const mine = access.agenciesFor(user?.role);
@@ -173,6 +195,8 @@ export function listCases(user = null) {
     holdingAgency: r.holding_agency,
     status: r.status,
     isFixture: Boolean(r.is_fixture),
+    notingFilePk: r.noting_file_pk ?? null,
+    requisitionId: r.requisition_id ?? null,
     handovers: r.handovers,
     notes: r.notes,
     lastNote: r.last_stage ? (graph.STAGE_META[r.last_stage]?.title ?? r.last_stage) : null,
@@ -211,8 +235,11 @@ export function noteForm(id, noteId) {
 
 // -- acting -------------------------------------------------------------------
 
+const PO_STAGES = new Set(['po', 'po_amendment']);
+
 // Raise a note. Enforces custody (the sheet's row 23) and the node's option list before
-// anything is generated, so a refusal costs nothing.
+// anything is generated, so a refusal costs nothing. A PO note must carry a PO number that
+// exists in the PO register (server/mock/pos.json) unless the case is a fabricated fixture.
 export async function raiseNote(id, noteId, { fields = {}, override = false, user }) {
   const row = get('SELECT * FROM ai_cases WHERE id = ?', id);
   if (!row) return { ok: false, code: 404, error: 'No such case' };
@@ -247,8 +274,22 @@ export async function raiseNote(id, noteId, { fields = {}, override = false, use
     };
   }
 
-  // Advisory rules. Overridable, but the override is recorded on the note.
+  // Hard gates read from the other modules (server/ai/gates.js) — e.g. a PO only follows a
+  // Purchase Proposal approved on the noting side with its approval chain released. Like the
+  // advisory rules they can be overridden, and the override is recorded on the note.
   let overridden = null;
+  const gate = GATES[row.node_id];
+  if (gate) {
+    const g = gate(row);
+    if (!g.ok) {
+      if (!override) {
+        return { ok: false, code: 428, error: `${g.why}. Raise ${option.label} anyway?`, needsOverride: true, gate: row.node_id, advised: g.why };
+      }
+      overridden = `gate ${row.node_id}: ${g.why}`;
+    }
+  }
+
+  // Advisory rules. Overridable, but the override is recorded on the note.
   const advised = node.options.filter((o) => {
     if (!o.recommend) return false;
     const kaseData = P(row.case_object, {}).data ?? {};
@@ -263,13 +304,26 @@ export async function raiseNote(id, noteId, { fields = {}, override = false, use
         needsOverride: true, advised: names
       };
     }
-    overridden = names;
+    overridden = [overridden, names].filter(Boolean).join('; ');
   }
 
   // Generate for real: annexures in code, prose from the model, prior note carried in.
   const kase = P(row.case_object, pipeline.newCase());
   const seeded = loadInputs.toStageInputs(loadInputs.loadCase(row.source_case))[noteId] ?? {};
   const input = { ...seeded, ...pipeline.parseFields(noteId, fields) };
+
+  if (PO_STAGES.has(noteId) && !row.is_fixture) {
+    const poNo = String(input.po_no ?? '').trim();
+    if (!poNo || !findPoByNo(poNo)) {
+      return {
+        ok: false, code: 422,
+        error: `PO number "${poNo || '—'}" is not in the PO register (server/mock/pos.json) — enter the IFS PO number issued against this tender`
+      };
+    }
+    input.po_no = findPoByNo(poNo).poNo;
+  }
+
+  const before = row.case_object;
   const out = await pipeline.runStage(kase, noteId, input);
   if (!out.ok) return { ok: false, code: 422, error: out.error };
 
@@ -283,18 +337,18 @@ export async function raiseNote(id, noteId, { fields = {}, override = false, use
     return { ok: true, skipped: true, branch: out.branch, kase: loadCase(id, user) };
   }
 
-  const seq = (get('SELECT COUNT(*) AS c FROM ai_case_notes WHERE case_id = ?', id)?.c ?? 0) + 1;
+  const seq = (get('SELECT MAX(seq) AS m FROM ai_case_notes WHERE case_id = ?', id)?.m ?? 0) + 1;
   run(
     `INSERT INTO ai_case_notes
        (case_id, seq, stage_id, note_title, node_id, agency, raised_by, raised_by_name,
         raised_by_role, new_section, carry_from, carry_chars, full_output, delta_keys,
-        formats_built, slm_ok, slm_error, overridden, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        formats_built, slm_ok, slm_error, overridden, case_object_before, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id, seq, noteId, graph.STAGE_META[noteId]?.title ?? out.note, row.node_id,
     row.holding_agency, user?.id ?? null, user?.name ?? null, user?.role ?? null,
     out.newSection, out.carryFrom, out.carryChars, out.fullOutput,
     J(out.deltaKeys), J(out.formatsBuilt), out.slm.ok ? 1 : 0, out.slm.error,
-    overridden, stamp
+    overridden, before, stamp
   );
 
   // Advance the file. A terminal option closes it.
@@ -316,6 +370,16 @@ export async function raiseNote(id, noteId, { fields = {}, override = false, use
     event(id, 'closed', { detail: graph.SHORT_CLOSURE_MESSAGE, user });
   }
 
+  // Facts the other modules key on flow back to the requisition register.
+  if (row.requisition_id) {
+    try {
+      const d = kase.data ?? {};
+      linkRequisition(row.requisition_id, { tender_no: d.tender_no ?? null, po_no: noteId === 'po' ? input.po_no : null }, { actor: user?.name ?? null });
+    } catch {
+      /* the register is advisory here; the note is already on file */
+    }
+  }
+
   const loaded = loadCase(id, user);
   return {
     ok: true,
@@ -329,6 +393,35 @@ export async function raiseNote(id, noteId, { fields = {}, override = false, use
     handoverNeeded: !terminal && nextOwner !== row.holding_agency ? nextOwner : null,
     kase: loaded
   };
+}
+
+// Withdraw the latest live note of a stage — the counterpart of a rejection in noting. The
+// case object, node and custody return to what they were before that note; the note row is
+// kept, voided, as audit. Only the most recent note can be rolled back.
+export function rollbackNote(id, stageId, user = null) {
+  const row = get('SELECT * FROM ai_cases WHERE id = ?', id);
+  if (!row) return { ok: false, code: 404, error: 'No such case' };
+  const n = get(
+    `SELECT * FROM ai_case_notes WHERE case_id = ? AND stage_id = ? AND voided_at IS NULL ORDER BY seq DESC LIMIT 1`,
+    id, stageId
+  );
+  if (!n) return { ok: false, code: 404, error: `No live ${stageId} note to roll back` };
+  const later = get(`SELECT COUNT(*) AS c FROM ai_case_notes WHERE case_id = ? AND seq > ? AND voided_at IS NULL`, id, n.seq)?.c ?? 0;
+  if (later) return { ok: false, code: 409, error: 'Later notes exist on this case — roll those back first' };
+  if (!n.case_object_before) return { ok: false, code: 409, error: 'This note predates rollback support and cannot be withdrawn' };
+
+  const stamp = nowStamp();
+  run('UPDATE ai_case_notes SET voided_at = ? WHERE id = ?', stamp, n.id);
+  run(
+    `UPDATE ai_cases SET case_object = ?, node_id = ?, holding_agency = ?, status = 'open',
+       closed_reason = NULL, closed_at = NULL, updated_at = ? WHERE id = ?`,
+    n.case_object_before, n.node_id, n.agency, stamp, id
+  );
+  event(id, 'rolled_back', {
+    detail: `${n.note_title} withdrawn — the stage file was rejected in noting; the case returns to "${graph.CASCADE_NODES[n.node_id]?.title ?? n.node_id}"`,
+    user
+  });
+  return { ok: true, kase: loadCase(id, user) };
 }
 
 // Take the file across. Only a position from the other agency may pull it — that is the
@@ -366,5 +459,5 @@ export function handOver(id, { user, toAgency = null }) {
 }
 
 export default {
-  createCase, loadCase, listCases, noteForm, raiseNote, handOver
+  createCase, deleteCase, linkNoting, loadCase, listCases, noteForm, raiseNote, rollbackNote, handOver
 };

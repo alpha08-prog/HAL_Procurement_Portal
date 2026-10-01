@@ -1,27 +1,23 @@
-FROM node:20-alpine
+# Node >= 22.5 is required for the built-in node:sqlite used by the noting, contracts,
+# approvals and AI-case stores. Dev runs on Node 24, so the image matches.
+FROM node:24-alpine
 
-# Set working directory
 WORKDIR /app
 
-# Install netcat for network checking in entrypoint
-RUN apk add --no-cache netcat-openbsd
-
-# Copy server package files and install dependencies
+# Server dependencies
 COPY server/package*.json ./server/
 WORKDIR /app/server
 RUN npm install --omit=dev
 
-# Copy server source code
+# Server source, plus the ai/ folder it reads at runtime (prompts.json, case_input.json,
+# fixtures, dop2025.json and the CLI's outputs/ if present).
 COPY server/ /app/server/
-
-# Copy AI outputs folder (used by server/routes/ai.js)
 COPY ai/ /app/ai/
 
-# Create persistent storage folder and set entrypoint permissions
-RUN mkdir -p /app/uploads && \
-    chmod +x /app/server/docker-entrypoint.sh
+# SQLite files and binary uploads live under these two folders; both are mounted as
+# named volumes in docker-compose.yml so they survive container rebuilds.
+RUN mkdir -p /app/server/data /app/server/uploads
 
 EXPOSE 3001
 
-ENTRYPOINT ["/app/server/docker-entrypoint.sh"]
 CMD ["node", "index.js"]

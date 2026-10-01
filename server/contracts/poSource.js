@@ -22,6 +22,14 @@ export const allTenders = () =>
 export const findTender = (tenderNo) =>
   tenders.find((t) => t.tenderNo.toLowerCase() === String(tenderNo || '').trim().toLowerCase()) || null;
 
+// Every PO in the fixture, flattened with its tender — the register the AI `po` note and the
+// trackers validate against.
+export const allPos = () =>
+  tenders.flatMap((t) => t.pos.map((p) => ({ tenderNo: t.tenderNo, tenderDate: t.tenderDate, carNo: t.carNo, ...p })));
+
+export const findPoByNo = (poNo) =>
+  allPos().find((p) => p.poNo.toLowerCase() === String(poNo || '').trim().toLowerCase()) || null;
+
 export function findPo(tenderNo, poNo) {
   const tender = findTender(tenderNo);
   const po = tender && tender.pos.find((p) => p.poNo === poNo);

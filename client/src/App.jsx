@@ -63,7 +63,7 @@ export default function App() {
               <Route path="/hod-approval" element={<HodApproval />} />
               <Route path="/payment-register" element={<PaymentRegister />} />
               <Route path="/payment-kpis" element={<PaymentKpis />} />
-              <Route path="/ai-documents" element={<AiDocuments />} />
+              <Route path="/ai-documents" element={<Navigate to="/noting/ai-documents" replace />} />
               <Route path="/noting/ai-documents" element={<AiDocuments />} />
               <Route path="/noting" element={<NotingHome />} />
               <Route path="/noting/initiate" element={<Initiate />} />
@@ -81,6 +81,7 @@ export default function App() {
               <Route path="/approvals/chains" element={<ApprovalChains />} />
               <Route path="/approvals/chain/:id" element={<ApprovalChainView />} />
               <Route path="/approvals/committees" element={<ApprovalCommittees />} />
+              <Route path="/approvals/committee/:id" element={<ApprovalCommittees />} />
               <Route path="/approvals/bids" element={<ApprovalBids />} />
               <Route path="/approvals/directory" element={<ApprovalDirectory />} />
               <Route path="/contracts/generate" element={<Generate />} />

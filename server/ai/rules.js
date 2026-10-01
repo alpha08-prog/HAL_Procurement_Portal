@@ -8,7 +8,24 @@
 //   SD 5%, PBG 10%        Checklist for Indentor + COMMERCIAL STANDARD TERMS AND CONDITIONS
 //   LD 0.5%/wk, max 10%   Checklist clause 18 (was 17 before the June-2026 revision)
 //   Indemnity 5%          Indemnity Bond Format.pdf
-//   CFA level             DOP-2025 Annexure-3 — NOT in sampleData, so it stays a placeholder
+//   CFA level             DOP-2025 Annexure-3 — value bands come from ai/dop2025.json, which
+//                         stays `bands: []` (status bands_pending_client) until HAL supplies them
+
+import { readFileSync } from 'node:fs';
+
+const DOP_URL = new URL('../../ai/dop2025.json', import.meta.url);
+let DOP = null;
+// One copy of the DoP table for the CLI and the web app, like ai/prompts.json.
+export function dopTable() {
+  if (!DOP) {
+    try {
+      DOP = JSON.parse(readFileSync(DOP_URL, 'utf8'));
+    } catch {
+      DOP = { _status: 'missing', bands: [], levelDesig: null, rows: [] };
+    }
+  }
+  return DOP;
+}
 
 const num = (s) => {
   if (s == null) return null;
@@ -83,21 +100,31 @@ export function variance(l1, est) {
 
 export const LEVEL_DESIG = { 'Level I': 'GM(AOD)', 'Level II': 'AGM(IMM-OH)' };
 
-// The DOP-2025 Annexure-3 value-band table is not in sampleData, so the level cannot be
-// computed from an amount. The clause is derivable from the number of valid offers; the
-// level is not, and says so rather than guessing.
+// The clause is derivable from the number of valid offers; the LEVEL needs the DOP-2025
+// Annexure-3 value bands, read from ai/dop2025.json. While that table is empty the result
+// says `pending: true` and `level: null` — never a guess.
 export function dopCfaLevel({ tenderType = 'Open', validOffers = 2, value = null } = {}) {
+  const t = dopTable();
   const multi = Boolean(validOffers && validOffers > 1);
   const clause = multi
     ? 'Annex-3-B-2 (L1 basis, more than one valid offer, Open/Limited tender)'
     : 'Annex-3-B-3 (single valid offer)';
+  const v = num(value);
+  const band = v == null ? null : ((t.bands ?? []).find((b) =>
+    (b.min == null || v >= b.min) && (b.max == null || v <= b.max)
+    && (!b.tenderType || String(b.tenderType).toLowerCase() === String(tenderType).toLowerCase())) ?? null);
+  const desig = t.levelDesig ?? LEVEL_DESIG;
   return {
     clause,
     tenderType,
     validOffers,
-    value,
-    level: '<DOP-2025 Annexure-3 value-band table not in sampleData — level requires the table>',
-    levelDesignationMap: LEVEL_DESIG
+    value: v,
+    level: band?.level ?? null,
+    cfa: band ? (band.cfa ?? desig[band.level] ?? null) : null,
+    pending: !band,
+    status: t._status ?? null,
+    note: band ? null : 'DOP-2025 Annexure-3 value bands are not on file — the level is taken from the indentor checklist until HAL supplies the table',
+    levelDesignationMap: desig
   };
 }
 
@@ -121,5 +148,5 @@ export function evaluate(name, data) {
 
 export default {
   RULE_INPUTS, pnc_required, retender_required, pb_accepted, sd, pbg, indemnity, ld,
-  basicOf, savings, variance, dopCfaLevel, emdWaiver, evaluate, LEVEL_DESIG
+  basicOf, savings, variance, dopCfaLevel, dopTable, emdWaiver, evaluate, LEVEL_DESIG
 };

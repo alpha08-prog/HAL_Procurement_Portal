@@ -6,7 +6,14 @@
 //
 // Hops are append-only. Every mutation re-derives the release gate from the stored plan
 // plus the stored hops, so the gate can never drift from what actually happened.
+//
+// Identity: a hop is recorded against the planned position holder, and ALSO against the
+// signed-in user who pressed the button (acted_by, acted_by_pb). A user whose PB is in the
+// personnel directory may only act as themselves; the demo accounts are not in that
+// directory, so their hops are marked on_behalf — visible on the trail, never hidden.
 
+import { findById } from '../auth/users.js';
+import { verify as verifyOtp } from '../auth/otp.js';
 import { all, get, nowStamp, run } from './db.js';
 import * as chain from './chain.js';
 import * as checklist from './checklist.js';
@@ -23,13 +30,13 @@ const P = (v, fallback = null) => {
 };
 
 // -- checklist submissions ---------------------------------------------------
-export function saveSubmission({ caseRef, title, division, dept, answers, user }) {
+export function saveSubmission({ caseRef, title, division, dept, answers, requisitionId = null, user }) {
   const dop = checklist.dopLevel(answers);
   const r = run(
     `INSERT INTO checklist_submissions
-       (case_ref, title, division, dept, answers, dop_level, created_by, created_by_name, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    caseRef ?? null, title ?? null, division, dept ?? null, J(answers), dop,
+       (case_ref, title, division, dept, answers, dop_level, requisition_id, created_by, created_by_name, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    caseRef ?? null, title ?? null, division, dept ?? null, J(answers), dop, requisitionId ?? null,
     user?.id ?? null, user?.name ?? null, nowStamp()
   );
   return getSubmission(Number(r.lastInsertRowid));
@@ -42,13 +49,14 @@ export function getSubmission(id) {
 }
 
 export function listSubmissions() {
-  return all('SELECT id, case_ref, title, division, dept, dop_level, created_by_name, created_at '
+  return all('SELECT id, case_ref, title, division, dept, dop_level, requisition_id, created_by_name, created_at '
     + 'FROM checklist_submissions ORDER BY id DESC');
 }
 
 // -- chains ------------------------------------------------------------------
 export function createChain({
-  noteId, division, dept, caseRef, answers, originatorPb, submissionId, fileId, user
+  noteId, division, dept, caseRef, answers, originatorPb, submissionId, fileId,
+  notingNoteId = null, requisitionId = null, user
 }) {
   const plan = chain.buildPlan({ noteId, division, answers, originatorPb, originatorDept: dept });
   const stamp = nowStamp();
@@ -56,17 +64,19 @@ export function createChain({
   const r = run(
     `INSERT INTO approval_chains
        (file_id, note_id, label, mode, agency, division, dept, case_ref, submission_id,
-        plan, answers, dop_level, decision, closed, released, created_by, created_by_name, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 0, 0, ?, ?, ?)`,
+        plan, answers, dop_level, decision, closed, released, noting_note_id, requisition_id,
+        created_by, created_by_name, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 0, 0, ?, ?, ?, ?, ?)`,
     fid, noteId, plan.label, plan.mode, plan.agency, division, dept ?? null,
     caseRef ?? null, submissionId ?? null, J(plan), J(answers ?? null), plan.dopLevel,
+    notingNoteId ?? null, requisitionId ?? null,
     user?.id ?? null, user?.name ?? null, stamp
   );
   return loadChain(Number(r.lastInsertRowid));
 }
 
 // Rehydrate a chain and replay its hops through the model, so the plan's `actioned`
-// flags and the gate are derived rather than stored twice.
+// flags, the riders and the gate are derived rather than stored twice.
 export function loadChain(id) {
   const row = get('SELECT * FROM approval_chains WHERE id = ?', id);
   if (!row) return null;
@@ -78,16 +88,23 @@ export function loadChain(id) {
   }
   const live = chain.newChain(plan, row.file_id);
   const hops = all('SELECT * FROM approval_hops WHERE chain_id = ? ORDER BY seq', id);
+  const riders = [];
   for (const h of hops) {
     live.hops.push({
       seq: h.seq, note: h.note, pb: h.pb, name: h.name, designation: h.designation,
       dept: h.dept, division: h.division, gradeLevel: h.grade_level,
       slotIndex: h.slot_index, action: h.action, comment: h.comment, date: h.hop_date,
       txnId: h.txn_id, twoFactor: Boolean(h.two_factor), rider: h.rider || '',
-      actedBy: h.acted_by
+      riderRef: h.rider_ref ?? null,
+      actedBy: h.acted_by, actedByPb: h.acted_by_pb ?? null, onBehalf: Boolean(h.on_behalf)
     });
-    if (h.rider) live.riders.push({ hop: h.note, by: h.name, condition: h.rider, recorded: true });
-    if (h.slot_index != null && plan.slots[h.slot_index]) {
+    if (h.rider) riders.push({ hop: h.note, seq: h.seq, by: h.name, condition: h.rider, recorded: false });
+    if (h.action === 'discharge_rider' && h.rider_ref != null) {
+      const r = riders.find((x) => x.seq === h.rider_ref);
+      if (r) r.recorded = true;
+    }
+    // Only a hop that advances fills its planned position (chain.HOPS[].advances).
+    if (chain.HOPS[h.action]?.advances && h.slot_index != null && plan.slots[h.slot_index]) {
       plan.slots[h.slot_index].actioned = true;
       plan.slots[h.slot_index].action = h.action;
     }
@@ -96,11 +113,14 @@ export function loadChain(id) {
       live.closed = true;
     }
   }
+  live.riders = riders;
   return {
     id: row.id,
     caseRef: row.case_ref,
     dept: row.dept,
     submissionId: row.submission_id,
+    notingNoteId: row.noting_note_id ?? null,
+    requisitionId: row.requisition_id ?? null,
     createdBy: row.created_by,
     createdByName: row.created_by_name,
     createdAt: row.created_at,
@@ -112,7 +132,7 @@ export function loadChain(id) {
 
 export function listChains() {
   const rows = all('SELECT id, file_id, note_id, label, mode, agency, division, dept, '
-    + 'case_ref, decision, closed, released, created_by_name, created_at '
+    + 'case_ref, decision, closed, released, noting_note_id, requisition_id, created_by_name, created_at '
     + 'FROM approval_chains ORDER BY id DESC');
   for (const r of rows) {
     const c = get('SELECT COUNT(*) AS c, MAX(seq) AS last FROM approval_hops WHERE chain_id = ?', r.id);
@@ -124,21 +144,45 @@ export function listChains() {
   return rows;
 }
 
+// Who may act as whom. A signed-in user whose PB is in the personnel directory may only
+// act as themselves; admin may act as any position; a PB outside the directory (the demo
+// accounts) is not bound, and the hop is marked on_behalf instead.
+export function bindingError(actorPb, person, isAdmin) {
+  if (isAdmin || !actorPb || !person) return null;
+  if (!org.byPb(actorPb)) return null;
+  if (String(person.pb) === String(actorPb)) return null;
+  return `You are signed in as PB ${actorPb}; this position belongs to ${person.name} (PB ${person.pb})`;
+}
+
+// An external authority (e.g. the Ministry) has no directory entry; its clearance is
+// recorded as a hop against a synthetic person so the gate can see it was obtained.
+const externalPerson = (slot) => ({
+  pb: 'EXTERNAL', name: slot.title, grade: 'outside HAL', designation: slot.title,
+  deptRaw: '', dept: '', division: '', gradeLevel: null
+});
+
 // Record one hop. Returns { ok, error } on a refusal so routes can answer 422 rather
-// than throwing.
+// than throwing. `when` is never taken from the client; `otp`, if given, must verify.
 export function act(id, { action, slotIndex = null, pb = null, comment = '',
-  rider = '', twoFactor = false, when = null, user = null }) {
+  rider = '', riderRef = null, otp = null, user = null }) {
   const stored = loadChain(id);
   if (!stored) return { ok: false, error: 'No such chain' };
   if (stored.closed) return { ok: false, error: 'This note is already decided — reopen is not modelled' };
   if (!chain.HOPS[action]) return { ok: false, error: `Unknown action "${action}"` };
+  if (action === 'assign') return { ok: false, error: 'Name a position through POST /chains/:id/slots/:index/assign' };
+
+  const actorUser = user?.id ? findById(user.id) : null;
+  const actorPb = actorUser?.pb ?? null;
+  const isAdmin = user?.role === 'admin';
 
   const plan = stored.plan;
   let idx = slotIndex;
   let person = null;
 
   if (idx != null && plan.slots[idx]) {
-    person = plan.slots[idx].person;
+    const s = plan.slots[idx];
+    person = s.person ?? (s.external ? externalPerson(s) : null);
+    if (!person) return { ok: false, error: `${s.title} has nobody named — assign a person to the position first` };
   } else if (pb) {
     // A hop by somebody not in the plan — a junior asked to examine, or the originator
     // answering a query. Legitimate: F1's N11 is the originator, mid-chain.
@@ -152,6 +196,9 @@ export function act(id, { action, slotIndex = null, pb = null, comment = '',
   }
   if (!person) return { ok: false, error: 'Could not work out who is acting' };
 
+  const bind = bindingError(actorPb, person, isAdmin);
+  if (bind) return { ok: false, error: bind };
+
   if (action === 'approve' || action === 'reject') {
     const cfa = plan.slots.find((s) => s.kind === 'cfa');
     if (cfa && cfa.person && person.pb !== cfa.person.pb) {
@@ -162,21 +209,36 @@ export function act(id, { action, slotIndex = null, pb = null, comment = '',
     }
   }
 
+  if (action === 'discharge_rider') {
+    const target = stored.riders.find((r) => r.seq === Number(riderRef));
+    if (!target) return { ok: false, error: 'riderRef must name the hop that carried the rider' };
+    if (target.recorded) return { ok: false, error: 'That rider is already recorded as discharged' };
+  }
+
+  let twoFactor = false;
+  if (otp != null && String(otp).trim() !== '') {
+    if (!verifyOtp(actorPb, otp)) return { ok: false, error: 'Invalid one-time password' };
+    twoFactor = true;
+  }
+
   const seq = stored.hops.length + 1;
   const fallback = action.startsWith('concur') ? chain.CONCUR_DEFAULT : '';
   const text = fallback ? chain.cleanComment(comment, fallback) : String(comment ?? '').trim();
   const stamp = nowStamp();
+  const onBehalf = String(person.pb) !== String(actorPb ?? '');
 
   run(
     `INSERT INTO approval_hops
        (chain_id, seq, note, pb, name, designation, dept, division, grade_level,
-        slot_index, action, comment, hop_date, txn_id, two_factor, rider, acted_by, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        slot_index, action, comment, hop_date, txn_id, two_factor, rider, rider_ref,
+        acted_by, acted_by_pb, on_behalf, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id, seq, `N${seq}`, person.pb, person.name, person.grade ?? person.designation,
     person.deptRaw ?? person.dept, person.division, person.gradeLevel ?? null,
-    idx, action, text, when || chain.todayDMY(),
+    idx, action, text, chain.todayDMY(),
     chain.txnId(stored.fileId, seq, person.pb), twoFactor ? 1 : 0, rider || null,
-    user?.id ?? null, stamp
+    riderRef != null ? Number(riderRef) : null,
+    user?.id ?? null, actorPb, onBehalf ? 1 : 0, stamp
   );
 
   const after = loadChain(id);
@@ -185,6 +247,42 @@ export function act(id, { action, slotIndex = null, pb = null, comment = '',
     after.decision ?? null, after.closed ? 1 : 0, after.released ? 1 : 0,
     decided ? stamp : null, id);
 
+  return { ok: true, chain: loadChain(id) };
+}
+
+// Name the holder of a position the directory could not fill. The plan snapshot is
+// updated and an `assign` hop records who named whom; nothing is marked as acted.
+export function assignSlot(id, { slotIndex, pb, user = null }) {
+  const row = get('SELECT * FROM approval_chains WHERE id = ?', id);
+  if (!row) return { ok: false, error: 'No such chain' };
+  if (row.closed) return { ok: false, error: 'This note is already decided' };
+  const plan = P(row.plan, null);
+  const s = plan?.slots?.[slotIndex];
+  if (!s) return { ok: false, error: 'No such position' };
+  if (s.external) return { ok: false, error: `${s.title} is outside HAL — record its clearance as a concurrence instead` };
+  if (s.person) return { ok: false, error: `${s.title} is already named (${s.person.name})` };
+  const person = org.byPb(pb);
+  if (!person) return { ok: false, error: `PB ${pb} is not in the personnel directory` };
+
+  s.person = { ...person };
+  s.chose = true;
+  s.caveats = [...(s.caveats ?? []), `named by ${user?.name ?? user?.id ?? 'the desk'} — the directory could not fill this position`];
+  plan.unresolved = plan.slots.filter((x) => !x.person && !x.external && x.required).length;
+  run('UPDATE approval_chains SET plan = ? WHERE id = ?', J(plan), id);
+
+  const seq = (get('SELECT COUNT(*) AS c FROM approval_hops WHERE chain_id = ?', id)?.c ?? 0) + 1;
+  const actorUser = user?.id ? findById(user.id) : null;
+  run(
+    `INSERT INTO approval_hops
+       (chain_id, seq, note, pb, name, designation, dept, division, grade_level,
+        slot_index, action, comment, hop_date, txn_id, two_factor, rider, rider_ref,
+        acted_by, acted_by_pb, on_behalf, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'assign', ?, ?, ?, 0, NULL, NULL, ?, ?, 1, ?)`,
+    id, seq, `N${seq}`, person.pb, person.name, person.grade, person.deptRaw, person.division,
+    person.gradeLevel ?? null, slotIndex,
+    `Position "${s.title}" named by ${user?.name ?? 'the desk'}`, chain.todayDMY(),
+    chain.txnId(row.file_id, seq, person.pb), user?.id ?? null, actorUser?.pb ?? null, nowStamp()
+  );
   return { ok: true, chain: loadChain(id) };
 }
 
@@ -251,6 +349,6 @@ export function signMember(committeeId, memberId, { coiDeclared, remark }) {
 
 export default {
   saveSubmission, getSubmission, listSubmissions,
-  createChain, loadChain, listChains, act,
+  createChain, loadChain, listChains, act, assignSlot, bindingError,
   createCommittee, loadCommittee, listCommittees, signMember
 };

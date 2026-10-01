@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { canAccessPath, roleLabel, screensForRole } from '../config/roles.js';
+import { groupById, groupForPath, groupsForRole, roleLabel, screensForRole } from '../config/roles.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useRole } from '../context/RoleContext.jsx';
 import RoleSwitcher from './RoleSwitcher.jsx';
@@ -12,16 +12,9 @@ function initialsOf(name = '') {
   return (parts[0]?.slice(0, 2) || '?').toUpperCase();
 }
 
-const MODULES_CONFIG = [
-  { id: 'hub', label: 'Portal Hub', path: '/portal', desc: 'Welcome Launchpad (6 Tabs)' },
-  { id: 'provisioning', label: 'Provisioning', path: '/provisioning', desc: 'MPR/CAR, Estimations & Certs' },
-  { id: 'noting', label: 'Procurement & Noting', path: '/noting/inbox', desc: 'Tendering & 26 Formats' },
-  { id: 'contracts', label: 'Contract Management', path: '/contracts/register', desc: 'PO Release & 72 STC' },
-  { id: 'payments', label: 'Payment Desk', path: '/rv-inbox', desc: 'RV Status, LD & CPPC' },
-  { id: 'claims', label: 'Claim Management', path: '/claims', desc: 'Rejections & Discrepancies' },
-  { id: 'kpis', label: 'KPI & MIS Reports', path: '/kpis', desc: '16 Statutory Metrics & SLAs' }
-];
-
+// The module switcher and the nav row are both read off config/roles.js: GROUPS gives the
+// modules, SCREENS[].group says which nav row a screen sits in, and visibleTo trims both
+// per role. Adding a screen to SCREENS is all it takes to make it reachable.
 export default function Header() {
   const { user, logout } = useAuth();
   const { role, canSwitch } = useRole();
@@ -45,34 +38,11 @@ export default function Header() {
     };
   }, [switcherOpen]);
 
-  // Determine current active module from path
-  const path = location.pathname;
-  let activeModuleId = 'hub';
-  if (path.startsWith('/provisioning')) {
-    activeModuleId = 'provisioning';
-  } else if (path.startsWith('/noting') || path.startsWith('/ai-cases') || path === '/ai-documents' || path.startsWith('/ai-documents')) {
-    activeModuleId = 'noting';
-  } else if (
-    path === '/rv-inbox' ||
-    path === '/payment-advice' ||
-    path === '/forward-advice' ||
-    path === '/process-payment' ||
-    path === '/hod-approval' ||
-    path === '/payment-register' ||
-    path === '/payment-kpis'
-  ) {
-    activeModuleId = 'payments';
-  } else if (path.startsWith('/approvals')) {
-    activeModuleId = 'noting';
-  } else if (path.startsWith('/contracts')) {
-    activeModuleId = 'contracts';
-  } else if (path.startsWith('/claims')) {
-    activeModuleId = 'claims';
-  } else if (path.startsWith('/kpis')) {
-    activeModuleId = 'kpis';
-  }
-
-  const currentMod = MODULES_CONFIG.find((m) => m.id === activeModuleId) || MODULES_CONFIG[0];
+  const activeGroupId = groupForPath(location.pathname);
+  const currentMod = groupById(activeGroupId);
+  const modules = groupsForRole(role);
+  const navScreens = screensForRole(role).filter((s) => s.group === activeGroupId);
+  const navClass = ({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '');
 
   return (
     <header className="app-header">
@@ -88,7 +58,7 @@ export default function Header() {
             <span className="app-brand-sub">Public Procurement &amp; Management Portal</span>
           </div>
 
-          {/* Module Selector Pill / Dropdown */}
+          {/* Module switcher */}
           <div ref={switcherRef} className="app-module-switcher" style={{ position: 'relative', marginLeft: 8 }}>
             <button
               type="button"
@@ -106,14 +76,14 @@ export default function Header() {
             {switcherOpen && (
               <div className="app-module-menu">
                 <div className="mod-menu-header">SWITCH WORKSPACE MODULE</div>
-                {MODULES_CONFIG.map((m) => (
+                {modules.map((m) => (
                   <button
                     key={m.id}
                     type="button"
-                    className={`mod-menu-item ${m.id === activeModuleId ? 'active' : ''}`}
+                    className={`mod-menu-item ${m.id === activeGroupId ? 'active' : ''}`}
                     onClick={() => {
                       setSwitcherOpen(false);
-                      navigate(m.path);
+                      navigate(m.home);
                     }}
                   >
                     <span className="item-icon" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--accent)' }}>
@@ -123,7 +93,7 @@ export default function Header() {
                       <div className="item-title">{m.label}</div>
                       <div className="item-desc">{m.desc}</div>
                     </div>
-                    {m.id === activeModuleId && <span className="item-check">✓</span>}
+                    {m.id === activeGroupId && <span className="item-check">✓</span>}
                   </button>
                 ))}
               </div>
@@ -149,9 +119,9 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Scoped Nav Row — clean, professional labels without gimmicky emojis */}
+      {/* Nav row: the current group's screens; on the hub, one link per module. */}
       <nav className="app-nav">
-        {activeModuleId !== 'hub' && (
+        {activeGroupId !== 'hub' && (
           <span className="app-nav-item">
             <Link to="/portal" className="app-nav-link app-nav-hub-back">
               ← Portal Hub
@@ -159,141 +129,19 @@ export default function Header() {
           </span>
         )}
 
-        {/* 1. Hub Navigation */}
-        {activeModuleId === 'hub' && (
-          <>
-            <span className="app-nav-item">
-              <NavLink to="/portal" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                Portal Overview (6 Tabs)
-              </NavLink>
-            </span>
-            <span className="app-nav-item">
-              <Link to="/provisioning" className="app-nav-link">Provisioning</Link>
-            </span>
-            {canAccessPath(role, '/noting') && (
-              <span className="app-nav-item">
-                <Link to="/noting/inbox" className="app-nav-link">Procurement</Link>
-              </span>
-            )}
-            {canAccessPath(role, '/contracts/register') && (
-              <span className="app-nav-item">
-                <Link to="/contracts/register" className="app-nav-link">Contract Mgmt</Link>
-              </span>
-            )}
-            {canAccessPath(role, '/rv-inbox') && (
-              <span className="app-nav-item">
-                <Link to="/rv-inbox" className="app-nav-link">Payment Desk</Link>
-              </span>
-            )}
-            <span className="app-nav-item">
-              <Link to="/claims" className="app-nav-link">Claim Mgmt</Link>
-            </span>
-            <span className="app-nav-item">
-              <Link to="/kpis" className="app-nav-link">KPI &amp; MIS</Link>
-            </span>
-          </>
-        )}
+        {navScreens.map((s) => (
+          <span className="app-nav-item" key={s.path}>
+            <NavLink to={s.path} end className={navClass}>
+              {s.navLabel}
+            </NavLink>
+          </span>
+        ))}
 
-        {/* 2. Provisioning Navigation */}
-        {activeModuleId === 'provisioning' && (
-          <>
-            {[
-              { path: '/provisioning', label: 'Provisioning Workspace' },
-              { path: '/approvals/intake', label: 'Indentor Checklist' },
-              { path: '/noting/initiate', label: '+ Initiate Provisioning Note' },
-              { path: '/contracts/library', label: 'Standard Terms & Conditions' }
-            ].map((item) => (
-              <span className="app-nav-item" key={item.path + item.label}>
-                <NavLink to={item.path} className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                  {item.label}
-                </NavLink>
-              </span>
-            ))}
-          </>
-        )}
-
-        {/* 3. E-File Noting & Procurement Navigation */}
-        {activeModuleId === 'noting' && (
-          <>
-            {[
-              { path: '/noting/inbox', label: 'Inbox' },
-              { path: '/noting/sentbox', label: 'SentBox' },
-              { path: '/noting/cabinet', label: 'Cabinet' },
-              { path: '/noting/initiate', label: '+ Create E-File' },
-              { path: '/noting/files', label: 'Drafts & Files' },
-              { path: '/noting/upcoming', label: 'Upcoming' },
-              { path: '/noting/reports', label: 'Reports' },
-              { path: '/noting/org', label: 'Organisation' },
-              { path: '/noting/ai-documents', label: 'AI Documents' }
-            ].filter((item) => canAccessPath(role, item.path)).map((item) => (
-              <span className="app-nav-item" key={item.path}>
-                <NavLink to={item.path} className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                  {item.label}
-                </NavLink>
-              </span>
-            ))}
-          </>
-        )}
-
-        {/* 4. Payment Desk Navigation */}
-        {activeModuleId === 'payments' && (
-          <>
-            {[
-              { path: '/rv-inbox', label: 'RV Inbox' },
-              { path: '/payment-advice', label: 'Payment Advice' },
-              { path: '/forward-advice', label: 'Forward Advice' },
-              { path: '/process-payment', label: 'Process Payment' },
-              { path: '/hod-approval', label: 'HOD Approval' },
-              { path: '/payment-register', label: 'Payment Register' },
-              { path: '/payment-kpis', label: 'Payment KPIs' }
-            ].filter((item) => canAccessPath(role, item.path)).map((item) => (
-              <span className="app-nav-item" key={item.path}>
-                <NavLink to={item.path} className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                  {item.label}
-                </NavLink>
-              </span>
-            ))}
-          </>
-        )}
-
-        {/* 5. Contracts Navigation */}
-        {activeModuleId === 'contracts' && (
-          <>
-            {[
-              { path: '/contracts/register', label: 'Contract Register' },
-              { path: '/contracts/generate', label: 'Generate Contract' },
-              { path: '/contracts/library', label: '72 STC Clause Library' }
-            ].filter((item) => canAccessPath(role, item.path)).map((item) => (
-              <span className="app-nav-item" key={item.path}>
-                <NavLink to={item.path} className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                  {item.label}
-                </NavLink>
-              </span>
-            ))}
-          </>
-        )}
-
-        {/* 6. Claim Management Navigation */}
-        {activeModuleId === 'claims' && (
-          <>
-            <span className="app-nav-item">
-              <NavLink to="/claims" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                Claim Status &amp; Register
-              </NavLink>
-            </span>
-          </>
-        )}
-
-        {/* 7. KPI & MIS Reports Navigation */}
-        {activeModuleId === 'kpis' && (
-          <>
-            <span className="app-nav-item">
-              <NavLink to="/kpis" className={({ isActive }) => 'app-nav-link' + (isActive ? ' active' : '')}>
-                16 Statutory KPIs &amp; MIS
-              </NavLink>
-            </span>
-          </>
-        )}
+        {activeGroupId === 'hub' && modules.filter((m) => m.id !== 'hub').map((m) => (
+          <span className="app-nav-item" key={m.id}>
+            <Link to={m.home} className="app-nav-link">{m.label}</Link>
+          </span>
+        ))}
       </nav>
     </header>
   );

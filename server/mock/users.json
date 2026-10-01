@@ -88,5 +88,14 @@
     "role": "hod_imm",
     "pb": "PB-41060",
     "department": "Purchase (IMM) — Chief Manager"
+  },
+  {
+    "id": "U011",
+    "name": "CPPC Desk",
+    "email": "cppc@hal.local",
+    "password": "hal@1234",
+    "role": "cppc",
+    "pb": "PB-48120",
+    "department": "CPPC — Central Payment Processing Cell"
   }
 ]
